@@ -1,0 +1,12 @@
+type: plugin4
+name: CodexDesktop
+version: 0.1.0
+displayName: Codex Desktop
+description: Open active Codex Desktop tasks from MX Keypad LCD keys
+minimumLoupedeckVersion: 6.3
+
+pluginType: remote
+pluginRuntime: nodejs
+entryPoint: index.mjs
+
+pluginCapabilities:
