@@ -1,4 +1,5 @@
-import { readFile, unlink } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { readFile, rename, unlink } from 'node:fs/promises';
 
 import type { SemanticAction } from './control-surface-state.ts';
 
@@ -12,9 +13,9 @@ export class ControlSurfaceActionInbox {
   }
 
   async take(): Promise<SemanticAction | undefined> {
-    let json: string;
+    const claimedPath = `${this.path}.${process.pid}.${randomUUID()}.claimed`;
     try {
-      json = await readFile(this.path, 'utf8');
+      await rename(this.path, claimedPath);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return undefined;
@@ -22,12 +23,15 @@ export class ControlSurfaceActionInbox {
       throw error;
     }
 
-    await unlink(this.path).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== 'ENOENT') {
-        throw error;
-      }
-    });
-    return parseActionRequest(json);
+    try {
+      return parseActionRequest(await readFile(claimedPath, 'utf8'));
+    } finally {
+      await unlink(claimedPath).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ENOENT') {
+          throw error;
+        }
+      });
+    }
   }
 }
 
