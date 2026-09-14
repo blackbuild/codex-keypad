@@ -1,5 +1,9 @@
 node_modules/
 dist/
+dist-adapter/
+artifacts/
+adapter/**/bin/
+adapter/**/obj/
 *.lplug4
 .DS_Store
 /.idea/

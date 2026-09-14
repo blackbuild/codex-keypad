@@ -1,82 +1,88 @@
-# Codex Desktop for MX Keypad
+# Codex Keypad
 
-An experimental macOS Logi Actions plugin that puts the currently working
-Codex Desktop tasks on the nine MX Keypad LCD keys. Pressing a populated slot
-opens that task with Codex's `codex://threads/<thread-id>` deep link.
+An experimental macOS Logi Actions plugin for navigating Codex Desktop from an
+MX Keypad. The live adapter provides the first complete three-level path:
 
-This is a tracer bullet, not yet a finished status dashboard. The current
-Node.js Logi Actions SDK registers actions only while the plugin starts, so the
-slot labels are a startup snapshot. Restart or reload the plugin to refresh
-them. A key press still opens the exact task shown when that snapshot was made.
+1. assign the global Codex dynamic-folder action to an ordinary keypad profile;
+2. open its one configured project tile;
+3. open the one currently active task in that project.
+
+Back returns from the task view to the project overview and closes the overview
+at its root. The device Home button exits the dynamic folder normally. State is
+refreshed once per second without reloading the plugin.
 
 ## Architecture
 
-- `src/codex/` owns the unstable Codex persistence details. It reads the local
-  state and thread-history SQLite databases in read-only mode, validates the
-  matching rollout's bounded `session_meta` record, excludes subagents and
-  non-Desktop sessions, and returns UI-neutral `CodexTask` values.
-- `src/logitech/` maps up to nine `CodexTask` values onto stable Logitech action
-  names (`open_active_task_1` through `open_active_task_9`). It knows nothing
-  about SQLite or Codex journals.
-- `src/macos/` validates a thread ID and opens the deep link without invoking a
-  shell.
+- `src/codex/` isolates the unstable, read-only Codex SQLite and rollout-journal
+  details. A configured project root limits the live task selection to that
+  project.
+- `src/control-surface/` owns the versioned normalized state and semantic actions.
+  It publishes snapshots atomically for the device boundary.
+- `adapter/CodexKeypad.Core/` strictly validates the normalized JSON, implements
+  Level 1/Level 2 navigation, and permits only the typed `open-codex-task`
+  action with a safe thread ID.
+- `adapter/CodexKeypadPlugin/` is the thin Logitech C# dynamic-folder adapter. It
+  starts the fixed packaged TypeScript sidecar, refreshes action names, handles
+  Back, and maps a validated task action to `codex://threads/<thread-id>` without
+  invoking a shell or accepting executable commands from state.
 
-The task status model already reserves approval and input states, but this
-first slice deliberately emits only `working`. Later lifecycle parsing can
-change inside the Codex adapter without changing the Logitech actions.
-
-The accepted live-control-surface direction and its implementation slices are
-described in [the roadmap](docs/roadmap.md).
+The original TypeScript startup-snapshot tracer bullet remains in `index.ts` and
+`src/logitech/`. It can still be built and packed independently while the live
+C# adapter becomes the primary package.
 
 ## Requirements
 
 - macOS with Codex Desktop
-- Logi Options+ 2.2 or newer (Plugin API 6.3 introduced macOS support)
-- Node.js 22 or newer
+- Logi Options+ with Plugin API 6.4.1 or newer
+- Node.js 22 or newer in `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`, or the
+  Logi Plugin Service `PATH`
+- .NET 10 SDK for development builds
 
-By default, the adapter finds the highest-versioned `state_*.sqlite` and
-`thread_history_*.sqlite` files under `CODEX_HOME` or `~/.codex`. For fixtures
-or unusual installations, set `CODEX_STATE_DB` and
-`CODEX_THREAD_HISTORY_DB` to explicit files.
+The installed Logitech SDK assemblies are read from
+`/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/`.
 
-## Getting started
+## Configure one project
 
-Install dependencies:
+`CODEX_KEYPAD_PROJECT_ROOT` is required and must be visible to the Logi Plugin
+Service process. It is matched exactly against the Codex task working directory.
+Set it before starting Options+; for a shell-launched development smoke test:
 
+```sh
+export CODEX_KEYPAD_PROJECT_ROOT=/absolute/path/to/the/project-workspace
 ```
+
+The optional `CODEX_KEYPAD_PROJECT_ID` and `CODEX_KEYPAD_PROJECT_NAME` variables
+control the normalized tile identity and label. They default to `codex-keypad`
+and `Codex Keypad`.
+
+By default, the state adapter finds the highest-versioned `state_*.sqlite` and
+`thread_history_*.sqlite` files under `CODEX_HOME` or `~/.codex`. Tests may use
+`CODEX_STATE_DB` and `CODEX_THREAD_HISTORY_DB` to select fixtures explicitly.
+
+## Build and test
+
+```sh
 npm install
-```
-
-Run the adapter and action tests:
-
-```
 npm test
-```
-
-Build the plugin:
-
-```
 npm run build
 ```
 
-Link it to Logi Plugin Service. The plugin should appear in the "All Actions"
-section in Options+; assign its nine stable task-slot actions to the nine LCD
-keys:
+`npm test` runs the TypeScript behavior tests and the executable C# contract
+harness. `npm run build` typechecks and bundles both TypeScript entry points,
+then compiles and assembles the C# plugin in `dist-adapter/`.
 
-```
-npm run link
-```
+Create the installable C# package with:
 
-Unlink it again with:
-
-```
-npm run unlink
-```
-
-## Package the plugin
-
-Create a distributable `.lplug4` file with:
-
-```
+```sh
 npm run build:pack
+```
+
+The result is `artifacts/CodexKeypad_0_2_0.lplug4`. Install it, find the Codex
+dynamic-folder action in Options+, and assign that action to a key in a normal
+profile.
+
+The preserved TypeScript tracer bullet can still be packed with:
+
+```sh
+npm run pack:tracer
 ```
