@@ -25,6 +25,9 @@ The task status model already reserves approval and input states, but this
 first slice deliberately emits only `working`. Later lifecycle parsing can
 change inside the Codex adapter without changing the Logitech actions.
 
+The accepted live-control-surface direction and its implementation slices are
+described in [the roadmap](docs/roadmap.md).
+
 ## Requirements
 
 - macOS with Codex Desktop
