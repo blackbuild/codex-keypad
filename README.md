@@ -16,15 +16,14 @@ refreshed once per second without reloading the plugin.
 - `src/codex/` isolates the unstable, read-only Codex SQLite and rollout-journal
   details. A configured project root limits the live task selection to that
   project.
-- `src/control-surface/` owns the versioned normalized state and semantic actions.
-  It publishes snapshots atomically for the device boundary.
-- `adapter/CodexKeypad.Core/` strictly validates the normalized JSON, implements
-  Level 1/Level 2 navigation, and permits only the typed `open-codex-task`
-  action with a safe thread ID.
+- `src/control-surface/` owns the versioned normalized views, semantic navigation
+  state machine, exact-task opening, and atomic state/action handoff.
+- `adapter/CodexKeypad.Core/` strictly validates the normalized JSON and relays
+  only its closed set of typed semantic actions.
 - `adapter/CodexKeypadPlugin/` is the thin Logitech C# dynamic-folder adapter. It
-  starts the fixed packaged TypeScript sidecar, refreshes action names, handles
-  Back, and maps a validated task action to `codex://threads/<thread-id>` without
-  invoking a shell or accepting executable commands from state.
+  starts the fixed packaged TypeScript sidecar, renders its current view, relays
+  button actions, handles the SDK-specific close effect, and invalidates the
+  global entry image when state changes. It never executes a command from state.
 
 The original TypeScript startup-snapshot tracer bullet remains in `index.ts` and
 `src/logitech/`. It can still be built and packed independently while the live

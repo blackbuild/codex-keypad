@@ -18,7 +18,7 @@ after(async () => {
   await rm(fixtureDirectory, { recursive: true, force: true });
 });
 
-test('atomically publishes normalized state only when its content changes', async () => {
+test('publishes normalized state and skips an identical replacement', async () => {
   const output = join(fixtureDirectory, 'state.json');
   const publisher = new ControlSurfaceStatePublisher(output);
   const state = buildSingleProjectControlSurface(

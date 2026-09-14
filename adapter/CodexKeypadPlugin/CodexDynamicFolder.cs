@@ -7,13 +7,15 @@ using Loupedeck;
 
 public sealed class CodexDynamicFolder : PluginDynamicFolder
 {
-    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan StateFreshness = TimeSpan.FromSeconds(2);
 
     private readonly Object _sync = new();
-    private readonly ControlSurfaceNavigator _navigator = new();
     private Timer? _refreshTimer;
     private Process? _sidecar;
     private String? _statePath;
+    private String? _actionPath;
+    private ControlSurfaceState? _state;
 
     public CodexDynamicFolder()
     {
@@ -25,35 +27,39 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         PluginDynamicFolderNavigation.None;
 
     public override String GetButtonDisplayName(PluginImageSize _) =>
-        this.ReadNavigator(navigator => navigator.EntryLabel);
+        this.WithState(state => state?.Entry.Label ?? "Codex · unavailable");
+
+    public override BitmapImage GetButtonImage(PluginImageSize imageSize)
+    {
+        using var builder = new BitmapBuilder(imageSize);
+        builder.DrawText(this.GetButtonDisplayName(imageSize), fontSize: 18);
+        return builder.ToImage();
+    }
 
     public override IEnumerable<String> GetButtonPressActionNames(DeviceType _) =>
-        this.ReadNavigator(navigator => navigator.GetTiles()
-            .Select(tile => this.CreateCommandName(tile.ActionParameter))
-            .ToArray());
+        this.WithState(state => state?.View.Tiles
+            .Select(tile => this.CreateCommandName(tile.Id))
+            .ToArray() ?? []);
 
     public override String GetCommandDisplayName(String actionParameter, PluginImageSize _) =>
-        this.ReadNavigator(navigator => navigator.GetTiles()
-            .SingleOrDefault(tile => tile.ActionParameter == actionParameter)?.Label
+        this.WithState(state => state?.View.Tiles
+            .SingleOrDefault(tile => tile.Id == actionParameter)?.Label
             ?? "Unavailable");
 
     public override void RunCommand(String actionParameter)
     {
-        var outcome = this.ReadNavigator(navigator => navigator.Handle(actionParameter));
-        switch (outcome.Kind)
+        var action = this.WithState(state => state?.View.Tiles
+            .SingleOrDefault(tile => tile.Id == actionParameter)?.Action);
+        if (action is CloseControlSurfaceAction)
         {
-            case NavigationOutcomeKind.Refresh:
-                this.ButtonActionNamesChanged();
-                break;
-            case NavigationOutcomeKind.Close:
-                this.Close();
-                break;
-            case NavigationOutcomeKind.OpenCodexTask:
-                this.OpenCodexTask(outcome.ThreadId);
-                break;
-            case NavigationOutcomeKind.Ignored:
-            default:
-                break;
+            this.Close();
+            return;
+        }
+
+        var actionPath = this._actionPath;
+        if (action is not null && actionPath is not null)
+        {
+            RelayAction(actionPath, action);
         }
     }
 
@@ -61,10 +67,10 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     {
         try
         {
-            this._statePath = Path.Combine(
-                Path.GetTempPath(),
-                $"codex-keypad-{Environment.ProcessId}-{Guid.NewGuid():N}.json");
-            this._sidecar = StartSidecar(this._statePath);
+            var channel = $"codex-keypad-{Environment.ProcessId}-{Guid.NewGuid():N}";
+            this._statePath = Path.Combine(Path.GetTempPath(), $"{channel}-state.json");
+            this._actionPath = Path.Combine(Path.GetTempPath(), $"{channel}-action.json");
+            this._sidecar = StartSidecar(this._statePath, this._actionPath);
             this._refreshTimer = new Timer(
                 _ => this.RefreshState(),
                 null,
@@ -77,6 +83,16 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
             Trace.TraceError($"Unable to start the Codex Keypad state adapter: {error}");
             return false;
         }
+    }
+
+    public override Boolean Activate()
+    {
+        var reset = this.WithState(state => state?.Entry.Action);
+        if (reset is not null && this._actionPath is not null)
+        {
+            RelayAction(this._actionPath, reset);
+        }
+        return true;
     }
 
     public override Boolean Unload()
@@ -102,21 +118,12 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
             this._sidecar = null;
         }
 
-        if (this._statePath is not null)
-        {
-            try
-            {
-                File.Delete(this._statePath);
-            }
-            catch (Exception error)
-            {
-                Trace.TraceWarning($"Unable to remove the temporary Codex Keypad state file: {error}");
-            }
-        }
+        DeleteTemporaryFile(this._statePath);
+        DeleteTemporaryFile(this._actionPath);
         return true;
     }
 
-    private static Process StartSidecar(String statePath)
+    private static Process StartSidecar(String statePath, String actionPath)
     {
         var assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
             ?? throw new InvalidOperationException("The plugin assembly location is unavailable");
@@ -142,6 +149,8 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         startInfo.ArgumentList.Add(sidecarPath);
         startInfo.ArgumentList.Add("--output");
         startInfo.ArgumentList.Add(statePath);
+        startInfo.ArgumentList.Add("--actions");
+        startInfo.ArgumentList.Add(actionPath);
 
         var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("The Codex Keypad state adapter did not start");
@@ -156,20 +165,45 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         return process;
     }
 
-    private void RefreshState()
+    private static void DeleteTemporaryFile(String? path)
     {
-        var statePath = this._statePath;
-        if (statePath is null || !ControlSurfaceContract.TryRead(statePath, out var state) || state is null)
+        if (path is null)
         {
             return;
         }
 
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception error)
+        {
+            Trace.TraceWarning($"Unable to remove temporary Codex Keypad state: {error}");
+        }
+    }
+
+    private static void RelayAction(String path, SemanticAction action)
+    {
+        try
+        {
+            ControlSurfaceActionPublisher.Publish(path, action);
+        }
+        catch (Exception error)
+        {
+            Trace.TraceWarning($"Unable to relay a Codex Keypad action: {error}");
+        }
+    }
+
+    private void RefreshState()
+    {
+        var nextState = this.ReadFreshState();
+
         var changed = false;
         lock (this._sync)
         {
-            if (this._navigator.Revision != state.Revision)
+            if (this._state?.Revision != nextState?.Revision)
             {
-                this._navigator.Update(state);
+                this._state = nextState;
                 changed = true;
             }
         }
@@ -177,32 +211,40 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         if (changed)
         {
             this.ButtonActionNamesChanged();
+            if (this.Plugin is not null)
+            {
+                this.Plugin.OnActionImageChanged(this.CommandName, String.Empty, true);
+            }
         }
     }
 
-    private void OpenCodexTask(String? threadId)
+    private ControlSurfaceState? ReadFreshState()
     {
-        if (threadId is null || !CodexThreadDeepLink.TryCreate(threadId, out var uri) || uri is null)
+        try
         {
-            return;
+            var statePath = this._statePath;
+            if (this._sidecar is not { HasExited: false }
+                || statePath is null
+                || !File.Exists(statePath)
+                || DateTime.UtcNow - File.GetLastWriteTimeUtc(statePath) > StateFreshness
+                || !ControlSurfaceContract.TryRead(statePath, out var state))
+            {
+                return null;
+            }
+            return state;
         }
-
-        var startInfo = new ProcessStartInfo
+        catch (Exception error)
         {
-            FileName = "/usr/bin/open",
-            UseShellExecute = false,
-        };
-        startInfo.ArgumentList.Add("-b");
-        startInfo.ArgumentList.Add("com.openai.codex");
-        startInfo.ArgumentList.Add(uri.AbsoluteUri);
-        Process.Start(startInfo)?.Dispose();
+            Trace.TraceWarning($"Unable to read fresh Codex Keypad state: {error}");
+            return null;
+        }
     }
 
-    private TResult ReadNavigator<TResult>(Func<ControlSurfaceNavigator, TResult> read)
+    private TResult WithState<TResult>(Func<ControlSurfaceState?, TResult> access)
     {
         lock (this._sync)
         {
-            return read(this._navigator);
+            return access(this._state);
         }
     }
 }

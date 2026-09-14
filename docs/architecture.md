@@ -31,17 +31,17 @@ link path; it does not establish live display updates.
 ## First live path
 
 The issue 4 adapter preserves that TypeScript tracer bullet and adds a separate
-C# dynamic-folder package. A fixed TypeScript sidecar publishes one configured
-project and at most one current task as versioned, normalized JSON. The C# adapter
-strictly validates that contract, refreshes the folder action list, and implements
-the Level 1 → Level 2 transition and Back behavior. The device Home behavior is
-owned by the Logitech dynamic-folder runtime.
+C# dynamic-folder package. A fixed TypeScript sidecar owns the semantic navigation
+state machine and publishes its current view for one configured project and at
+most one task as versioned, normalized JSON. The C# adapter strictly validates
+that contract, renders it, and relays typed action requests back to TypeScript.
+The device Home behavior and the close effect are owned by the Logitech runtime.
 
-Only the normalized `open-codex-task` semantic action is executable. Its thread
-ID is validated and mapped to a Codex deep link through a fixed `/usr/bin/open`
-invocation without a shell. Unknown action types and unknown JSON members are
-rejected. Multi-project population and general task population remain later
-roadmap slices.
+TypeScript accepts only the normalized `open-project-overview`, `open-task-view`,
+and `open-codex-task` requests. The task action must match the current task and is
+opened by the existing shell-free, validated Codex deep-link adapter. Unknown
+action types and unknown JSON members are rejected. Multi-project population and
+general task population remain later roadmap slices.
 
 ## Target navigation model
 

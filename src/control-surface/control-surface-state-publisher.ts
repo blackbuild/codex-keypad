@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, utimes, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import type { CodexControlSurfaceState } from './control-surface-state.ts';
@@ -13,6 +13,8 @@ export class ControlSurfaceStatePublisher {
   async publish(state: CodexControlSurfaceState): Promise<boolean> {
     const serialized = `${JSON.stringify(state, undefined, 2)}\n`;
     if (await readExisting(this.outputPath) === serialized) {
+      const now = new Date();
+      await utimes(this.outputPath, now, now);
       return false;
     }
 

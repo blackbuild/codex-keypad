@@ -5,33 +5,19 @@ export interface CodexProjectIdentity {
   readonly name: string;
 }
 
-export interface OpenProjectOverviewAction {
-  readonly type: 'open-project-overview';
-}
+export type ControlSurfaceLevel = 'project-overview' | 'task-view';
 
-export interface OpenTaskViewAction {
-  readonly type: 'open-task-view';
-  readonly projectId: string;
-}
+export type SemanticAction =
+  | { readonly type: 'open-project-overview' }
+  | { readonly type: 'close-control-surface' }
+  | { readonly type: 'open-task-view'; readonly projectId: string }
+  | { readonly type: 'open-codex-task'; readonly threadId: string };
 
-export interface OpenCodexTaskAction {
-  readonly type: 'open-codex-task';
-  readonly threadId: string;
-}
-
-export interface CodexControlSurfaceTask {
+export interface ControlSurfaceTile {
   readonly id: string;
   readonly label: string;
-  readonly status: CodexTaskStatus;
-  readonly action: OpenCodexTaskAction;
-}
-
-export interface CodexControlSurfaceProject {
-  readonly id: string;
-  readonly label: string;
-  readonly summary: string;
-  readonly action: OpenTaskViewAction;
-  readonly tasks: readonly CodexControlSurfaceTask[];
+  readonly status?: CodexTaskStatus;
+  readonly action: SemanticAction;
 }
 
 export interface CodexControlSurfaceState {
@@ -40,46 +26,66 @@ export interface CodexControlSurfaceState {
   readonly entry: {
     readonly id: 'codex';
     readonly label: string;
-    readonly action: OpenProjectOverviewAction;
+    readonly action: { readonly type: 'open-project-overview' };
   };
-  readonly projects: readonly CodexControlSurfaceProject[];
+  readonly view: {
+    readonly level: ControlSurfaceLevel;
+    readonly title: string;
+    readonly tiles: readonly ControlSurfaceTile[];
+  };
 }
 
 export function buildSingleProjectControlSurface(
   project: CodexProjectIdentity,
   task: CodexTask | undefined,
+  level: ControlSurfaceLevel = 'project-overview',
 ): CodexControlSurfaceState {
-  const tasks = task
-    ? [{
-        id: task.id,
-        label: compactLabel(task.title),
-        status: task.status,
-        action: {
-          type: 'open-codex-task' as const,
-          threadId: task.id,
-        },
-      }]
-    : [];
   const activeSummary = task ? '1 active' : 'Idle';
+  const tiles: ControlSurfaceTile[] = level === 'project-overview'
+    ? [
+        {
+          id: 'nav.back',
+          label: 'Back',
+          action: { type: 'close-control-surface' },
+        },
+        {
+          id: `project:${project.id}`,
+          label: `${project.name} · ${activeSummary}`,
+          action: { type: 'open-task-view', projectId: project.id },
+        },
+      ]
+    : [
+        {
+          id: 'nav.back',
+          label: 'Back',
+          action: { type: 'open-project-overview' },
+        },
+        ...(task
+          ? [{
+              id: `task:${task.id}`,
+              label: compactLabel(task.title),
+              status: task.status,
+              action: {
+                type: 'open-codex-task' as const,
+                threadId: task.id,
+              },
+            }]
+          : []),
+      ];
 
   return {
     schemaVersion: 1,
-    revision: task ? `${task.id}:${task.updatedAt}` : 'idle',
+    revision: `${level}:${task ? `${task.id}:${task.updatedAt}` : 'idle'}`,
     entry: {
       id: 'codex',
       label: task ? 'Codex · 1 active' : 'Codex · idle',
       action: { type: 'open-project-overview' },
     },
-    projects: [{
-      id: project.id,
-      label: project.name,
-      summary: activeSummary,
-      action: {
-        type: 'open-task-view',
-        projectId: project.id,
-      },
-      tasks,
-    }],
+    view: {
+      level,
+      title: level === 'project-overview' ? 'Projects' : project.name,
+      tiles,
+    },
   };
 }
 

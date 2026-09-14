@@ -1,79 +1,124 @@
+using System.Text.Json;
 using CodexKeypad.Core;
 
 var fixturePath = Path.Combine(Path.GetTempPath(), $"codex-keypad-contract-{Guid.NewGuid():N}.json");
+var actionPath = Path.Combine(Path.GetTempPath(), $"codex-keypad-action-{Guid.NewGuid():N}.json");
 
 try
 {
-    File.WriteAllText(fixturePath, ValidState("open-codex-task", "thread-123"));
-    Expect(ControlSurfaceContract.TryRead(fixturePath, out var state), "valid normalized state is accepted");
+    Run("accepts the normalized project overview", () =>
+    {
+        File.WriteAllText(fixturePath, ProjectOverview());
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.View.Tiles[0].Action is CloseControlSurfaceAction
+            && state.View.Tiles[1].Action is OpenTaskViewAction { ProjectId: "codex-keypad" });
+    });
 
-    var navigator = new ControlSurfaceNavigator(state);
-    Expect(navigator.EntryLabel == "Codex · 1 active", "entry label comes from normalized state");
-    Expect(navigator.GetTiles().Select(tile => tile.Label).SequenceEqual(["Back", "Codex Keypad · 1 active"]),
-        "Level 1 contains Back and one project tile");
-    Expect(navigator.Handle("project:codex-keypad").Kind == NavigationOutcomeKind.Refresh,
-        "the project semantic action opens Level 2");
-    Expect(navigator.GetTiles().Select(tile => tile.Label).SequenceEqual(["Back", "Exact task"]),
-        "Level 2 contains Back and one task tile");
+    Run("accepts the normalized exact-task view", () =>
+    {
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123"));
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.View.Tiles[1].Action is OpenCodexTaskAction { ThreadId: "thread-123" });
+    });
 
-    var open = navigator.Handle("task:thread-123");
-    Expect(open == new NavigationOutcome(NavigationOutcomeKind.OpenCodexTask, "thread-123"),
-        "the task tile resolves the exact normalized thread ID");
-    Expect(CodexThreadDeepLink.TryCreate(open.ThreadId!, out var uri)
-        && uri!.AbsoluteUri == "codex://threads/thread-123",
-        "the exact thread ID becomes the validated Codex deep link");
-    Expect(navigator.Handle("nav.back").Kind == NavigationOutcomeKind.Refresh,
-        "Back returns from Level 2 to Level 1");
-    Expect(navigator.Handle("nav.back").Kind == NavigationOutcomeKind.Close,
-        "Back closes the root dynamic folder");
+    Run("publishes one typed semantic action request", () =>
+    {
+        ControlSurfaceActionPublisher.Publish(actionPath, new OpenTaskViewAction("codex-keypad"));
+        using var document = JsonDocument.Parse(File.ReadAllText(actionPath));
+        var root = document.RootElement;
+        Expect(root.GetProperty("schemaVersion").GetInt32() == 1
+            && root.GetProperty("requestId").GetString()!.Length == 32
+            && root.GetProperty("action").GetProperty("type").GetString() == "open-task-view"
+            && root.GetProperty("action").GetProperty("projectId").GetString() == "codex-keypad");
+    });
 
-    File.WriteAllText(fixturePath, ValidState("run-command", "rm-everything"));
-    Expect(!ControlSurfaceContract.TryRead(fixturePath, out _),
-        "an arbitrary action type is rejected at the handoff boundary");
+    Run("rejects an arbitrary executable action", () =>
+    {
+        File.WriteAllText(fixturePath, TaskView("run-command", "thread-123"));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+    });
 
-    File.WriteAllText(fixturePath, ValidState("open-codex-task", "../settings"));
-    Expect(!ControlSurfaceContract.TryRead(fixturePath, out _),
-        "an unsafe thread route is rejected at the handoff boundary");
+    Run("rejects an unsafe thread route", () =>
+    {
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "../settings"));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+    });
 
     Console.WriteLine("Adapter contract tests passed.");
 }
 finally
 {
     File.Delete(fixturePath);
+    File.Delete(actionPath);
 }
 
-static void Expect(Boolean condition, String message)
+static void Run(String name, Action test)
 {
-    if (!condition)
+    try
     {
-        throw new InvalidOperationException($"Contract test failed: {message}");
+        test();
+    }
+    catch (Exception error)
+    {
+        throw new InvalidOperationException($"Contract test failed: {name}", error);
     }
 }
 
-static String ValidState(String taskActionType, String threadId) => $$"""
+static void Expect(Boolean condition)
+{
+    if (!condition)
+    {
+        throw new InvalidOperationException("expectation was false");
+    }
+}
+
+static String ProjectOverview() => """
 {
   "schemaVersion": 1,
-  "revision": "thread-123:456",
+  "revision": "project-overview:thread-123:456",
   "entry": {
     "id": "codex",
     "label": "Codex · 1 active",
     "action": { "type": "open-project-overview" }
   },
-  "projects": [
-    {
-      "id": "codex-keypad",
-      "label": "Codex Keypad",
-      "summary": "1 active",
-      "action": { "type": "open-task-view", "projectId": "codex-keypad" },
-      "tasks": [
-        {
-          "id": "{{threadId}}",
-          "label": "Exact task",
-          "status": "working",
-          "action": { "type": "{{taskActionType}}", "threadId": "{{threadId}}" }
-        }
-      ]
-    }
-  ]
+  "view": {
+    "level": "project-overview",
+    "title": "Projects",
+    "tiles": [
+      { "id": "nav.back", "label": "Back", "action": { "type": "close-control-surface" } },
+      {
+        "id": "project:codex-keypad",
+        "label": "Codex Keypad · 1 active",
+        "action": { "type": "open-task-view", "projectId": "codex-keypad" }
+      }
+    ]
+  }
+}
+""";
+
+static String TaskView(String taskActionType, String threadId) => $$"""
+{
+  "schemaVersion": 1,
+  "revision": "task-view:thread-123:456",
+  "entry": {
+    "id": "codex",
+    "label": "Codex · 1 active",
+    "action": { "type": "open-project-overview" }
+  },
+  "view": {
+    "level": "task-view",
+    "title": "Codex Keypad",
+    "tiles": [
+      { "id": "nav.back", "label": "Back", "action": { "type": "open-project-overview" } },
+      {
+        "id": "task:{{threadId}}",
+        "label": "Exact task",
+        "status": "working",
+        "action": { "type": "{{taskActionType}}", "threadId": "{{threadId}}" }
+      }
+    ]
+  }
 }
 """;
