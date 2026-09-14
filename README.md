@@ -42,17 +42,27 @@ The installed Logitech SDK assemblies are read from
 
 ## Configure one project
 
-`CODEX_KEYPAD_PROJECT_ROOT` is required and must be visible to the Logi Plugin
-Service process. It is matched exactly against the Codex task working directory.
-Set it before starting Options+; for a shell-launched development smoke test:
+For an ordinary Options+ launch, create the persistent per-user configuration
+file at `~/Library/Application Support/Codex Keypad/config.json`:
 
 ```sh
-export CODEX_KEYPAD_PROJECT_ROOT=/absolute/path/to/the/project-workspace
+mkdir -p "$HOME/Library/Application Support/Codex Keypad"
+printf '%s\n' '{"projectRoot":"/absolute/path/to/the/project-workspace"}' \
+  > "$HOME/Library/Application Support/Codex Keypad/config.json"
 ```
 
-The optional `CODEX_KEYPAD_PROJECT_ID` and `CODEX_KEYPAD_PROJECT_NAME` variables
-control the normalized tile identity and label. They default to `codex-keypad`
-and `Codex Keypad`.
+Create the file before installing the plugin. `projectRoot` must be an absolute
+path and is matched exactly against the Codex task working directory. Reinstall
+the package after changing the file so Logi Plugin Service starts a new sidecar.
+A missing or invalid file makes sidecar startup fail explicitly and leaves the
+Codex action unavailable rather than showing unscoped task state.
+
+For a shell-launched sidecar smoke test, `CODEX_KEYPAD_PROJECT_ROOT` remains an
+override. A shell `export` does not configure an already-running, GUI-launched
+Logi Plugin Service, so it is not the normal Options+ configuration mechanism.
+The optional `CODEX_KEYPAD_PROJECT_ID` and `CODEX_KEYPAD_PROJECT_NAME`
+environment variables control the normalized tile identity and label for such
+development runs. They default to `codex-keypad` and `Codex Keypad`.
 
 By default, the state adapter finds the highest-versioned `state_*.sqlite` and
 `thread_history_*.sqlite` files under `CODEX_HOME` or `~/.codex`. Tests may use
@@ -85,3 +95,7 @@ The preserved TypeScript tracer bullet can still be packed with:
 ```sh
 npm run pack:tracer
 ```
+
+Automated tests and packaged-sidecar checks cover the non-device behavior. The
+issue #4 physical MX Keypad smoke test remains pending until compatible hardware
+is available; simulated results are not treated as hardware evidence.

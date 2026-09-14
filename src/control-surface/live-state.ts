@@ -2,6 +2,7 @@ import { createDefaultCodexTaskSource } from '../codex/sqlite-codex-task-source.
 import { openCodexThread } from '../macos/open-codex-thread.ts';
 import { ControlSurfaceActionInbox } from './control-surface-action-inbox.ts';
 import { ControlSurfaceStatePublisher } from './control-surface-state-publisher.ts';
+import { configuredProjectRoot } from './project-configuration.ts';
 import { SingleProjectNavigation } from './single-project-navigation.ts';
 
 const REFRESH_INTERVAL_MS = 250;
@@ -11,15 +12,16 @@ const arguments_ = process.argv.slice(2);
 const outputPath = requiredOption(arguments_, '--output');
 const actionPath = requiredOption(arguments_, '--actions');
 const once = arguments_.includes('--once');
-if (!process.env.CODEX_KEYPAD_PROJECT_ROOT) {
-  throw new Error('CODEX_KEYPAD_PROJECT_ROOT must identify the configured Codex project');
-}
+const projectRoot = configuredProjectRoot();
 
 const project = {
   id: projectId(process.env.CODEX_KEYPAD_PROJECT_ID ?? 'codex-keypad'),
   name: projectName(process.env.CODEX_KEYPAD_PROJECT_NAME ?? 'Codex Keypad'),
 };
-const taskSource = createDefaultCodexTaskSource();
+const taskSource = createDefaultCodexTaskSource({
+  ...process.env,
+  CODEX_KEYPAD_PROJECT_ROOT: projectRoot,
+});
 const publisher = new ControlSurfaceStatePublisher(outputPath);
 const inbox = new ControlSurfaceActionInbox(actionPath);
 const navigation = new SingleProjectNavigation(project, openCodexThread);
