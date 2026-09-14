@@ -49,6 +49,19 @@ test('applies the requested LCD slot limit', () => {
   assert.throws(() => source.listActiveTasks(-1), RangeError);
 });
 
+test('can limit active tasks to one configured project root', () => {
+  const projectSource = new SqliteCodexTaskSource({
+    stateDatabase: join(fixtureDirectory, 'state.sqlite'),
+    historyDatabase: join(fixtureDirectory, 'history.sqlite'),
+    workingDirectory: '/projects/codex-keypad',
+  });
+
+  assert.deepEqual(
+    projectSource.listActiveTasks(9).map((task) => task.id),
+    ['desktop-new'],
+  );
+});
+
 function createStateFixture(databasePath: string): void {
   const database = new DatabaseSync(databasePath);
   database.exec(`
@@ -57,6 +70,7 @@ function createStateFixture(databasePath: string): void {
       name TEXT,
       title TEXT NOT NULL,
       rollout_path TEXT NOT NULL,
+      cwd TEXT NOT NULL,
       recency_at_ms INTEGER NOT NULL,
       source TEXT NOT NULL,
       archived INTEGER NOT NULL
@@ -64,15 +78,15 @@ function createStateFixture(databasePath: string): void {
   `);
 
   addThread(database, 'desktop-new', 'Named current task', 'ignored', 4000,
-    'codex_work_desktop', 'chatgpt_handoff');
+    'codex_work_desktop', 'chatgpt_handoff', '/projects/codex-keypad');
   addThread(database, 'desktop-legacy', null, '## Fallback heading\nmore', 3000,
-    'Codex Desktop', 'user');
+    'Codex Desktop', 'user', '/projects/elsewhere');
   addThread(database, 'subagent', 'Child', 'Child', 5000,
-    'Codex Desktop', 'subagent');
+    'Codex Desktop', 'subagent', '/projects/codex-keypad');
   addThread(database, 'other-app', 'IDE task', 'IDE task', 6000,
-    'JetBrains.IntelliJ IDEA', 'user');
+    'JetBrains.IntelliJ IDEA', 'user', '/projects/codex-keypad');
   addThread(database, 'finished', 'Finished', 'Finished', 7000,
-    'Codex Desktop', 'user');
+    'Codex Desktop', 'user', '/projects/codex-keypad');
   database.close();
 }
 
@@ -84,6 +98,7 @@ function addThread(
   recencyAt: number,
   originator: string,
   threadSource: string,
+  workingDirectory: string,
 ): void {
   const rolloutPath = join(fixtureDirectory, 'rollouts', `${id}.jsonl`);
   writeFileSync(rolloutPath, `${JSON.stringify({
@@ -97,9 +112,9 @@ function addThread(
   })}\n`);
   database.prepare(`
     INSERT INTO threads
-      (id, name, title, rollout_path, recency_at_ms, source, archived)
-    VALUES (?, ?, ?, ?, ?, 'vscode', 0)
-  `).run(id, name, title, rolloutPath, recencyAt);
+      (id, name, title, rollout_path, cwd, recency_at_ms, source, archived)
+    VALUES (?, ?, ?, ?, ?, ?, 'vscode', 0)
+  `).run(id, name, title, rolloutPath, workingDirectory, recencyAt);
 }
 
 function createHistoryFixture(databasePath: string): void {

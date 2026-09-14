@@ -25,6 +25,7 @@ interface ThreadRow {
 export interface SqliteCodexTaskSourceOptions {
   readonly stateDatabase: string;
   readonly historyDatabase: string;
+  readonly workingDirectory?: string;
 }
 
 export class SqliteCodexTaskSource implements CodexTaskSource {
@@ -49,12 +50,17 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
 
     const database = new DatabaseSync(this.options.stateDatabase, { readOnly: true });
     try {
+      const workingDirectoryFilter = this.options.workingDirectory
+        ? 'AND cwd = ?'
+        : '';
       const rows = database.prepare(`
         SELECT id, name, title, rollout_path, recency_at_ms
         FROM threads
-        WHERE archived = 0 AND source = 'vscode'
+        WHERE archived = 0 AND source = 'vscode' ${workingDirectoryFilter}
         ORDER BY recency_at_ms DESC, id DESC
-      `).all() as unknown as ThreadRow[];
+      `).all(
+        ...(this.options.workingDirectory ? [this.options.workingDirectory] : []),
+      ) as unknown as ThreadRow[];
 
       return rows
         .filter((row) => activeThreadIds.has(row.id))
@@ -99,11 +105,13 @@ export function createDefaultCodexTaskSource(
   environment: NodeJS.ProcessEnv = process.env,
 ): SqliteCodexTaskSource {
   const codexHome = environment.CODEX_HOME ?? join(homedir(), '.codex');
+  const workingDirectory = environment.CODEX_KEYPAD_PROJECT_ROOT;
   return new SqliteCodexTaskSource({
     stateDatabase: environment.CODEX_STATE_DB
       ?? findLatestVersionedDatabase(codexHome, 'state'),
     historyDatabase: environment.CODEX_THREAD_HISTORY_DB
       ?? findLatestVersionedDatabase(codexHome, 'thread_history'),
+    ...(workingDirectory ? { workingDirectory } : {}),
   });
 }
 

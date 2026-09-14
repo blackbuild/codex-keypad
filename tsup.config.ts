@@ -12,12 +12,16 @@ const isProduction = process.env.NODE_ENV === 'production';
 const isWatchEnabled = process.argv.includes('--watch') || process.argv.includes('-w');
 
 export default defineConfig({
-  entry: ['index.ts'],
+  entry: {
+    index: 'index.ts',
+    'live-state': 'src/control-surface/live-state.ts',
+  },
   format: ['esm'],
   outDir: 'dist',
   outExtension: () => ({ js: '.mjs' }),
   clean: true,
   bundle: true,
+  splitting: false,
   platform: 'node',
   target: 'es2022',
   noExternal: [/.*/],
