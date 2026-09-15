@@ -1,15 +1,15 @@
 # Codex Keypad
 
 An experimental macOS Logi Actions plugin for navigating Codex Desktop from an
-MX Keypad. The live adapter provides the first complete three-level path:
+MX Keypad. The live adapter provides a three-level path:
 
 1. assign the global Codex dynamic-folder action to an ordinary keypad profile;
-2. open its one configured project tile;
-3. open the one currently active task in that project.
+2. choose from the configured project tiles;
+3. open the most recent active task in the selected project.
 
 Back returns from the task view to the project overview and closes the overview
 at its root. The device Home button exits the dynamic folder normally. State is
-refreshed once per second without reloading the plugin.
+refreshed four times per second without reloading the plugin.
 
 ## Architecture
 
@@ -36,29 +36,52 @@ refreshed once per second without reloading the plugin.
 The installed Logitech SDK assemblies are read from
 `/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/`.
 
-## Configure one project
+## Configure projects
 
 For an ordinary Options+ launch, create the persistent per-user configuration
 file at `~/Library/Application Support/Codex Keypad/config.json`:
 
 ```sh
 mkdir -p "$HOME/Library/Application Support/Codex Keypad"
-printf '%s\n' '{"projectRoot":"/absolute/path/to/the/project-workspace"}' \
-  > "$HOME/Library/Application Support/Codex Keypad/config.json"
+cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
+{
+  "projects": [
+    {
+      "id": "codex-keypad",
+      "name": "Codex Keypad",
+      "root": "/absolute/path/to/codex-keypad",
+      "icon": "/absolute/path/to/codex-keypad.png"
+    },
+    {
+      "id": "another-project",
+      "name": "Another Project",
+      "root": "/absolute/path/to/another-project"
+    }
+  ]
+}
+JSON
 ```
 
-Create the file before installing the plugin. `projectRoot` must be an absolute
-path and is matched exactly against the Codex task working directory. Reinstall
-the package after changing the file so Logi Plugin Service starts a new sidecar.
-A missing or invalid file makes sidecar startup fail explicitly and leaves the
-Codex action unavailable rather than showing unscoped task state.
+Each project needs a unique stable `id`, a display `name`, and an absolute `root`
+that is matched exactly against the Codex task working directory. An optional
+`icon` is an absolute path to a PNG of at most 1 MiB. Project tiles follow the
+configuration order and use deterministic nine-key pages when necessary.
+
+The sidecar re-reads configuration and live Codex state on every refresh, so
+adding, removing, renaming, reordering, or changing an icon path does not require
+restarting Options+. A missing or invalid configuration makes the state expire
+to unavailable instead of retaining a misleading startup snapshot. A project
+whose Codex state cannot be read remains visible with `Count unavailable`; an
+unreadable icon falls back to the text tile. The issue 4 single-project
+`{"projectRoot":"/absolute/path"}` form remains supported for upgrades.
 
 For a shell-launched sidecar smoke test, `CODEX_KEYPAD_PROJECT_ROOT` remains an
 override. A shell `export` does not configure an already-running, GUI-launched
 Logi Plugin Service, so it is not the normal Options+ configuration mechanism.
-The optional `CODEX_KEYPAD_PROJECT_ID` and `CODEX_KEYPAD_PROJECT_NAME`
-environment variables control the normalized tile identity and label for such
-development runs. They default to `codex-keypad` and `Codex Keypad`.
+The optional `CODEX_KEYPAD_PROJECT_ID`, `CODEX_KEYPAD_PROJECT_NAME`, and
+`CODEX_KEYPAD_PROJECT_ICON` environment variables control the normalized tile
+identity, label, and PNG for such development runs. They default to
+`codex-keypad`, `Codex Keypad`, and no custom icon.
 
 By default, the state adapter finds the highest-versioned `state_*.sqlite` and
 `thread_history_*.sqlite` files under `CODEX_HOME` or `~/.codex`. Tests may use
