@@ -15,4 +15,5 @@ export interface CodexTask {
 
 export interface CodexTaskSource {
   listActiveTasks(limit: number): CodexTask[];
+  listActiveWorkerTasks(limit: number): CodexTask[];
 }

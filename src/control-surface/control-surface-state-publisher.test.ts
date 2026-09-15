@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 
-import { buildSingleProjectControlSurface } from './control-surface-state.ts';
+import { buildProjectControlSurface, exactActiveWorkerCount } from './control-surface-state.ts';
 import { ControlSurfaceStatePublisher } from './control-surface-state-publisher.ts';
 
 let fixtureDirectory: string;
@@ -21,10 +21,10 @@ after(async () => {
 test('publishes normalized state and skips an identical replacement', async () => {
   const output = join(fixtureDirectory, 'state.json');
   const publisher = new ControlSurfaceStatePublisher(output);
-  const state = buildSingleProjectControlSurface(
-    { id: 'codex-keypad', name: 'Codex Keypad' },
-    undefined,
-  );
+  const state = buildProjectControlSurface([{
+    project: { id: 'codex-keypad', name: 'Codex Keypad' },
+    activeWorkerCount: exactActiveWorkerCount(0),
+  }]);
 
   assert.equal(await publisher.publish(state), true);
   assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), state);

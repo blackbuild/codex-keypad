@@ -75,6 +75,12 @@ whose Codex state cannot be read remains visible with `Count unavailable`; an
 unreadable icon falls back to the text tile. The issue 4 single-project
 `{"projectRoot":"/absolute/path"}` form remains supported for upgrades.
 
+An active worker is an in-progress, top-level Codex Desktop task created or
+forked by an agent, or handed off to one. User/coordinator and automation tasks
+do not inflate the worker badge. A missing project root or worker state whose
+last task update is older than 24 hours is shown as `Count unavailable` rather
+than `Idle`.
+
 For a shell-launched sidecar smoke test, `CODEX_KEYPAD_PROJECT_ROOT` remains an
 override. A shell `export` does not configure an already-running, GUI-launched
 Logi Plugin Service, so it is not the normal Options+ configuration mechanism.

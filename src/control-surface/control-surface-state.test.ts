@@ -4,6 +4,9 @@ import test from 'node:test';
 import type { CodexTask } from '../codex/codex-task-source.ts';
 import {
   buildProjectControlSurface,
+  exactActiveWorkerCount,
+  truncatedActiveWorkerCount,
+  unavailableActiveWorkerCount,
   type CodexProjectState,
 } from './control-surface-state.ts';
 
@@ -125,7 +128,7 @@ test('bounds task labels for the Logitech contract', () => {
 function project(
   id: string,
   name: string,
-  activeWorkerCount: CodexProjectState['activeWorkerCount'],
+  activeWorkerCount: number | '100+' | undefined,
   iconPath?: string,
 ): CodexProjectState {
   return {
@@ -134,6 +137,10 @@ function project(
       name,
       ...(iconPath ? { icon: { path: iconPath, modifiedAt: 1234 } } : {}),
     },
-    activeWorkerCount,
+    activeWorkerCount: activeWorkerCount === undefined
+      ? unavailableActiveWorkerCount
+      : activeWorkerCount === '100+'
+        ? truncatedActiveWorkerCount(100)
+        : exactActiveWorkerCount(activeWorkerCount),
   };
 }

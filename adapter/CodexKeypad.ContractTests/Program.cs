@@ -76,6 +76,24 @@ try
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
+    Run("rejects extra task-view tiles before issue 6", () =>
+    {
+        var extraTile = """
+,
+      {
+        "id": "task:another-thread",
+        "label": "Another task",
+        "status": "working",
+        "action": { "type": "open-codex-task", "threadId": "another-thread" }
+      }
+""";
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
+            "\n    ]",
+            $"{extraTile}    ]",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+    });
+
     Console.WriteLine("Adapter contract tests passed.");
 }
 finally

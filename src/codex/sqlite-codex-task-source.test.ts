@@ -40,6 +40,24 @@ test('returns only current, top-level Codex Desktop work', () => {
       status: 'working',
       updatedAt: 3000,
     },
+    {
+      id: 'desktop-created',
+      title: 'Created worker',
+      status: 'working',
+      updatedAt: 2900,
+    },
+    {
+      id: 'desktop-forked',
+      title: 'Forked worker',
+      status: 'working',
+      updatedAt: 2800,
+    },
+    {
+      id: 'desktop-automation',
+      title: 'Automation',
+      status: 'working',
+      updatedAt: 2700,
+    },
   ]);
 });
 
@@ -47,6 +65,14 @@ test('applies the requested LCD slot limit', () => {
   assert.equal(source.listActiveTasks(1).length, 1);
   assert.deepEqual(source.listActiveTasks(0), []);
   assert.throws(() => source.listActiveTasks(-1), RangeError);
+});
+
+test('counts only agent-created, forked, or handed-off sessions as active workers', () => {
+  assert.deepEqual(source.listActiveWorkerTasks(9).map(({ id }) => id), [
+    'desktop-new',
+    'desktop-created',
+    'desktop-forked',
+  ]);
 });
 
 test('can limit active tasks to one configured project root', () => {
@@ -81,6 +107,12 @@ function createStateFixture(databasePath: string): void {
     'codex_work_desktop', 'chatgpt_handoff', '/projects/codex-keypad');
   addThread(database, 'desktop-legacy', null, '## Fallback heading\nmore', 3000,
     'Codex Desktop', 'user', '/projects/elsewhere');
+  addThread(database, 'desktop-created', 'Created worker', 'Created worker', 2900,
+    'Codex Desktop', 'agent_created_thread', '/projects/elsewhere');
+  addThread(database, 'desktop-forked', 'Forked worker', 'Forked worker', 2800,
+    'Codex Desktop', 'agent_forked_thread', '/projects/elsewhere');
+  addThread(database, 'desktop-automation', 'Automation', 'Automation', 2700,
+    'Codex Desktop', 'automation', '/projects/elsewhere');
   addThread(database, 'subagent', 'Child', 'Child', 5000,
     'Codex Desktop', 'subagent', '/projects/codex-keypad');
   addThread(database, 'other-app', 'IDE task', 'IDE task', 6000,
@@ -130,6 +162,9 @@ function createHistoryFixture(databasePath: string): void {
   const insert = database.prepare('INSERT INTO thread_turns VALUES (?, ?, ?, ?)');
   insert.run('desktop-new', 'turn-1', 1, 'inProgress');
   insert.run('desktop-legacy', 'turn-1', 1, 'inProgress');
+  insert.run('desktop-created', 'turn-1', 1, 'inProgress');
+  insert.run('desktop-forked', 'turn-1', 1, 'inProgress');
+  insert.run('desktop-automation', 'turn-1', 1, 'inProgress');
   insert.run('subagent', 'turn-1', 1, 'inProgress');
   insert.run('other-app', 'turn-1', 1, 'inProgress');
   insert.run('finished', 'turn-1', 1, 'inProgress');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { CodexTask } from '../codex/codex-task-source.ts';
-import type { CodexProjectState } from './control-surface-state.ts';
+import { exactActiveWorkerCount, type CodexProjectState } from './control-surface-state.ts';
 import { ProjectNavigation } from './project-navigation.ts';
 
 const task: CodexTask = {
@@ -67,5 +67,5 @@ test('opens only the exact current task in the selected project', async () => {
 });
 
 function project(id: string): CodexProjectState {
-  return { project: { id, name: id }, activeWorkerCount: 0 };
+  return { project: { id, name: id }, activeWorkerCount: exactActiveWorkerCount(0) };
 }

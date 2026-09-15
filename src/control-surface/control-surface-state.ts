@@ -15,8 +15,29 @@ export interface CodexProjectIdentity {
 
 export interface CodexProjectState {
   readonly project: CodexProjectIdentity;
-  readonly activeWorkerCount: number | '100+' | undefined;
+  readonly activeWorkerCount: ActiveWorkerCount;
   readonly task?: CodexTask;
+}
+
+export type ActiveWorkerCount =
+  | { readonly availability: 'available'; readonly count: number; readonly truncated: boolean }
+  | { readonly availability: 'unavailable' };
+
+export function exactActiveWorkerCount(count: number): ActiveWorkerCount {
+  return availableActiveWorkerCount(count, false);
+}
+
+export function truncatedActiveWorkerCount(minimum: number): ActiveWorkerCount {
+  return availableActiveWorkerCount(minimum, true);
+}
+
+export const unavailableActiveWorkerCount: ActiveWorkerCount = { availability: 'unavailable' };
+
+function availableActiveWorkerCount(count: number, truncated: boolean): ActiveWorkerCount {
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new RangeError('active-worker count must be a non-negative integer');
+  }
+  return { availability: 'available', count, truncated };
 }
 
 export type ControlSurfaceLevel = 'project-overview' | 'task-view';
@@ -100,44 +121,33 @@ export function projectPageCount(projectCount: number): number {
   if (!Number.isSafeInteger(projectCount) || projectCount < 0) {
     throw new RangeError('projectCount must be a non-negative integer');
   }
-  if (projectCount <= MAXIMUM_LCD_TILES - 1) {
-    return 1;
-  }
-  const afterFirstPage = projectCount - (MAXIMUM_LCD_TILES - 2);
-  return afterFirstPage <= MAXIMUM_LCD_TILES - 2
-    ? 2
-    : 2 + Math.ceil(
-        (afterFirstPage - (MAXIMUM_LCD_TILES - 2)) / (MAXIMUM_LCD_TILES - 3),
-      );
-}
-
-export function buildSingleProjectControlSurface(
-  project: CodexProjectIdentity,
-  task: CodexTask | undefined,
-  level: ControlSurfaceLevel = 'project-overview',
-): CodexControlSurfaceState {
-  return buildProjectControlSurface(
-    [{ project, activeWorkerCount: task ? 1 : 0, ...(task ? { task } : {}) }],
-    { level, ...(level === 'task-view' ? { selectedProjectId: project.id } : {}) },
-  );
+  return projectPageSizes(projectCount).length;
 }
 
 function projectPages(projects: readonly CodexProjectState[]): readonly (readonly CodexProjectState[])[] {
-  if (projects.length <= MAXIMUM_LCD_TILES - 1) {
-    return [projects];
+  let offset = 0;
+  return projectPageSizes(projects.length).map((size) => {
+    const page = projects.slice(offset, offset + size);
+    offset += size;
+    return page;
+  });
+}
+
+function projectPageSizes(projectCount: number): readonly number[] {
+  if (projectCount <= MAXIMUM_LCD_TILES - 1) {
+    return [projectCount];
   }
 
-  const pages: CodexProjectState[][] = [projects.slice(0, MAXIMUM_LCD_TILES - 2)];
-  let offset = MAXIMUM_LCD_TILES - 2;
-  while (offset < projects.length) {
-    const remaining = projects.length - offset;
+  const sizes = [MAXIMUM_LCD_TILES - 2];
+  let remaining = projectCount - sizes[0]!;
+  while (remaining > 0) {
     const size = remaining <= MAXIMUM_LCD_TILES - 2
       ? remaining
       : MAXIMUM_LCD_TILES - 3;
-    pages.push(projects.slice(offset, offset + size));
-    offset += size;
+    sizes.push(size);
+    remaining -= size;
   }
-  return pages;
+  return sizes;
 }
 
 function overviewTiles(
@@ -198,24 +208,27 @@ function taskTiles(selected: CodexProjectState): readonly ControlSurfaceTile[] {
 }
 
 function aggregateActiveWorkerSummary(projects: readonly CodexProjectState[]): string {
-  if (projects.some(({ activeWorkerCount }) => activeWorkerCount === undefined)) {
-    return 'count unavailable';
+  let count = 0;
+  let truncated = false;
+  for (const project of projects) {
+    if (project.activeWorkerCount.availability === 'unavailable') {
+      return 'count unavailable';
+    }
+    count += project.activeWorkerCount.count;
+    truncated ||= project.activeWorkerCount.truncated;
   }
-  if (projects.some(({ activeWorkerCount }) => activeWorkerCount === '100+')) {
-    return '100+ active';
-  }
-  const count = projects.reduce((sum, project) => sum + (project.activeWorkerCount as number), 0);
-  return count === 0 ? 'idle' : `${count} active`;
+  return count === 0
+    ? 'idle'
+    : `${count}${truncated ? '+' : ''} active`;
 }
 
-function activeWorkerSummary(count: CodexProjectState['activeWorkerCount']): string {
-  if (count === undefined) {
+function activeWorkerSummary(count: ActiveWorkerCount): string {
+  if (count.availability === 'unavailable') {
     return 'Count unavailable';
   }
-  if (count === '100+') {
-    return '100+ active';
-  }
-  return count === 0 ? 'Idle' : `${count} active`;
+  return count.count === 0
+    ? 'Idle'
+    : `${count.count}${count.truncated ? '+' : ''} active`;
 }
 
 function compactLabel(label: string, maximumLength: number): string {

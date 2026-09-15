@@ -5,7 +5,10 @@ import { join } from 'node:path';
 import type { DatabaseSync as NodeDatabaseSync } from 'node:sqlite';
 
 import type { CodexTask, CodexTaskSource } from './codex-task-source.ts';
-import { isTopLevelCodexDesktopSession } from './session-meta.ts';
+import {
+  isCodexDesktopWorkerSession,
+  isTopLevelCodexDesktopSession,
+} from './session-meta.ts';
 
 // esbuild strips the `node:` prefix from this newer built-in when bundling it as
 // an external import. Resolve it at runtime so the packaged sidecar keeps the
@@ -36,6 +39,17 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
   }
 
   listActiveTasks(limit: number): CodexTask[] {
+    return this.listMatchingActiveTasks(limit, isTopLevelCodexDesktopSession);
+  }
+
+  listActiveWorkerTasks(limit: number): CodexTask[] {
+    return this.listMatchingActiveTasks(limit, isCodexDesktopWorkerSession);
+  }
+
+  private listMatchingActiveTasks(
+    limit: number,
+    matchesSession: (rolloutPath: string, threadId: string) => boolean,
+  ): CodexTask[] {
     if (!Number.isSafeInteger(limit) || limit < 0) {
       throw new RangeError('limit must be a non-negative integer');
     }
@@ -64,7 +78,7 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
 
       return rows
         .filter((row) => activeThreadIds.has(row.id))
-        .filter((row) => isTopLevelCodexDesktopSession(row.rollout_path, row.id))
+        .filter((row) => matchesSession(row.rollout_path, row.id))
         .slice(0, limit)
         .map((row) => ({
           id: row.id,

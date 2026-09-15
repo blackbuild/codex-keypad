@@ -197,7 +197,8 @@ public static partial class ControlSurfaceContract
         }
 
         return tiles.Count == 1
-            || tiles[1].Action is OpenCodexTaskAction taskAction
+            || tiles.Count == 2
+                && tiles[1].Action is OpenCodexTaskAction taskAction
                 && tiles[1].Id == $"task:{taskAction.ThreadId}"
                 && tiles[1].IconPath is null
                 && tiles[1].Status is not null

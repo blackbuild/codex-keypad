@@ -77,17 +77,6 @@ export function configuredProjects(
   }
 }
 
-export function configuredProjectRoot(
-  environment: NodeJS.ProcessEnv = process.env,
-  homeDirectory: string = homedir(),
-): string {
-  const projects = configuredProjects(environment, homeDirectory);
-  if (projects.length !== 1) {
-    throw new Error('exactly one configured project is required');
-  }
-  return projects[0]!.root;
-}
-
 function parseProject(value: unknown, index: number): CodexProjectConfiguration {
   if (!isRecord(value)
     || !hasExactOptionalKeys(value, ['id', 'name', 'root'], ['icon'])
