@@ -1,7 +1,6 @@
 namespace Loupedeck.CodexKeypadPlugin;
 
 using System.Diagnostics;
-using System.Reflection;
 using CodexKeypad.Core;
 using Loupedeck;
 
@@ -70,7 +69,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
             var channel = $"codex-keypad-{Environment.ProcessId}-{Guid.NewGuid():N}";
             this._statePath = Path.Combine(Path.GetTempPath(), $"{channel}-state.json");
             this._actionPath = Path.Combine(Path.GetTempPath(), $"{channel}-action.json");
-            this._sidecar = StartSidecar(this._statePath, this._actionPath);
+            this._sidecar = StartSidecar(this.Plugin?.AssemblyFilePath, this._statePath, this._actionPath);
             this._refreshTimer = new Timer(
                 _ => this.RefreshState(),
                 null,
@@ -123,9 +122,9 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         return true;
     }
 
-    private static Process StartSidecar(String statePath, String actionPath)
+    private static Process StartSidecar(String? pluginAssemblyFilePath, String statePath, String actionPath)
     {
-        var assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+        var assemblyDirectory = Path.GetDirectoryName(pluginAssemblyFilePath)
             ?? throw new InvalidOperationException("The plugin assembly location is unavailable");
         var sidecarPath = Path.GetFullPath(Path.Combine(assemblyDirectory, "..", "node", "live-state.mjs"));
         if (!File.Exists(sidecarPath))
