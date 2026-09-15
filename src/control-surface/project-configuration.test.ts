@@ -85,3 +85,21 @@ test('rejects duplicate project identities and relative icon paths', async () =>
   }));
   assert.throws(() => configuredProjects({}, homeDirectory), /icon must be an absolute PNG path/);
 });
+
+test('observes project additions without retaining a startup snapshot', async () => {
+  const configurationDirectory = join(homeDirectory, 'Library', 'Application Support', 'Codex Keypad');
+  await mkdir(configurationDirectory, { recursive: true });
+  const configurationPath = join(configurationDirectory, 'config.json');
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{ id: 'first', name: 'First', root: '/projects/first' }],
+  }));
+  assert.deepEqual(configuredProjects({}, homeDirectory).map(({ id }) => id), ['first']);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [
+      { id: 'first', name: 'First', root: '/projects/first' },
+      { id: 'second', name: 'Second', root: '/projects/second' },
+    ],
+  }));
+  assert.deepEqual(configuredProjects({}, homeDirectory).map(({ id }) => id), ['first', 'second']);
+});

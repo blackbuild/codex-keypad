@@ -22,6 +22,7 @@ public sealed record ControlSurfaceView(
 public sealed record ControlSurfaceTile(
     String Id,
     String Label,
+    String? IconPath,
     String? Status,
     SemanticAction Action);
 
@@ -30,6 +31,10 @@ public abstract record SemanticAction(
 
 public sealed record OpenProjectOverviewAction() :
     SemanticAction("open-project-overview");
+
+public sealed record OpenProjectPageAction(
+    [property: JsonProperty("page")] Int32 Page) :
+    SemanticAction("open-project-page");
 
 public sealed record CloseControlSurfaceAction() :
     SemanticAction("close-control-surface");
@@ -79,14 +84,14 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 1
+        if (wire.SchemaVersion != 2
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
             || !IsLabel(wire.Entry.Label)
             || !IsAction(wire.Entry.Action, "open-project-overview")
             || !IsLabel(wire.View.Title)
-            || wire.View.Tiles.Count is < 1 or > 2)
+            || wire.View.Tiles.Count is < 1 or > 9)
         {
             return false;
         }
@@ -117,7 +122,9 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalizeTile(WireTile wire, out ControlSurfaceTile? tile)
     {
         tile = null;
-        if (!IsSafeTileId(wire.Id) || !IsLabel(wire.Label))
+        if (!IsSafeTileId(wire.Id)
+            || !IsLabel(wire.Label)
+            || wire.IconPath is not null && !IsIconPath(wire.IconPath))
         {
             return false;
         }
@@ -126,12 +133,18 @@ public static partial class ControlSurfaceContract
         {
             "open-project-overview" when IsAction(wire.Action, "open-project-overview") =>
                 new OpenProjectOverviewAction(),
+            "open-project-page" when wire.Action.ProjectId is null
+                && wire.Action.ThreadId is null
+                && wire.Action.Page is >= 0 and <= 63 =>
+                new OpenProjectPageAction(wire.Action.Page.Value),
             "close-control-surface" when IsAction(wire.Action, "close-control-surface") =>
                 new CloseControlSurfaceAction(),
             "open-task-view" when wire.Action.ThreadId is null
+                && wire.Action.Page is null
                 && IsSafeIdentifier(wire.Action.ProjectId) =>
                 new OpenTaskViewAction(wire.Action.ProjectId!),
             "open-codex-task" when wire.Action.ProjectId is null
+                && wire.Action.Page is null
                 && IsSafeIdentifier(wire.Action.ThreadId) =>
                 new OpenCodexTaskAction(wire.Action.ThreadId!),
             _ => null,
@@ -141,7 +154,7 @@ public static partial class ControlSurfaceContract
             return false;
         }
 
-        tile = new ControlSurfaceTile(wire.Id, wire.Label, wire.Status, action);
+        tile = new ControlSurfaceTile(wire.Id, wire.Label, wire.IconPath, wire.Status, action);
         return true;
     }
 
@@ -151,20 +164,34 @@ public static partial class ControlSurfaceContract
         {
             return false;
         }
+        if (tiles.Select(tile => tile.Id).Distinct(StringComparer.Ordinal).Count() != tiles.Count)
+        {
+            return false;
+        }
 
         if (level == "project-overview")
         {
-            return tiles.Count == 2
-                && tiles[0].Action is CloseControlSurfaceAction
-                && tiles[0].Status is null
-                && tiles[1].Action is OpenTaskViewAction projectAction
-                && tiles[1].Id == $"project:{projectAction.ProjectId}"
-                && tiles[1].Status is null;
+            if (tiles[0].Action is not CloseControlSurfaceAction
+                || tiles[0].Status is not null
+                || tiles[0].IconPath is not null)
+            {
+                return false;
+            }
+
+            return tiles.Skip(1).All(tile => tile switch
+            {
+                { Action: OpenTaskViewAction projectAction, Status: null }
+                    when tile.Id == $"project:{projectAction.ProjectId}" => true,
+                { Id: "page.previous" or "page.next", IconPath: null, Status: null,
+                    Action: OpenProjectPageAction } => true,
+                _ => false,
+            });
         }
 
         if (level != "task-view"
             || tiles[0].Action is not OpenProjectOverviewAction
-            || tiles[0].Status is not null)
+            || tiles[0].Status is not null
+            || tiles[0].IconPath is not null)
         {
             return false;
         }
@@ -172,12 +199,16 @@ public static partial class ControlSurfaceContract
         return tiles.Count == 1
             || tiles[1].Action is OpenCodexTaskAction taskAction
                 && tiles[1].Id == $"task:{taskAction.ThreadId}"
+                && tiles[1].IconPath is null
                 && tiles[1].Status is not null
                 && TaskStatuses.Contains(tiles[1].Status!);
     }
 
     private static Boolean IsAction(WireAction action, String type) =>
-        action.Type == type && action.ProjectId is null && action.ThreadId is null;
+        action.Type == type
+            && action.Page is null
+            && action.ProjectId is null
+            && action.ThreadId is null;
 
     private static Boolean IsLabel(String value) =>
         !String.IsNullOrWhiteSpace(value) && value.Length <= MaximumLabelLength;
@@ -187,6 +218,11 @@ public static partial class ControlSurfaceContract
 
     private static Boolean IsSafeTileId(String? value) =>
         value is not null && SafeTileId().IsMatch(value);
+
+    private static Boolean IsIconPath(String value) =>
+        value.Length <= 1024
+            && Path.IsPathFullyQualified(value)
+            && Path.GetExtension(value).Equals(".png", StringComparison.OrdinalIgnoreCase);
 
     [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", RegexOptions.CultureInvariant)]
     private static partial Regex SafeIdentifier();
@@ -241,6 +277,9 @@ public static partial class ControlSurfaceContract
         [JsonProperty("label", Required = Required.Always)]
         public String Label { get; init; } = String.Empty;
 
+        [JsonProperty("iconPath")]
+        public String? IconPath { get; init; }
+
         [JsonProperty("status")]
         public String? Status { get; init; }
 
@@ -258,5 +297,8 @@ public static partial class ControlSurfaceContract
 
         [JsonProperty("threadId")]
         public String? ThreadId { get; init; }
+
+        [JsonProperty("page")]
+        public Int32? Page { get; init; }
     }
 }

@@ -51,6 +51,14 @@ export function parseActionRequest(json: string): SemanticAction | undefined {
     switch (value.action.type) {
       case 'open-project-overview':
         return hasExactKeys(value.action, ['type']) ? { type: value.action.type } : undefined;
+      case 'open-project-page':
+        return hasExactKeys(value.action, ['page', 'type'])
+          && typeof value.action.page === 'number'
+          && Number.isSafeInteger(value.action.page)
+          && value.action.page >= 0
+          && value.action.page <= 63
+          ? { type: value.action.type, page: value.action.page }
+          : undefined;
       case 'open-task-view':
         return hasExactKeys(value.action, ['projectId', 'type'])
           && typeof value.action.projectId === 'string'
