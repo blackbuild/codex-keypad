@@ -7,9 +7,9 @@ import type { DatabaseSync as NodeDatabaseSync } from 'node:sqlite';
 import type { CodexTask, CodexTaskSource } from './codex-task-source.ts';
 import { isTopLevelCodexDesktopSession } from './session-meta.ts';
 
-// Logitech's ESM build shim currently strips the `node:` prefix from static
-// imports that it does not recognize. Resolve this newer built-in at runtime so
-// it remains `node:sqlite` inside the packaged plugin.
+// esbuild strips the `node:` prefix from this newer built-in when bundling it as
+// an external import. Resolve it at runtime so the packaged sidecar keeps the
+// unambiguous built-in specifier.
 const { DatabaseSync } = createNodeRequire(import.meta.url)(
   ['node', 'sqlite'].join(':'),
 ) as { readonly DatabaseSync: typeof NodeDatabaseSync };

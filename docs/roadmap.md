@@ -4,9 +4,8 @@ Tracking issue: [#3](https://github.com/blackbuild/codex-keypad/issues/3)
 
 ## Goal
 
-Turn the working static tracer bullet into a live, project-aware Codex control
-surface without coupling Codex state parsing, agent handoff, or product vocabulary
-to Logitech hardware.
+Deliver a live, project-aware Codex control surface without coupling Codex state
+parsing, agent handoff, or product vocabulary to Logitech hardware.
 
 The product presents three levels:
 
@@ -61,9 +60,9 @@ physical-device demonstration when the keypad is available. A temporarily
 unavailable device may defer that external acceptance condition, but it does not
 turn a simulated result into hardware evidence.
 
-The existing tracer bullet is accepted as previously working end to end on the
-physical keypad. Its startup snapshot remains the baseline until #4 proves live
-updates through the new device-adapter direction.
+The original startup-snapshot tracer established the basic device and deep-link
+path. Issue #4 replaced it with the physically validated live adapter, which is
+now the sole package path and baseline for later slices.
 
 ## Non-goals
 

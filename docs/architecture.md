@@ -17,29 +17,17 @@ particular local workspace layout.
   application configuration. Ephemeral coordination and observations may live in
   a configured handoff transport.
 
-## Current tracer bullet
-
-The TypeScript Logitech plugin reads active Codex Desktop tasks through an
-isolated Codex adapter, assigns a startup snapshot to nine stable LCD-key actions,
-and opens a selected task through `codex://threads/<thread-id>`. Live image and
-label updates require either a richer device adapter or future Node SDK support.
-
-The tracer bullet has been observed starting and working end to end on macOS with
-the physical keypad. That establishes the basic plugin, task-selection, and deep-
-link path; it does not establish live display updates.
-
 ## First live path
 
-The issue 4 adapter preserves that TypeScript tracer bullet and adds a separate
-C# dynamic-folder package. A fixed TypeScript sidecar owns the semantic navigation
-state machine and publishes its current view for one configured project and at
-most one task as versioned, normalized JSON. The C# adapter strictly validates
+The issue 4 adapter uses a C# dynamic-folder package. A fixed TypeScript sidecar
+owns the semantic navigation state machine and publishes its current view for
+one configured project and at most one task as versioned, normalized JSON. The
+C# adapter strictly validates
 that contract, renders it, and relays typed action requests back to TypeScript.
 The device Home behavior and the close effect are owned by the Logitech runtime.
-The two implementations do not share feature logic: the startup-snapshot tracer
-remains only as a previously validated baseline. The live adapter has completed
-its bounded physical-device smoke test; remove the old tracer package path in a
-separate bounded cleanup rather than coupling that removal to this change.
+The live adapter has completed its bounded physical-device smoke test. The
+superseded TypeScript startup-snapshot plugin was removed after that validation,
+leaving the live adapter as the single package path.
 
 TypeScript accepts only the normalized `open-project-overview`, `open-task-view`,
 and `open-codex-task` requests. The task action must match the current task and is
@@ -73,11 +61,11 @@ The normalized project, task, attention, layout, and semantic-action contracts
 remain in TypeScript. Codex and external-system adapters produce those contracts;
 handoff transports carry them without becoming sources of authority.
 
-The live Logitech adapter is a thin C# dynamic-folder plugin. The repository's
-pinned Node SDK registers command and adjustment actions before connecting, but
+The live Logitech adapter is a thin C# dynamic-folder plugin. Logitech's Node SDK
 does not expose the dynamic-folder layout and image invalidation needed for live
-LCD views. The C# SDK documents that capability. This split keeps Logitech-specific
-rendering out of the product core while retaining the proven TypeScript state work.
+LCD views; the C# SDK documents that capability. This split keeps
+Logitech-specific rendering out of the product core while retaining the
+TypeScript-owned normalized state and navigation.
 
 References:
 

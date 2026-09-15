@@ -25,10 +25,6 @@ refreshed once per second without reloading the plugin.
   button actions, handles the SDK-specific close effect, and invalidates the
   global entry image when state changes. It never executes a command from state.
 
-The original TypeScript startup-snapshot tracer bullet remains in `index.ts` and
-`src/logitech/`. It can still be built and packed independently while the live
-C# adapter becomes the primary package.
-
 ## Requirements
 
 - macOS with Codex Desktop
@@ -77,8 +73,8 @@ npm run build
 ```
 
 `npm test` runs the TypeScript behavior tests and the executable C# contract
-harness. `npm run build` typechecks and bundles both TypeScript entry points,
-then compiles and assembles the C# plugin in `dist-adapter/`.
+harness. `npm run build` typechecks and bundles the TypeScript live-state
+sidecar, then compiles and assembles the C# plugin in `dist-adapter/`.
 
 Create the installable C# package with:
 
@@ -89,12 +85,6 @@ npm run build:pack
 The result is `artifacts/CodexKeypad_0_2_0.lplug4`. Install it, find the Codex
 dynamic-folder action in Options+, and assign that action to a key in a normal
 profile.
-
-The preserved TypeScript tracer bullet can still be packed with:
-
-```sh
-npm run pack:tracer
-```
 
 Automated tests and packaged-sidecar checks cover the non-device behavior. The
 issue #4 package was also exercised on a physical MX Keypad: the assignable Codex
