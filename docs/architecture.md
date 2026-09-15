@@ -37,9 +37,9 @@ most one task as versioned, normalized JSON. The C# adapter strictly validates
 that contract, renders it, and relays typed action requests back to TypeScript.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 The two implementations do not share feature logic: the startup-snapshot tracer
-remains only as a previously validated baseline while the live adapter awaits its
-physical-device smoke test. After that validation, remove the old tracer package
-path in a separate bounded cleanup.
+remains only as a previously validated baseline. The live adapter has completed
+its bounded physical-device smoke test; remove the old tracer package path in a
+separate bounded cleanup rather than coupling that removal to this change.
 
 TypeScript accepts only the normalized `open-project-overview`, `open-task-view`,
 and `open-codex-task` requests. The task action must match the current task and is

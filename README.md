@@ -97,5 +97,8 @@ npm run pack:tracer
 ```
 
 Automated tests and packaged-sidecar checks cover the non-device behavior. The
-issue #4 physical MX Keypad smoke test remains pending until compatible hardware
-is available; simulated results are not treated as hardware evidence.
+issue #4 package was also exercised on a physical MX Keypad: the assignable Codex
+entry, project and task navigation, exact-task deep link, live active/idle
+refresh, one-level Back behavior, and device Home exit all worked without
+restarting Options+. This bounded smoke test is the hardware evidence; automated
+or simulated checks are not treated as substitutes for it.
