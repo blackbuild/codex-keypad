@@ -129,6 +129,8 @@ function normalizedStatus(status: string): CodexTaskStatus | undefined {
   switch (status) {
     case 'inProgress': return 'working';
     case 'completed': return 'completed';
+    case 'failed': return 'failed';
+    case 'interrupted': return 'interrupted';
     default: return undefined;
   }
 }

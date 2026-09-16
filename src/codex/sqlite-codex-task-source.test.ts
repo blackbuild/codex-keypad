@@ -40,6 +40,18 @@ test('returns non-archived top-level Codex Desktop tasks with current normalized
       updatedAt: 7000,
     },
     {
+      id: 'failed-task',
+      title: 'Failed task',
+      status: 'failed',
+      updatedAt: 6900,
+    },
+    {
+      id: 'interrupted-task',
+      title: 'Interrupted task',
+      status: 'interrupted',
+      updatedAt: 6800,
+    },
+    {
       id: 'desktop-new',
       title: 'Named current task',
       status: 'working',
@@ -159,6 +171,10 @@ function createStateFixture(databasePath: string): void {
     'JetBrains.IntelliJ IDEA', 'user', '/projects/codex-keypad');
   addThread(database, 'finished', 'Finished', 'Finished', 7000,
     'Codex Desktop', 'user', '/projects/codex-keypad');
+  addThread(database, 'failed-task', 'Failed task', 'Failed task', 6900,
+    'Codex Desktop', 'user', '/projects/elsewhere');
+  addThread(database, 'interrupted-task', 'Interrupted task', 'Interrupted task', 6800,
+    'Codex Desktop', 'user', '/projects/elsewhere');
   database.close();
 }
 
@@ -210,6 +226,8 @@ function createHistoryFixture(databasePath: string): void {
   insert.run('other-app', 'turn-1', 1, 'inProgress');
   insert.run('finished', 'turn-1', 1, 'inProgress');
   insert.run('finished', 'turn-2', 2, 'completed');
+  insert.run('failed-task', 'turn-1', 1, 'failed');
+  insert.run('interrupted-task', 'turn-1', 1, 'interrupted');
   database.close();
 }
 
