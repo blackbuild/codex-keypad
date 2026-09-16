@@ -172,21 +172,7 @@ function overviewTiles(
 ): readonly ControlSurfaceTile[] {
   return [
     { id: 'nav.back', label: 'Back', action: { type: 'close-control-surface' } },
-    ...(page > 0
-      ? [{
-          id: 'page.previous',
-          label: `Previous · ${page}/${pages.length}`,
-          action: { type: 'open-project-page' as const, page: page - 1 },
-        }]
-      : []),
-    ...pages[page]!.map(projectTile),
-    ...(page < pages.length - 1
-      ? [{
-          id: 'page.next',
-          label: `Next · ${page + 2}/${pages.length}`,
-          action: { type: 'open-project-page' as const, page: page + 1 },
-        }]
-      : []),
+    ...pageTiles(pages[page]!.map(projectTile), page, pages.length, 'open-project-page'),
   ];
 }
 
@@ -223,19 +209,32 @@ function taskTiles(
       label: 'Back',
       action: { type: 'open-project-overview' },
     },
+    ...pageTiles(pages[page]!.map(taskTile), page, pages.length, 'open-task-page'),
+  ];
+}
+
+type PageActionType = 'open-project-page' | 'open-task-page';
+
+function pageTiles(
+  tiles: readonly ControlSurfaceTile[],
+  page: number,
+  pageCount: number,
+  actionType: PageActionType,
+): readonly ControlSurfaceTile[] {
+  return [
     ...(page > 0
       ? [{
           id: 'page.previous',
-          label: `Previous · ${page}/${pages.length}`,
-          action: { type: 'open-task-page' as const, page: page - 1 },
+          label: `Previous · ${page}/${pageCount}`,
+          action: { type: actionType, page: page - 1 },
         }]
       : []),
-    ...pages[page]!.map(taskTile),
-    ...(page < pages.length - 1
+    ...tiles,
+    ...(page < pageCount - 1
       ? [{
           id: 'page.next',
-          label: `Next · ${page + 2}/${pages.length}`,
-          action: { type: 'open-task-page' as const, page: page + 1 },
+          label: `Next · ${page + 2}/${pageCount}`,
+          action: { type: actionType, page: page + 1 },
         }]
       : []),
   ];

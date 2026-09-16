@@ -12,6 +12,7 @@ import {
 
 const MAXIMUM_GIT_POINTER_BYTES = 4096;
 const MAXIMUM_LINKED_WORKTREES = 256;
+type TaskQuery = 'included-tasks' | 'active-workers';
 
 // esbuild strips the `node:` prefix from this newer built-in when bundling it as
 // an external import. Resolve it at runtime so the packaged sidecar keeps the
@@ -41,17 +42,17 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
   }
 
   listTasks(limit: number): CodexTask[] {
-    return this.listMatchingTasks(limit, isTopLevelCodexDesktopSession, false);
+    return this.listMatchingTasks(limit, isTopLevelCodexDesktopSession, 'included-tasks');
   }
 
   listActiveWorkerTasks(limit: number): CodexTask[] {
-    return this.listMatchingTasks(limit, isCodexDesktopWorkerSession, true);
+    return this.listMatchingTasks(limit, isCodexDesktopWorkerSession, 'active-workers');
   }
 
   private listMatchingTasks(
     limit: number,
     matchesSession: (rolloutPath: string, threadId: string) => boolean,
-    activeOnly: boolean,
+    query: TaskQuery,
   ): CodexTask[] {
     if (!Number.isSafeInteger(limit) || limit < 0) {
       throw new RangeError('limit must be a non-negative integer');
@@ -84,7 +85,7 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
 
       return rows
         .filter((row) => statuses.has(row.id))
-        .filter((row) => !activeOnly || statuses.get(row.id) === 'working')
+        .filter((row) => query === 'included-tasks' || statuses.get(row.id) === 'working')
         .filter((row) => matchesSession(row.rollout_path, row.id))
         .slice(0, limit)
         .map((row) => ({
