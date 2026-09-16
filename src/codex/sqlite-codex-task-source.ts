@@ -1,11 +1,17 @@
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire as createNodeRequire } from 'node:module';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import type { DatabaseSync as NodeDatabaseSync } from 'node:sqlite';
 
 import type { CodexTask, CodexTaskSource } from './codex-task-source.ts';
-import { isTopLevelCodexDesktopSession } from './session-meta.ts';
+import {
+  isCodexDesktopWorkerSession,
+  isTopLevelCodexDesktopSession,
+} from './session-meta.ts';
+
+const MAXIMUM_GIT_POINTER_BYTES = 4096;
+const MAXIMUM_LINKED_WORKTREES = 256;
 
 // esbuild strips the `node:` prefix from this newer built-in when bundling it as
 // an external import. Resolve it at runtime so the packaged sidecar keeps the
@@ -36,6 +42,17 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
   }
 
   listActiveTasks(limit: number): CodexTask[] {
+    return this.listMatchingActiveTasks(limit, isTopLevelCodexDesktopSession);
+  }
+
+  listActiveWorkerTasks(limit: number): CodexTask[] {
+    return this.listMatchingActiveTasks(limit, isCodexDesktopWorkerSession);
+  }
+
+  private listMatchingActiveTasks(
+    limit: number,
+    matchesSession: (rolloutPath: string, threadId: string) => boolean,
+  ): CodexTask[] {
     if (!Number.isSafeInteger(limit) || limit < 0) {
       throw new RangeError('limit must be a non-negative integer');
     }
@@ -50,8 +67,11 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
 
     const database = new DatabaseSync(this.options.stateDatabase, { readOnly: true });
     try {
-      const workingDirectoryFilter = this.options.workingDirectory
-        ? 'AND cwd = ?'
+      const workingDirectories = this.options.workingDirectory
+        ? projectWorkingDirectories(this.options.workingDirectory)
+        : [];
+      const workingDirectoryFilter = workingDirectories.length > 0
+        ? `AND cwd IN (${workingDirectories.map(() => '?').join(', ')})`
         : '';
       const rows = database.prepare(`
         SELECT id, name, title, rollout_path, recency_at_ms
@@ -59,12 +79,12 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
         WHERE archived = 0 AND source = 'vscode' ${workingDirectoryFilter}
         ORDER BY recency_at_ms DESC, id DESC
       `).all(
-        ...(this.options.workingDirectory ? [this.options.workingDirectory] : []),
+        ...workingDirectories,
       ) as unknown as ThreadRow[];
 
       return rows
         .filter((row) => activeThreadIds.has(row.id))
-        .filter((row) => isTopLevelCodexDesktopSession(row.rollout_path, row.id))
+        .filter((row) => matchesSession(row.rollout_path, row.id))
         .slice(0, limit)
         .map((row) => ({
           id: row.id,
@@ -99,6 +119,77 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
       database.close();
     }
   }
+}
+
+function projectWorkingDirectories(configuredRoot: string): readonly string[] {
+  const directories = new Set([configuredRoot]);
+  const commonDirectory = gitCommonDirectory(configuredRoot);
+  if (!commonDirectory) {
+    return [...directories];
+  }
+
+  if (basename(commonDirectory) === '.git') {
+    directories.add(dirname(commonDirectory));
+  }
+
+  try {
+    const worktreesDirectory = join(commonDirectory, 'worktrees');
+    const entries = readdirSync(worktreesDirectory, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .slice(0, MAXIMUM_LINKED_WORKTREES);
+    for (const entry of entries) {
+      try {
+        const gitPointer = readBoundedText(join(worktreesDirectory, entry.name, 'gitdir')).trim();
+        if (!isAbsolute(gitPointer) || basename(gitPointer) !== '.git') {
+          continue;
+        }
+        const worktree = dirname(gitPointer);
+        if (statSync(worktree).isDirectory()) {
+          directories.add(worktree);
+        }
+      } catch {
+        // Ignore stale or unreadable worktree entries without hiding valid siblings.
+      }
+    }
+  } catch {
+    // A project without readable linked-worktree metadata still matches its configured root.
+  }
+  return [...directories];
+}
+
+function gitCommonDirectory(workingDirectory: string): string | undefined {
+  const marker = join(workingDirectory, '.git');
+  try {
+    if (statSync(marker).isDirectory()) {
+      return marker;
+    }
+
+    const pointer = readBoundedText(marker).trim();
+    if (!pointer.startsWith('gitdir:')) {
+      return undefined;
+    }
+    const gitDirectoryValue = pointer.slice('gitdir:'.length).trim();
+    const gitDirectory = isAbsolute(gitDirectoryValue)
+      ? gitDirectoryValue
+      : resolve(workingDirectory, gitDirectoryValue);
+    try {
+      const commonDirectoryValue = readBoundedText(join(gitDirectory, 'commondir')).trim();
+      return resolve(gitDirectory, commonDirectoryValue);
+    } catch {
+      return gitDirectory;
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+function readBoundedText(path: string): string {
+  const metadata = statSync(path);
+  if (!metadata.isFile() || metadata.size > MAXIMUM_GIT_POINTER_BYTES) {
+    throw new Error(`Git metadata pointer is not a bounded file: ${path}`);
+  }
+  return readFileSync(path, 'utf8');
 }
 
 export function createDefaultCodexTaskSource(

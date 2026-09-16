@@ -15,4 +15,6 @@ export interface CodexTask {
 
 export interface CodexTaskSource {
   listActiveTasks(limit: number): CodexTask[];
+  /** Fewer than `limit` results exhaust the worker set observed by this source. */
+  listActiveWorkerTasks(limit: number): CodexTask[];
 }

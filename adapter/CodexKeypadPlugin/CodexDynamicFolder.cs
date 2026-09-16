@@ -8,6 +8,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
 {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan StateFreshness = TimeSpan.FromSeconds(2);
+    private const Int64 MaximumIconBytes = 1024 * 1024;
 
     private readonly Object _sync = new();
     private Timer? _refreshTimer;
@@ -44,6 +45,11 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         this.WithState(state => state?.View.Tiles
             .SingleOrDefault(tile => tile.Id == actionParameter)?.Label
             ?? "Unavailable");
+
+    public override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize) =>
+        this.WithState(state => CreateTileImage(
+            state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter),
+            imageSize)) ?? null!;
 
     public override void RunCommand(String actionParameter)
     {
@@ -193,6 +199,30 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         }
     }
 
+    private static BitmapImage? CreateTileImage(ControlSurfaceTile? tile, PluginImageSize imageSize)
+    {
+        try
+        {
+            if (tile?.IconPath is null
+                || !File.Exists(tile.IconPath)
+                || new FileInfo(tile.IconPath).Length > MaximumIconBytes
+                || !BitmapImage.TryCreateFromFile(tile.IconPath, out var icon))
+            {
+                return null;
+            }
+
+            using var builder = new BitmapBuilder(imageSize);
+            builder.SetBackgroundImage(icon);
+            builder.DrawText(tile.Label);
+            return builder.ToImage();
+        }
+        catch (Exception error)
+        {
+            Trace.TraceWarning($"Unable to render a Codex Keypad project icon: {error}");
+            return null;
+        }
+    }
+
     private void RefreshState()
     {
         var nextState = this.ReadFreshState();
@@ -210,6 +240,10 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         if (changed)
         {
             this.ButtonActionNamesChanged();
+            foreach (var tile in nextState?.View.Tiles ?? [])
+            {
+                this.CommandImageChanged(tile.Id);
+            }
             if (this.Plugin is not null)
             {
                 this.Plugin.OnActionImageChanged(this.CommandName, String.Empty, true);

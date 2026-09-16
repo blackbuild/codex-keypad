@@ -9,6 +9,11 @@ const USER_VISIBLE_THREAD_SOURCES = new Set([
   'chatgpt_handoff',
   'user',
 ]);
+const WORKER_THREAD_SOURCES = new Set([
+  'agent_created_thread',
+  'agent_forked_thread',
+  'chatgpt_handoff',
+]);
 
 interface SessionMetaRecord {
   readonly type?: unknown;
@@ -25,6 +30,21 @@ export function isTopLevelCodexDesktopSession(
   rolloutPath: string,
   expectedThreadId: string,
 ): boolean {
+  return isMatchingSession(rolloutPath, expectedThreadId, USER_VISIBLE_THREAD_SOURCES);
+}
+
+export function isCodexDesktopWorkerSession(
+  rolloutPath: string,
+  expectedThreadId: string,
+): boolean {
+  return isMatchingSession(rolloutPath, expectedThreadId, WORKER_THREAD_SOURCES);
+}
+
+function isMatchingSession(
+  rolloutPath: string,
+  expectedThreadId: string,
+  allowedThreadSources: ReadonlySet<string>,
+): boolean {
   try {
     const record = JSON.parse(readBoundedFirstLine(rolloutPath)) as SessionMetaRecord;
     const payload = record.payload;
@@ -36,7 +56,7 @@ export function isTopLevelCodexDesktopSession(
       && typeof payload.originator === 'string'
       && DESKTOP_ORIGINATORS.has(payload.originator)
       && typeof payload.thread_source === 'string'
-      && USER_VISIBLE_THREAD_SOURCES.has(payload.thread_source);
+      && allowedThreadSources.has(payload.thread_source);
   } catch {
     return false;
   }

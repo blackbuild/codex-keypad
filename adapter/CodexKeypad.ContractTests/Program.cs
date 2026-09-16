@@ -6,13 +6,19 @@ var actionPath = Path.Combine(Path.GetTempPath(), $"codex-keypad-action-{Guid.Ne
 
 try
 {
-    Run("accepts the normalized project overview", () =>
+    Run("accepts a normalized multi-project overview with a custom icon and page action", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview());
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
         Expect(accepted
             && state!.View.Tiles[0].Action is CloseControlSurfaceAction
-            && state.View.Tiles[1].Action is OpenTaskViewAction { ProjectId: "codex-keypad" });
+            && state.View.Tiles[1] is
+            {
+                IconPath: "/icons/architecture.png",
+                Action: OpenTaskViewAction { ProjectId: "architecture" },
+            }
+            && state.View.Tiles[2].Action is OpenTaskViewAction { ProjectId: "codex-keypad" }
+            && state.View.Tiles[3].Action is OpenProjectPageAction { Page: 1 });
     });
 
     Run("accepts the normalized exact-task view", () =>
@@ -34,6 +40,15 @@ try
             && root.GetProperty("action").GetProperty("projectId").GetString() == "codex-keypad");
     });
 
+    Run("publishes a bounded project page request", () =>
+    {
+        ControlSurfaceActionPublisher.Publish(actionPath, new OpenProjectPageAction(2));
+        using var document = JsonDocument.Parse(File.ReadAllText(actionPath));
+        var action = document.RootElement.GetProperty("action");
+        Expect(action.GetProperty("type").GetString() == "open-project-page"
+            && action.GetProperty("page").GetInt32() == 2);
+    });
+
     Run("rejects an arbitrary executable action", () =>
     {
         File.WriteAllText(fixturePath, TaskView("run-command", "thread-123"));
@@ -43,6 +58,39 @@ try
     Run("rejects an unsafe thread route", () =>
     {
         File.WriteAllText(fixturePath, TaskView("open-codex-task", "../settings"));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+    });
+
+    Run("rejects an unsafe icon path and out-of-range page", () =>
+    {
+        File.WriteAllText(fixturePath, ProjectOverview().Replace(
+            "/icons/architecture.png",
+            "icons/architecture.png",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+
+        File.WriteAllText(fixturePath, ProjectOverview().Replace(
+            "\"page\": 1",
+            "\"page\": 64",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+    });
+
+    Run("rejects extra task-view tiles before issue 6", () =>
+    {
+        var extraTile = """
+,
+      {
+        "id": "task:another-thread",
+        "label": "Another task",
+        "status": "working",
+        "action": { "type": "open-codex-task", "threadId": "another-thread" }
+      }
+""";
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
+            "\n    ]",
+            $"{extraTile}    ]",
+            StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
@@ -76,11 +124,11 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 1,
-  "revision": "project-overview:thread-123:456",
+  "schemaVersion": 2,
+  "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
-    "label": "Codex · 1 active",
+    "label": "Codex · 3 active",
     "action": { "type": "open-project-overview" }
   },
   "view": {
@@ -89,9 +137,20 @@ static String ProjectOverview() => """
     "tiles": [
       { "id": "nav.back", "label": "Back", "action": { "type": "close-control-surface" } },
       {
+        "id": "project:architecture",
+        "label": "Architecture · 2 active",
+        "iconPath": "/icons/architecture.png",
+        "action": { "type": "open-task-view", "projectId": "architecture" }
+      },
+      {
         "id": "project:codex-keypad",
         "label": "Codex Keypad · 1 active",
         "action": { "type": "open-task-view", "projectId": "codex-keypad" }
+      },
+      {
+        "id": "page.next",
+        "label": "Next · 2/2",
+        "action": { "type": "open-project-page", "page": 1 }
       }
     ]
   }
@@ -100,7 +159,7 @@ static String ProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
