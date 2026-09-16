@@ -10,10 +10,15 @@ import { SqliteCodexTaskSource } from './sqlite-codex-task-source.ts';
 
 let fixtureDirectory: string;
 let source: SqliteCodexTaskSource;
+let configuredRepositoryRoot: string;
+let linkedWorktreeRoot: string;
 
 before(async () => {
   fixtureDirectory = await mkdtemp(join(tmpdir(), 'logi-codex-adapter-'));
   mkdirSync(join(fixtureDirectory, 'rollouts'));
+  configuredRepositoryRoot = join(fixtureDirectory, 'projects', 'engineering-baseline');
+  linkedWorktreeRoot = join(fixtureDirectory, 'worktrees', '417d', 'engineering-baseline');
+  createGitWorktreeFixture(configuredRepositoryRoot, linkedWorktreeRoot);
   const stateDatabase = join(fixtureDirectory, 'state.sqlite');
   const historyDatabase = join(fixtureDirectory, 'history.sqlite');
 
@@ -39,6 +44,12 @@ test('returns only current, top-level Codex Desktop work', () => {
       title: 'Fallback heading',
       status: 'working',
       updatedAt: 3000,
+    },
+    {
+      id: 'worktree-worker',
+      title: 'Worktree worker',
+      status: 'working',
+      updatedAt: 2950,
     },
     {
       id: 'desktop-created',
@@ -70,6 +81,7 @@ test('applies the requested LCD slot limit', () => {
 test('counts only agent-created, forked, or handed-off sessions as active workers', () => {
   assert.deepEqual(source.listActiveWorkerTasks(9).map(({ id }) => id), [
     'desktop-new',
+    'worktree-worker',
     'desktop-created',
     'desktop-forked',
   ]);
@@ -85,6 +97,19 @@ test('can limit active tasks to one configured project root', () => {
   assert.deepEqual(
     projectSource.listActiveTasks(9).map((task) => task.id),
     ['desktop-new'],
+  );
+});
+
+test('associates a Codex worktree worker with its configured Git project', () => {
+  const projectSource = new SqliteCodexTaskSource({
+    stateDatabase: join(fixtureDirectory, 'state.sqlite'),
+    historyDatabase: join(fixtureDirectory, 'history.sqlite'),
+    workingDirectory: configuredRepositoryRoot,
+  });
+
+  assert.deepEqual(
+    projectSource.listActiveWorkerTasks(9).map((task) => task.id),
+    ['worktree-worker'],
   );
 });
 
@@ -107,6 +132,8 @@ function createStateFixture(databasePath: string): void {
     'codex_work_desktop', 'chatgpt_handoff', '/projects/codex-keypad');
   addThread(database, 'desktop-legacy', null, '## Fallback heading\nmore', 3000,
     'Codex Desktop', 'user', '/projects/elsewhere');
+  addThread(database, 'worktree-worker', 'Worktree worker', 'Worktree worker', 2950,
+    'Codex Desktop', 'agent_created_thread', linkedWorktreeRoot);
   addThread(database, 'desktop-created', 'Created worker', 'Created worker', 2900,
     'Codex Desktop', 'agent_created_thread', '/projects/elsewhere');
   addThread(database, 'desktop-forked', 'Forked worker', 'Forked worker', 2800,
@@ -162,6 +189,7 @@ function createHistoryFixture(databasePath: string): void {
   const insert = database.prepare('INSERT INTO thread_turns VALUES (?, ?, ?, ?)');
   insert.run('desktop-new', 'turn-1', 1, 'inProgress');
   insert.run('desktop-legacy', 'turn-1', 1, 'inProgress');
+  insert.run('worktree-worker', 'turn-1', 1, 'inProgress');
   insert.run('desktop-created', 'turn-1', 1, 'inProgress');
   insert.run('desktop-forked', 'turn-1', 1, 'inProgress');
   insert.run('desktop-automation', 'turn-1', 1, 'inProgress');
@@ -170,4 +198,18 @@ function createHistoryFixture(databasePath: string): void {
   insert.run('finished', 'turn-1', 1, 'inProgress');
   insert.run('finished', 'turn-2', 2, 'completed');
   database.close();
+}
+
+function createGitWorktreeFixture(repositoryRoot: string, worktreeRoot: string): void {
+  const worktreeMetadata = join(repositoryRoot, '.git', 'worktrees', 'engineering-baseline1');
+  const staleWorktreeMetadata = join(repositoryRoot, '.git', 'worktrees', 'deleted-worktree');
+  mkdirSync(worktreeMetadata, { recursive: true });
+  mkdirSync(staleWorktreeMetadata, { recursive: true });
+  mkdirSync(worktreeRoot, { recursive: true });
+  writeFileSync(join(staleWorktreeMetadata, 'gitdir'), '/deleted/worktree/.git\n');
+  writeFileSync(join(worktreeMetadata, 'gitdir'), `${join(worktreeRoot, '.git')}\n`);
+  writeFileSync(
+    join(worktreeRoot, '.git'),
+    `gitdir: ${worktreeMetadata}\n`,
+  );
 }

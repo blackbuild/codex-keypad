@@ -63,9 +63,10 @@ JSON
 ```
 
 Each project needs a unique stable `id`, a display `name`, and an absolute `root`
-that is matched exactly against the Codex task working directory. An optional
-`icon` is an absolute path to a PNG of at most 1 MiB. Project tiles follow the
-configuration order and use deterministic nine-key pages when necessary.
+for its primary Git checkout. Workers running in linked Git worktrees are
+automatically associated with that project. An optional `icon` is an absolute
+path to a PNG of at most 1 MiB. Project tiles follow the configuration order and
+use deterministic nine-key pages when necessary.
 
 The sidecar re-reads configuration and live Codex state on every refresh, so
 adding, removing, renaming, reordering, or changing an icon path does not require
