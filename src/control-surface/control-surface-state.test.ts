@@ -17,6 +17,13 @@ const task: CodexTask = {
   updatedAt: 1234,
 };
 
+const olderTask: CodexTask = {
+  id: 'thread-older',
+  title: 'Review the adapter contract',
+  status: 'completed',
+  updatedAt: 1200,
+};
+
 test('normalizes configured projects in stable order with icons and active-worker counts', () => {
   const state = buildProjectControlSurface([
     project('architecture', 'Architecture', 2, '/icons/architecture.png'),
@@ -24,7 +31,7 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 2);
+  assert.equal(state.schemaVersion, 3);
   assert.deepEqual(state.view.tiles, [
     { id: 'nav.back', label: 'Back', action: { type: 'close-control-surface' } },
     {
@@ -97,32 +104,102 @@ test('presents unavailable and bounded counts without claiming idle state', () =
   assert.equal(state.view.tiles[2]?.label, 'Very Busy · 100+ active');
 });
 
-test('normalizes the selected project task view and validated task action', () => {
-  const selected = { ...project('codex-keypad', 'Codex Keypad', 1), task };
-  const state = buildProjectControlSurface([selected], {
-    level: 'task-view',
-    selectedProjectId: 'codex-keypad',
-  });
-
-  assert.deepEqual(state.view.tiles[1], {
-    id: 'task:thread-123',
-    label: task.title,
-    status: 'working',
-    action: { type: 'open-codex-task', threadId: 'thread-123' },
-  });
-});
-
-test('bounds task labels for the Logitech contract', () => {
+test('normalizes every selected-project task in deterministic recency order', () => {
   const selected = {
     ...project('codex-keypad', 'Codex Keypad', 1),
-    task: { ...task, title: 'A'.repeat(100) },
+    tasks: [olderTask, task],
   };
   const state = buildProjectControlSurface([selected], {
     level: 'task-view',
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(39)}…`);
+  assert.equal(state.schemaVersion, 3);
+  assert.deepEqual(state.view.tiles.slice(1), [
+    {
+      id: 'task:thread-123',
+      label: 'Implement the live project overview · Working',
+      status: 'working',
+      action: { type: 'open-codex-task', threadId: 'thread-123' },
+    },
+    {
+      id: 'task:thread-older',
+      label: 'Review the adapter contract · Completed',
+      status: 'completed',
+      action: { type: 'open-codex-task', threadId: 'thread-older' },
+    },
+  ]);
+});
+
+test('bounds task identity without dropping its normalized state', () => {
+  const selected = {
+    ...project('codex-keypad', 'Codex Keypad', 1),
+    tasks: [{ ...task, title: 'A'.repeat(100) }],
+  };
+  const state = buildProjectControlSurface([selected], {
+    level: 'task-view',
+    selectedProjectId: 'codex-keypad',
+  });
+
+  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(69)}… · Working`);
+});
+
+test('paginates tasks deterministically and reuses vacated slots', () => {
+  const tasks = Array.from({ length: 10 }, (_, index): CodexTask => ({
+    id: `thread-${String(index + 1).padStart(2, '0')}`,
+    title: `Task ${index + 1}`,
+    status: 'working',
+    updatedAt: 10_000 - index,
+  }));
+  const selected = { ...project('codex-keypad', 'Codex Keypad', 10), tasks };
+
+  const first = buildProjectControlSurface([selected], {
+    level: 'task-view',
+    selectedProjectId: 'codex-keypad',
+    taskPage: 0,
+  });
+  const second = buildProjectControlSurface([selected], {
+    level: 'task-view',
+    selectedProjectId: 'codex-keypad',
+    taskPage: 1,
+  });
+  const afterRemoval = buildProjectControlSurface([{
+    ...selected,
+    tasks: tasks.filter(({ id }) => id !== 'thread-03'),
+  }], {
+    level: 'task-view',
+    selectedProjectId: 'codex-keypad',
+    taskPage: 0,
+  });
+
+  assert.deepEqual(first.view.tiles.map(({ id }) => id), [
+    'nav.back',
+    'task:thread-01',
+    'task:thread-02',
+    'task:thread-03',
+    'task:thread-04',
+    'task:thread-05',
+    'task:thread-06',
+    'task:thread-07',
+    'page.next',
+  ]);
+  assert.deepEqual(first.view.tiles.at(-1)?.action, { type: 'open-task-page', page: 1 });
+  assert.deepEqual(second.view.tiles.map(({ id }) => id), [
+    'nav.back',
+    'page.previous',
+    'task:thread-08',
+    'task:thread-09',
+    'task:thread-10',
+  ]);
+  assert.deepEqual(afterRemoval.view.tiles.slice(1, -1).map(({ id }) => id), [
+    'task:thread-01',
+    'task:thread-02',
+    'task:thread-04',
+    'task:thread-05',
+    'task:thread-06',
+    'task:thread-07',
+    'task:thread-08',
+  ]);
 });
 
 function project(
@@ -142,5 +219,6 @@ function project(
       : activeWorkerCount === '100+'
         ? truncatedActiveWorkerCount(100)
         : exactActiveWorkerCount(activeWorkerCount),
+    tasks: [],
   };
 }

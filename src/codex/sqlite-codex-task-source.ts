@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import type { DatabaseSync as NodeDatabaseSync } from 'node:sqlite';
 
-import type { CodexTask, CodexTaskSource } from './codex-task-source.ts';
+import type { CodexTask, CodexTaskSource, CodexTaskStatus } from './codex-task-source.ts';
 import {
   isCodexDesktopWorkerSession,
   isTopLevelCodexDesktopSession,
@@ -23,7 +23,6 @@ const { DatabaseSync } = createNodeRequire(import.meta.url)(
 interface ThreadRow {
   readonly id: string;
   readonly name: string | null;
-  readonly title: string;
   readonly rollout_path: string;
   readonly recency_at_ms: number;
 }
@@ -41,17 +40,18 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
     this.options = options;
   }
 
-  listActiveTasks(limit: number): CodexTask[] {
-    return this.listMatchingActiveTasks(limit, isTopLevelCodexDesktopSession);
+  listTasks(limit: number): CodexTask[] {
+    return this.listMatchingTasks(limit, isTopLevelCodexDesktopSession, false);
   }
 
   listActiveWorkerTasks(limit: number): CodexTask[] {
-    return this.listMatchingActiveTasks(limit, isCodexDesktopWorkerSession);
+    return this.listMatchingTasks(limit, isCodexDesktopWorkerSession, true);
   }
 
-  private listMatchingActiveTasks(
+  private listMatchingTasks(
     limit: number,
     matchesSession: (rolloutPath: string, threadId: string) => boolean,
+    activeOnly: boolean,
   ): CodexTask[] {
     if (!Number.isSafeInteger(limit) || limit < 0) {
       throw new RangeError('limit must be a non-negative integer');
@@ -60,8 +60,8 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
       return [];
     }
 
-    const activeThreadIds = this.readActiveThreadIds();
-    if (activeThreadIds.size === 0) {
+    const statuses = this.readThreadStatuses();
+    if (statuses.size === 0) {
       return [];
     }
 
@@ -74,7 +74,7 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
         ? `AND cwd IN (${workingDirectories.map(() => '?').join(', ')})`
         : '';
       const rows = database.prepare(`
-        SELECT id, name, title, rollout_path, recency_at_ms
+        SELECT id, name, rollout_path, recency_at_ms
         FROM threads
         WHERE archived = 0 AND source = 'vscode' ${workingDirectoryFilter}
         ORDER BY recency_at_ms DESC, id DESC
@@ -83,13 +83,14 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
       ) as unknown as ThreadRow[];
 
       return rows
-        .filter((row) => activeThreadIds.has(row.id))
+        .filter((row) => statuses.has(row.id))
+        .filter((row) => !activeOnly || statuses.get(row.id) === 'working')
         .filter((row) => matchesSession(row.rollout_path, row.id))
         .slice(0, limit)
         .map((row) => ({
           id: row.id,
-          title: taskTitle(row.name, row.title),
-          status: 'working',
+          title: taskTitle(row.name, row.id),
+          status: statuses.get(row.id)!,
           updatedAt: row.recency_at_ms,
         }));
     } finally {
@@ -97,11 +98,11 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
     }
   }
 
-  private readActiveThreadIds(): Set<string> {
+  private readThreadStatuses(): ReadonlyMap<string, CodexTaskStatus> {
     const database = new DatabaseSync(this.options.historyDatabase, { readOnly: true });
     try {
       const rows = database.prepare(`
-        SELECT thread_id
+        SELECT thread_id, status
         FROM (
           SELECT
             thread_id,
@@ -112,12 +113,23 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
             ) AS newest
           FROM thread_turns
         )
-        WHERE newest = 1 AND status = 'inProgress'
-      `).all() as unknown as Array<{ readonly thread_id: string }>;
-      return new Set(rows.map((row) => row.thread_id));
+        WHERE newest = 1
+      `).all() as unknown as Array<{ readonly thread_id: string; readonly status: string }>;
+      return new Map(rows.flatMap((row) => {
+        const status = normalizedStatus(row.status);
+        return status ? [[row.thread_id, status] as const] : [];
+      }));
     } finally {
       database.close();
     }
+  }
+}
+
+function normalizedStatus(status: string): CodexTaskStatus | undefined {
+  switch (status) {
+    case 'inProgress': return 'working';
+    case 'completed': return 'completed';
+    default: return undefined;
   }
 }
 
@@ -219,7 +231,9 @@ function findLatestVersionedDatabase(directory: string, stem: string): string {
   return join(directory, match.fileName);
 }
 
-function taskTitle(name: string | null, fallback: string): string {
-  const candidate = name?.trim() || fallback.split(/\r?\n/, 1)[0]?.trim() || 'Untitled task';
-  return candidate.replace(/^#+\s*/, '').replace(/\s+/g, ' ');
+function taskTitle(name: string | null, threadId: string): string {
+  const candidate = name?.trim();
+  return candidate
+    ? candidate.replace(/\s+/g, ' ')
+    : `Task · ${threadId.length <= 16 ? threadId : threadId.slice(0, 8)}`;
 }

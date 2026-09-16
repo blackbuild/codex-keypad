@@ -37,6 +37,30 @@ test('reports all current workers exactly while preserving project order', () =>
       activeWorkerCount: { availability: 'available', count: 0, truncated: false },
     },
   ]);
+  assert.deepEqual(states[0]?.tasks.map(({ id }) => id), ['task-0', 'task-1']);
+  assert.deepEqual(states[1]?.tasks, []);
+});
+
+test('includes every active project task independently of the worker count', () => {
+  const tasks = [
+    { id: 'coordinator', title: 'Project coordinator', status: 'working' as const, updatedAt: 3000 },
+    { id: 'worker', title: 'Bounded worker', status: 'working' as const, updatedAt: 2000 },
+  ];
+  const states = readProjectStates(
+    [{ id: 'project', name: 'Project', root: '/projects/project' }],
+    () => ({
+      listTasks: (limit) => tasks.slice(0, limit),
+      listActiveWorkerTasks: () => [tasks[1]!],
+    }),
+    { isProjectDirectory: () => true, now: () => 3000 },
+  );
+
+  assert.deepEqual(states[0]?.tasks, tasks);
+  assert.deepEqual(states[0]?.activeWorkerCount, {
+    availability: 'available',
+    count: 1,
+    truncated: false,
+  });
 });
 
 test('reports an unavailable source independently and bounds large current counts', () => {
@@ -116,7 +140,7 @@ test('preserves current workers as a lower bound when stale workers are also ret
     count: 1,
     truncated: true,
   });
-  assert.equal(states[0]?.task?.id, 'thread-0');
+  assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
 
 test('reports implausibly future-dated worker evidence as unavailable', () => {
@@ -128,7 +152,7 @@ test('reports implausibly future-dated worker evidence as unavailable', () => {
   );
 
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
-  assert.equal(states[0]?.task, undefined);
+  assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
 
 function source(count: number): CodexTaskSource {
@@ -137,7 +161,14 @@ function source(count: number): CodexTaskSource {
 
 function sourceWithUpdatedAt(...updatedAt: readonly number[]): CodexTaskSource {
   return {
-    listActiveTasks: () => [],
+    listTasks: (limit) => updatedAt
+      .slice(0, limit)
+      .map((timestamp, index) => ({
+        id: `task-${index}`,
+        title: `Task ${index}`,
+        status: 'working',
+        updatedAt: timestamp,
+      })),
     listActiveWorkerTasks: (limit) => updatedAt
       .slice(0, limit)
       .map((timestamp, index) => ({

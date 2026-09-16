@@ -52,6 +52,7 @@ export function parseActionRequest(json: string): SemanticAction | undefined {
       case 'open-project-overview':
         return hasExactKeys(value.action, ['type']) ? { type: value.action.type } : undefined;
       case 'open-project-page':
+      case 'open-task-page':
         return hasExactKeys(value.action, ['page', 'type'])
           && typeof value.action.page === 'number'
           && Number.isSafeInteger(value.action.page)

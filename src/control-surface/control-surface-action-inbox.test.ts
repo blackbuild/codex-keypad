@@ -32,6 +32,19 @@ test('accepts only a bounded project page action', () => {
   })), undefined);
 });
 
+test('accepts only a bounded task page action', () => {
+  assert.deepEqual(parseActionRequest(JSON.stringify({
+    schemaVersion: 1,
+    requestId: 'request-1',
+    action: { type: 'open-task-page', page: 7 },
+  })), { type: 'open-task-page', page: 7 });
+  assert.equal(parseActionRequest(JSON.stringify({
+    schemaVersion: 1,
+    requestId: 'request-1',
+    action: { type: 'open-task-page', page: 64 },
+  })), undefined);
+});
+
 test('rejects executable commands and extra handoff fields', () => {
   assert.equal(parseActionRequest(JSON.stringify({
     schemaVersion: 1,

@@ -31,8 +31,14 @@ after(async () => {
   await rm(fixtureDirectory, { recursive: true, force: true });
 });
 
-test('returns only current, top-level Codex Desktop work', () => {
-  assert.deepEqual(source.listActiveTasks(9), [
+test('returns non-archived top-level Codex Desktop tasks with current normalized state', () => {
+  assert.deepEqual(source.listTasks(9), [
+    {
+      id: 'finished',
+      title: 'Finished',
+      status: 'completed',
+      updatedAt: 7000,
+    },
     {
       id: 'desktop-new',
       title: 'Named current task',
@@ -41,7 +47,7 @@ test('returns only current, top-level Codex Desktop work', () => {
     },
     {
       id: 'desktop-legacy',
-      title: 'Fallback heading',
+      title: 'Task · desktop-legacy',
       status: 'working',
       updatedAt: 3000,
     },
@@ -73,9 +79,16 @@ test('returns only current, top-level Codex Desktop work', () => {
 });
 
 test('applies the requested LCD slot limit', () => {
-  assert.equal(source.listActiveTasks(1).length, 1);
-  assert.deepEqual(source.listActiveTasks(0), []);
-  assert.throws(() => source.listActiveTasks(-1), RangeError);
+  assert.equal(source.listTasks(1).length, 1);
+  assert.deepEqual(source.listTasks(0), []);
+  assert.throws(() => source.listTasks(-1), RangeError);
+});
+
+test('does not expose a stored prompt when a task has no display name', () => {
+  const unnamed = source.listTasks(9).find(({ id }) => id === 'desktop-legacy');
+
+  assert.equal(unnamed?.title, 'Task · desktop-legacy');
+  assert.equal(unnamed?.title.includes('Fallback heading'), false);
 });
 
 test('counts only agent-created, forked, or handed-off sessions as active workers', () => {
@@ -95,8 +108,8 @@ test('can limit active tasks to one configured project root', () => {
   });
 
   assert.deepEqual(
-    projectSource.listActiveTasks(9).map((task) => task.id),
-    ['desktop-new'],
+    projectSource.listTasks(9).map((task) => task.id),
+    ['finished', 'desktop-new'],
   );
 });
 

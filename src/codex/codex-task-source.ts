@@ -14,7 +14,8 @@ export interface CodexTask {
 }
 
 export interface CodexTaskSource {
-  listActiveTasks(limit: number): CodexTask[];
+  /** Returns bounded, non-archived tasks with their latest normalized state. */
+  listTasks(limit: number): CodexTask[];
   /** Fewer than `limit` results exhaust the worker set observed by this source. */
   listActiveWorkerTasks(limit: number): CodexTask[];
 }

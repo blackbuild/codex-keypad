@@ -36,6 +36,10 @@ public sealed record OpenProjectPageAction(
     [property: JsonProperty("page")] Int32 Page) :
     SemanticAction("open-project-page");
 
+public sealed record OpenTaskPageAction(
+    [property: JsonProperty("page")] Int32 Page) :
+    SemanticAction("open-task-page");
+
 public sealed record CloseControlSurfaceAction() :
     SemanticAction("close-control-surface");
 
@@ -84,7 +88,7 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 2
+        if (wire.SchemaVersion != 3
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
@@ -137,6 +141,10 @@ public static partial class ControlSurfaceContract
                 && wire.Action.ThreadId is null
                 && wire.Action.Page is >= 0 and <= 63 =>
                 new OpenProjectPageAction(wire.Action.Page.Value),
+            "open-task-page" when wire.Action.ProjectId is null
+                && wire.Action.ThreadId is null
+                && wire.Action.Page is >= 0 and <= 63 =>
+                new OpenTaskPageAction(wire.Action.Page.Value),
             "close-control-surface" when IsAction(wire.Action, "close-control-surface") =>
                 new CloseControlSurfaceAction(),
             "open-task-view" when wire.Action.ThreadId is null
@@ -196,13 +204,16 @@ public static partial class ControlSurfaceContract
             return false;
         }
 
-        return tiles.Count == 1
-            || tiles.Count == 2
-                && tiles[1].Action is OpenCodexTaskAction taskAction
-                && tiles[1].Id == $"task:{taskAction.ThreadId}"
-                && tiles[1].IconPath is null
-                && tiles[1].Status is not null
-                && TaskStatuses.Contains(tiles[1].Status!);
+        return tiles.Skip(1).All(tile => tile switch
+        {
+            { Action: OpenCodexTaskAction taskAction, IconPath: null }
+                when tile.Id == $"task:{taskAction.ThreadId}"
+                    && tile.Status is not null
+                    && TaskStatuses.Contains(tile.Status) => true,
+            { Id: "page.previous" or "page.next", IconPath: null, Status: null,
+                Action: OpenTaskPageAction } => true,
+            _ => false,
+        });
     }
 
     private static Boolean IsAction(WireAction action, String type) =>

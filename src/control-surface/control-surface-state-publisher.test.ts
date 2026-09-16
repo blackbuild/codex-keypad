@@ -24,6 +24,7 @@ test('publishes normalized state and skips an identical replacement', async () =
   const state = buildProjectControlSurface([{
     project: { id: 'codex-keypad', name: 'Codex Keypad' },
     activeWorkerCount: exactActiveWorkerCount(0),
+    tasks: [],
   }]);
 
   assert.equal(await publisher.publish(state), true);

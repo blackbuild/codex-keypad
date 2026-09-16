@@ -49,6 +49,15 @@ try
             && action.GetProperty("page").GetInt32() == 2);
     });
 
+    Run("publishes a bounded task page request", () =>
+    {
+        ControlSurfaceActionPublisher.Publish(actionPath, new OpenTaskPageAction(2));
+        using var document = JsonDocument.Parse(File.ReadAllText(actionPath));
+        var action = document.RootElement.GetProperty("action");
+        Expect(action.GetProperty("type").GetString() == "open-task-page"
+            && action.GetProperty("page").GetInt32() == 2);
+    });
+
     Run("rejects an arbitrary executable action", () =>
     {
         File.WriteAllText(fixturePath, TaskView("run-command", "thread-123"));
@@ -76,22 +85,30 @@ try
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
-    Run("rejects extra task-view tiles before issue 6", () =>
+    Run("accepts a paged multi-task view", () =>
     {
-        var extraTile = """
+        var additionalTiles = """
 ,
       {
         "id": "task:another-thread",
-        "label": "Another task",
-        "status": "working",
+        "label": "Another task · Completed",
+        "status": "completed",
         "action": { "type": "open-codex-task", "threadId": "another-thread" }
+      },
+      {
+        "id": "page.next",
+        "label": "Next · 2/2",
+        "action": { "type": "open-task-page", "page": 1 }
       }
 """;
         File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
             "\n    ]",
-            $"{extraTile}    ]",
+            $"{additionalTiles}    ]",
             StringComparison.Ordinal));
-        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.View.Tiles[2].Action is OpenCodexTaskAction { ThreadId: "another-thread" }
+            && state.View.Tiles[3].Action is OpenTaskPageAction { Page: 1 });
     });
 
     Console.WriteLine("Adapter contract tests passed.");
@@ -124,7 +141,7 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
@@ -159,7 +176,7 @@ static String ProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
@@ -173,7 +190,7 @@ static String TaskView(String taskActionType, String threadId) => $$"""
       { "id": "nav.back", "label": "Back", "action": { "type": "open-project-overview" } },
       {
         "id": "task:{{threadId}}",
-        "label": "Exact task",
+        "label": "Exact task · Working",
         "status": "working",
         "action": { "type": "{{taskActionType}}", "threadId": "{{threadId}}" }
       }

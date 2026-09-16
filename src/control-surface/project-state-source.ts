@@ -11,6 +11,7 @@ import {
 } from './control-surface-state.ts';
 
 const MAXIMUM_EXACT_ACTIVE_WORKERS = 99;
+const MAXIMUM_INCLUDED_TASKS = 256;
 const MAXIMUM_ICON_BYTES = 1024 * 1024;
 const MAXIMUM_ACTIVE_STATE_AGE_MS = 24 * 60 * 60 * 1000;
 const MAXIMUM_FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1000;
@@ -47,26 +48,27 @@ export function readProjectStates(
 
     try {
       if (!isProjectDirectory(configuration.root)) {
-        return { project, activeWorkerCount: unavailableActiveWorkerCount };
+        return { project, activeWorkerCount: unavailableActiveWorkerCount, tasks: [] };
       }
-      const tasks = createTaskSource(configuration.root)
-        .listActiveWorkerTasks(MAXIMUM_EXACT_ACTIVE_WORKERS + 1);
+      const source = createTaskSource(configuration.root);
+      const tasks = source.listTasks(MAXIMUM_INCLUDED_TASKS);
+      const workers = source.listActiveWorkerTasks(MAXIMUM_EXACT_ACTIVE_WORKERS + 1);
       const observedAt = now();
-      const currentTasks = tasks.filter((task) => task.updatedAt >= observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS
+      const currentWorkers = workers.filter((task) => task.updatedAt >= observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS
         && task.updatedAt <= observedAt + MAXIMUM_FUTURE_CLOCK_SKEW_MS);
-      const hasUnusableEvidence = currentTasks.length !== tasks.length;
-      if (currentTasks.length === 0 && hasUnusableEvidence) {
-        return { project, activeWorkerCount: unavailableActiveWorkerCount };
+      const hasUnusableEvidence = currentWorkers.length !== workers.length;
+      if (currentWorkers.length === 0 && hasUnusableEvidence) {
+        return { project, activeWorkerCount: unavailableActiveWorkerCount, tasks };
       }
       return {
         project,
-        activeWorkerCount: hasUnusableEvidence || tasks.length > MAXIMUM_EXACT_ACTIVE_WORKERS
-          ? truncatedActiveWorkerCount(currentTasks.length)
-          : exactActiveWorkerCount(currentTasks.length),
-        ...(currentTasks[0] ? { task: currentTasks[0] } : {}),
+        activeWorkerCount: hasUnusableEvidence || workers.length > MAXIMUM_EXACT_ACTIVE_WORKERS
+          ? truncatedActiveWorkerCount(currentWorkers.length)
+          : exactActiveWorkerCount(currentWorkers.length),
+        tasks,
       };
     } catch {
-      return { project, activeWorkerCount: unavailableActiveWorkerCount };
+      return { project, activeWorkerCount: unavailableActiveWorkerCount, tasks: [] };
     }
   });
 }
