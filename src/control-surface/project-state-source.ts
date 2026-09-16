@@ -52,16 +52,18 @@ export function readProjectStates(
       const tasks = createTaskSource(configuration.root)
         .listActiveWorkerTasks(MAXIMUM_EXACT_ACTIVE_WORKERS + 1);
       const observedAt = now();
-      if (tasks.some((task) => task.updatedAt < observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS
-        || task.updatedAt > observedAt + MAXIMUM_FUTURE_CLOCK_SKEW_MS)) {
+      const currentTasks = tasks.filter((task) => task.updatedAt >= observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS
+        && task.updatedAt <= observedAt + MAXIMUM_FUTURE_CLOCK_SKEW_MS);
+      const hasUnusableEvidence = currentTasks.length !== tasks.length;
+      if (currentTasks.length === 0 && hasUnusableEvidence) {
         return { project, activeWorkerCount: unavailableActiveWorkerCount };
       }
       return {
         project,
-        activeWorkerCount: tasks.length > MAXIMUM_EXACT_ACTIVE_WORKERS
-          ? truncatedActiveWorkerCount(MAXIMUM_EXACT_ACTIVE_WORKERS + 1)
-          : exactActiveWorkerCount(tasks.length),
-        ...(tasks[0] ? { task: tasks[0] } : {}),
+        activeWorkerCount: hasUnusableEvidence || tasks.length > MAXIMUM_EXACT_ACTIVE_WORKERS
+          ? truncatedActiveWorkerCount(currentTasks.length)
+          : exactActiveWorkerCount(currentTasks.length),
+        ...(currentTasks[0] ? { task: currentTasks[0] } : {}),
       };
     } catch {
       return { project, activeWorkerCount: unavailableActiveWorkerCount };

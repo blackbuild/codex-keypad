@@ -29,7 +29,11 @@ The device Home behavior and the close effect are owned by the Logitech runtime.
 The issue 4 one-project path completed its bounded physical-device smoke test.
 The superseded TypeScript startup-snapshot plugin was removed after that
 validation, leaving the live adapter as the single package path. The issue 5
-multi-project overview still requires its own physical-device demonstration.
+bounded physical-device demonstration covered simultaneous project tiles in
+configured order, project/task/Back navigation, live rename, reorder and removal,
+and a worker count from a linked Codex worktree without restarting Options+.
+Custom project icons and multi-page project navigation remain automated-only
+evidence for issue 5.
 
 TypeScript accepts only the normalized `open-project-overview`,
 `open-project-page`, `open-task-view`, and `open-codex-task` requests. Project

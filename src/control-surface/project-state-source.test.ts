@@ -4,7 +4,7 @@ import test from 'node:test';
 import type { CodexTaskSource } from '../codex/codex-task-source.ts';
 import { readProjectStates } from './project-state-source.ts';
 
-test('reads each configured project independently and preserves configuration order', () => {
+test('reports all current workers exactly while preserving project order', () => {
   const requestedRoots: string[] = [];
   const states = readProjectStates(
     [
@@ -39,7 +39,7 @@ test('reads each configured project independently and preserves configuration or
   ]);
 });
 
-test('isolates missing project state and bounds exceptionally large counts', () => {
+test('reports an unavailable source independently and bounds large current counts', () => {
   const states = readProjectStates(
     [
       { id: 'missing', name: 'Missing', root: '/projects/missing' },
@@ -93,7 +93,7 @@ test('does not report a missing configured project root as idle', () => {
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
 });
 
-test('does not report an implausibly stale active worker as current', () => {
+test('reports only stale worker evidence as unavailable', () => {
   const states = readProjectStates(
     [{ id: 'stale', name: 'Stale', root: '/projects/stale' }],
     () => source(1),
@@ -103,16 +103,48 @@ test('does not report an implausibly stale active worker as current', () => {
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
 });
 
+test('preserves current workers as a lower bound when stale workers are also returned', () => {
+  const now = 25 * 60 * 60 * 1000;
+  const states = readProjectStates(
+    [{ id: 'mixed', name: 'Mixed', root: '/projects/mixed' }],
+    () => sourceWithUpdatedAt(now - 1000, 0),
+    { isProjectDirectory: () => true, now: () => now },
+  );
+
+  assert.deepEqual(states[0]?.activeWorkerCount, {
+    availability: 'available',
+    count: 1,
+    truncated: true,
+  });
+  assert.equal(states[0]?.task?.id, 'thread-0');
+});
+
+test('reports implausibly future-dated worker evidence as unavailable', () => {
+  const now = 1000;
+  const states = readProjectStates(
+    [{ id: 'future', name: 'Future', root: '/projects/future' }],
+    () => sourceWithUpdatedAt(now + 5 * 60 * 1000 + 1),
+    { isProjectDirectory: () => true, now: () => now },
+  );
+
+  assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
+  assert.equal(states[0]?.task, undefined);
+});
+
 function source(count: number): CodexTaskSource {
+  return sourceWithUpdatedAt(...Array.from({ length: count }, (_, index) => index));
+}
+
+function sourceWithUpdatedAt(...updatedAt: readonly number[]): CodexTaskSource {
   return {
     listActiveTasks: () => [],
-    listActiveWorkerTasks: (limit) => Array.from(
-      { length: Math.min(limit, count) },
-      (_, index) => ({
+    listActiveWorkerTasks: (limit) => updatedAt
+      .slice(0, limit)
+      .map((timestamp, index) => ({
         id: `thread-${index}`,
         title: `Task ${index}`,
         status: 'working',
-        updatedAt: index,
+        updatedAt: timestamp,
       }),
     ),
   };
