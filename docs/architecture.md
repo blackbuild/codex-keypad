@@ -21,10 +21,11 @@ particular local workspace layout.
 
 The live adapter uses a C# dynamic-folder package. A fixed TypeScript sidecar owns
 the semantic navigation state machine and publishes its current view for the
-configured projects and at most one task in the selected project as versioned,
-normalized JSON. It also owns deterministic project order and nine-key page
-selection. The C# adapter strictly validates that contract, renders configured
-project icons, and relays typed action requests back to TypeScript.
+configured projects and bounded non-archived tasks in the selected project as
+versioned, normalized JSON. It also owns deterministic project/task order,
+nine-key page selection, live page clamping, and exact-task validation. The C#
+adapter strictly validates that contract, renders configured project icons, and
+relays typed action requests back to TypeScript.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 The issue 4 one-project path completed its bounded physical-device smoke test.
 The superseded TypeScript startup-snapshot plugin was removed after that
@@ -36,12 +37,13 @@ Custom project icons and multi-page project navigation remain automated-only
 evidence for issue 5.
 
 TypeScript accepts only the normalized `open-project-overview`,
-`open-project-page`, `open-task-view`, and `open-codex-task` requests. Project
-and page routes must match the current configuration, and the task action must
-match the current selected-project task. Tasks are opened by the existing
+`open-project-page`, `open-task-view`, `open-task-page`, and `open-codex-task`
+requests. Project and page routes must match the current configuration, and the
+task action must match a current task in the selected project. Tasks are opened by the existing
 shell-free, validated Codex deep-link adapter. Unknown action types and unknown
-JSON members are rejected. General task population remains a later roadmap
-slice.
+JSON members are rejected. Task labels use normalized task names or an opaque
+identifier fallback, never raw prompt or transcript content. Attention
+aggregation and agent-customized layouts remain later roadmap slices.
 
 ## Target navigation model
 

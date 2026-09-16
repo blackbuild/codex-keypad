@@ -5,7 +5,7 @@ MX Keypad. The live adapter provides a three-level path:
 
 1. assign the global Codex dynamic-folder action to an ordinary keypad profile;
 2. choose from the configured project tiles;
-3. open the most recent active task in the selected project.
+3. choose from the selected project's Codex tasks and open the exact task.
 
 Back returns from the task view to the project overview and closes the overview
 at its root. The device Home button exits the dynamic folder normally. State is
@@ -76,6 +76,16 @@ whose Codex state cannot be read remains visible with `Count unavailable`; an
 unreadable icon falls back to the text tile. The issue 4 single-project
 `{"projectRoot":"/absolute/path"}` form remains supported for upgrades.
 
+The selected-project view includes up to 256 non-archived top-level Codex tasks,
+ordered by most-recent update and then stable task identity. Nine-key pages keep
+Back in the first slot and add Previous/Next controls only when needed. Completed
+tasks remain visible with their normalized state; archived or deleted tasks leave
+the view, newly created tasks appear, and an out-of-range page is clamped after a
+live removal. Vacated positions are reused by the next task in the same ordering,
+while unpopulated keypad positions have no action. Task labels use the Codex task
+name, or a bounded opaque task identifier when no name exists; raw prompt and
+transcript text are never used as the fallback label.
+
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
 do not inflate the worker badge. A missing project root or exclusively stale or
@@ -123,3 +133,8 @@ entry, project and task navigation, exact-task deep link, live active/idle
 refresh, one-level Back behavior, and device Home exit all worked without
 restarting Options+. This bounded smoke test is the hardware evidence; automated
 or simulated checks are not treated as substitutes for it.
+
+Issue #6 still requires a maintainer-confirmed physical demonstration with at
+least two tasks in one project: open each exact task, exercise task pagination
+when enough tasks are available, observe completion/removal/new-task refreshes,
+verify unused slots do nothing, and use Back to return to the project overview.
