@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
 
 import type { CodexTask, CodexTaskStatus } from '../codex/codex-task-source.ts';
+import {
+  aggregateAttention,
+  navigationVisual,
+  taskAttentionState,
+  visualizeAttention,
+  type AttentionState,
+  type AttentionSummary,
+  type VisualPresentation,
+} from './attention.ts';
 
 export interface CodexProjectIdentity {
   readonly id: string;
@@ -20,8 +29,14 @@ export interface CodexProjectState {
 }
 
 export type ActiveWorkerCount =
-  | { readonly availability: 'available'; readonly count: number; readonly truncated: boolean }
-  | { readonly availability: 'unavailable' };
+  | {
+      readonly availability: 'available';
+      readonly count: number;
+      readonly truncated: boolean;
+      readonly staleEvidence?: true;
+    }
+  | { readonly availability: 'unavailable' }
+  | { readonly availability: 'stale' };
 
 export function exactActiveWorkerCount(count: number): ActiveWorkerCount {
   return availableActiveWorkerCount(count, false);
@@ -32,6 +47,7 @@ export function truncatedActiveWorkerCount(minimum: number): ActiveWorkerCount {
 }
 
 export const unavailableActiveWorkerCount: ActiveWorkerCount = { availability: 'unavailable' };
+export const staleActiveWorkerCount: ActiveWorkerCount = { availability: 'stale' };
 
 function availableActiveWorkerCount(count: number, truncated: boolean): ActiveWorkerCount {
   if (!Number.isSafeInteger(count) || count < 0) {
@@ -53,15 +69,19 @@ export interface ControlSurfaceTile {
   readonly iconPath?: string;
   readonly status?: CodexTaskStatus;
   readonly role?: 'coordinator';
+  readonly attention?: AttentionSummary;
+  readonly visual: VisualPresentation;
   readonly action: SemanticAction;
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 7;
+  readonly schemaVersion: 8;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
     readonly label: string;
+    readonly attention: AttentionSummary;
+    readonly visual: VisualPresentation;
     readonly action: { readonly type: 'open-project-overview' };
   };
   readonly view: {
@@ -95,9 +115,15 @@ export function buildProjectControlSurface(
         selected!.project.icon?.path,
       )
     : overviewTiles(projects);
+  const entryAttention = aggregateAttention(projects.flatMap(projectAttentionStates));
   const entry = {
     id: 'codex' as const,
-    label: `Codex · ${aggregateActiveWorkerSummary(projects)}`,
+    label: compactLabel(
+      `Codex · ${attentionSummaryLabel(entryAttention)} · ${aggregateActiveWorkerSummary(projects)}`,
+      80,
+    ),
+    attention: entryAttention,
+    visual: visualizeAttention(entryAttention, 'entry'),
     action: { type: 'open-project-overview' as const },
   };
   const view = {
@@ -107,7 +133,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -122,13 +148,16 @@ function overviewTiles(projects: readonly CodexProjectState[]): readonly Control
 }
 
 function projectTile(state: CodexProjectState): ControlSurfaceTile {
+  const attention = aggregateAttention(projectAttentionStates(state));
   return {
     id: `project:${state.project.id}`,
     label: compactLabel(
-      `${state.project.name} · ${activeWorkerSummary(state.activeWorkerCount)}`,
+      `${state.project.name} · ${attentionSummaryLabel(attention)} · ${activeWorkerSummary(state.activeWorkerCount)}`,
       80,
     ),
     ...(state.project.icon ? { iconPath: state.project.icon.path } : {}),
+    attention,
+    visual: visualizeAttention(attention, 'project'),
     action: { type: 'open-task-view', projectId: state.project.id },
   };
 }
@@ -153,6 +182,7 @@ function taskTiles(
   const back: ControlSurfaceTile = {
     id: 'nav.back',
     label: 'Back',
+    visual: navigationVisual(),
     action: { type: 'open-project-overview' },
   };
   return [
@@ -200,17 +230,56 @@ function taskTile(
 ): ControlSurfaceTile {
   const status = taskStatusLabel(task.status);
   const identity = compactLabel(task.title, 80 - status.length - 3);
+  const attention = aggregateAttention([taskAttentionState(task.status)]);
   return {
     id: `task:${task.id}`,
     label: `${identity} · ${status}`,
     ...(projectIconPath ? { iconPath: projectIconPath } : {}),
     ...(coordinator ? { role: 'coordinator' as const } : {}),
     status: task.status,
+    attention,
+    visual: visualizeAttention(attention, 'task'),
     action: {
       type: 'open-codex-task',
       threadId: task.id,
     },
   };
+}
+
+function projectAttentionStates(state: CodexProjectState): readonly AttentionState[] {
+  const taskStates = state.tasks.map(({ status }) => taskAttentionState(status));
+  switch (state.activeWorkerCount.availability) {
+    case 'unavailable':
+      return [...taskStates, 'unavailable'];
+    case 'stale':
+      return [...taskStates, 'stale'];
+    case 'available': {
+      const sourceStates: AttentionState[] = state.activeWorkerCount.staleEvidence
+        ? ['stale']
+        : [];
+      if (state.activeWorkerCount.count > 0 && !taskStates.includes('working')) {
+        sourceStates.push('working');
+      }
+      return [...taskStates, ...sourceStates];
+    }
+  }
+}
+
+function attentionSummaryLabel(summary: AttentionSummary): string {
+  const names: Readonly<Record<AttentionState, string>> = {
+    idle: 'Idle',
+    working: 'Working',
+    'waiting-for-input': 'Waiting for input',
+    'waiting-for-approval': 'Waiting for approval',
+    interrupted: 'Interrupted',
+    failed: 'Failed',
+    unavailable: 'Unavailable',
+    stale: 'Stale',
+  };
+  const primary = summary.indicators[0]!;
+  const otherStates = summary.indicators.length - 1 + summary.additionalStates;
+  return `${names[primary.state]}${primary.count > 1 ? ` x${primary.count}` : ''}`
+    + `${otherStates > 0 ? ` +${otherStates} state${otherStates === 1 ? '' : 's'}` : ''}`;
 }
 
 function taskStatusLabel(status: CodexTaskStatus): string {
@@ -236,6 +305,9 @@ function aggregateActiveWorkerSummary(projects: readonly CodexProjectState[]): s
     if (project.activeWorkerCount.availability === 'unavailable') {
       return 'count unavailable';
     }
+    if (project.activeWorkerCount.availability === 'stale') {
+      return 'count stale';
+    }
     count += project.activeWorkerCount.count;
     truncated ||= project.activeWorkerCount.truncated;
   }
@@ -245,6 +317,9 @@ function aggregateActiveWorkerSummary(projects: readonly CodexProjectState[]): s
 }
 
 function activeWorkerSummary(count: ActiveWorkerCount): string {
+  if (count.availability === 'stale') {
+    return 'Count stale';
+  }
   if (count.availability === 'unavailable') {
     return 'Count unavailable';
   }

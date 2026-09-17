@@ -31,9 +31,9 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
 
     public override BitmapImage GetButtonImage(PluginImageSize imageSize)
     {
-        using var builder = new BitmapBuilder(imageSize);
-        builder.DrawText(this.GetButtonDisplayName(imageSize), fontSize: 18);
-        return builder.ToImage();
+        return this.WithState(state => state is null
+            ? CreateUnavailableImage(imageSize)
+            : CreateVisualImage(state.Entry.Label, null, state.Entry.Visual, imageSize));
     }
 
     public override IEnumerable<String> GetButtonPressActionNames(DeviceType _) =>
@@ -47,9 +47,13 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
             ?? "Unavailable");
 
     public override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize) =>
-        this.WithState(state => CreateTileImage(
-            state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter),
-            imageSize)) ?? null!;
+        this.WithState(state =>
+        {
+            var tile = state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter);
+            return tile is null
+                ? null
+                : CreateVisualImage(tile.Label, tile.IconPath, tile.Visual, imageSize);
+        }) ?? null!;
 
     public override void RunCommand(String actionParameter)
     {
@@ -193,28 +197,114 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         }
     }
 
-    private static BitmapImage? CreateTileImage(ControlSurfaceTile? tile, PluginImageSize imageSize)
+    private static BitmapImage CreateVisualImage(
+        String label,
+        String? iconPath,
+        VisualPresentation visual,
+        PluginImageSize imageSize)
     {
+        using var builder = new BitmapBuilder(imageSize);
+        var background = ParseColor(visual.BackgroundColor);
+        var foreground = ParseColor(visual.ForegroundColor);
+        builder.Clear(background);
+
+        var hasCustomIcon = TryLoadIcon(iconPath, out var icon);
+        if (hasCustomIcon)
+        {
+            builder.SetBackgroundImage(icon!, true);
+        }
+        else
+        {
+            builder.DrawText(
+                visual.Glyph,
+                0,
+                5,
+                builder.Width,
+                Math.Max(1, builder.Height / 2 - 5),
+                foreground,
+                fontSize: 24);
+        }
+
+        DrawAttentionSegments(builder, visual.BorderColors);
+        DrawBadge(builder, visual.Badge, background, foreground);
+
+        var labelTop = builder.Height / 2;
+        builder.FillRectangle(0, labelTop, builder.Width, builder.Height - labelTop, background);
+        builder.DrawText(
+            label,
+            3,
+            labelTop + 2,
+            Math.Max(1, builder.Width - 6),
+            Math.Max(1, builder.Height - labelTop - 4),
+            foreground,
+            fontSize: 12);
+        return builder.ToImage();
+    }
+
+    private static Boolean TryLoadIcon(String? iconPath, out BitmapImage? icon)
+    {
+        icon = null;
         try
         {
-            if (tile?.IconPath is null
-                || !File.Exists(tile.IconPath)
-                || new FileInfo(tile.IconPath).Length > MaximumIconBytes
-                || !BitmapImage.TryCreateFromFile(tile.IconPath, out var icon))
+            if (iconPath is null
+                || !File.Exists(iconPath)
+                || new FileInfo(iconPath).Length > MaximumIconBytes
+                || !BitmapImage.TryCreateFromFile(iconPath, out icon))
             {
-                return null;
+                return false;
             }
-
-            using var builder = new BitmapBuilder(imageSize);
-            builder.SetBackgroundImage(icon);
-            builder.DrawText(tile.Label);
-            return builder.ToImage();
+            return true;
         }
         catch (Exception error)
         {
-            Trace.TraceWarning($"Unable to render a Codex Keypad project icon: {error}");
-            return null;
+            Trace.TraceWarning($"Unable to load a Codex Keypad custom icon: {error}");
+            return false;
         }
+    }
+
+    private static void DrawAttentionSegments(
+        BitmapBuilder builder,
+        IReadOnlyList<String> colors)
+    {
+        for (var index = 0; index < colors.Count; index += 1)
+        {
+            var start = index * builder.Width / colors.Count;
+            var end = (index + 1) * builder.Width / colors.Count;
+            builder.FillRectangle(start, 0, Math.Max(1, end - start), 4, ParseColor(colors[index]));
+        }
+    }
+
+    private static void DrawBadge(
+        BitmapBuilder builder,
+        String badge,
+        BitmapColor background,
+        BitmapColor foreground)
+    {
+        if (badge.Length == 0)
+        {
+            return;
+        }
+        var badgeWidth = Math.Min(builder.Width, Math.Max(24, badge.Length * 9 + 6));
+        builder.FillRectangle(builder.Width - badgeWidth, 4, badgeWidth, 20, background);
+        builder.DrawText(
+            badge,
+            builder.Width - badgeWidth,
+            5,
+            badgeWidth,
+            18,
+            foreground,
+            fontSize: 12);
+    }
+
+    private static BitmapColor ParseColor(String color) =>
+        BitmapColor.FromRgb(Convert.ToUInt32(color[1..], 16));
+
+    private static BitmapImage CreateUnavailableImage(PluginImageSize imageSize)
+    {
+        using var builder = new BitmapBuilder(imageSize);
+        builder.Clear(BitmapColor.FromRgb(0x3F3F46));
+        builder.DrawText("?\nCodex unavailable", BitmapColor.White, fontSize: 16);
+        return builder.ToImage();
     }
 
     private void RefreshState()

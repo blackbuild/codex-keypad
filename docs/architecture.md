@@ -125,7 +125,9 @@ Codex / review providers / validated handoff
 Task state aggregates to project state, and project state aggregates to the global
 entry tile. Concurrent attention must use deterministic visual composition rather
 than silently discarding conditions. Unknown or stale state must not be rendered as
-confirmed healthy state.
+confirmed healthy state. The schema-v8 default tokens, precedence, bounded
+composition, fallback icons, and contrast behavior are specified in
+[default-visual-system.md](default-visual-system.md).
 
 Agent-requested layout changes are optional declarative inputs. They pass through
 schema and policy validation and may select only allowlisted presentation choices

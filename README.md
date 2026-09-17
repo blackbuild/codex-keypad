@@ -17,7 +17,8 @@ refreshed four times per second without reloading the plugin.
   details. A configured project root limits the live task selection to that
   project.
 - `src/control-surface/` owns the versioned normalized views, semantic navigation
-  state machine, exact-task opening, and atomic state/action handoff.
+  state machine, attention aggregation, default visual tokens, exact-task
+  opening, and atomic state/action handoff.
 - `adapter/CodexKeypad.Core/` strictly validates the normalized JSON and relays
   only its closed set of typed semantic actions.
 - `adapter/CodexKeypadPlugin/` is the thin Logitech C# dynamic-folder adapter. It
@@ -128,6 +129,16 @@ implausibly future-dated worker evidence is shown as `Count unavailable` rather
 than `Idle`. When current workers are returned alongside unusable worker state,
 the current workers remain visible as a lower bound such as `2+ active`.
 
+Schema v8 presents the same normalized attention contract at task, project, and
+global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
+working, and idle conditions compose with fixed precedence; up to three are
+shown as color segments and ASCII badge cues, with explicit overflow. Every tile
+also carries a deterministic `C`, `P`, `T`, or `<` fallback glyph, so custom PNGs
+are optional. Labels and badges keep the states understandable without color.
+See [the default visual system](docs/default-visual-system.md) for the complete
+legend and [the device checklist](docs/physical-device-validation.md) for the
+remaining hardware acceptance checks.
+
 For a shell-launched sidecar smoke test, `CODEX_KEYPAD_PROJECT_ROOT` remains an
 override. A shell `export` does not configure an already-running, GUI-launched
 Logi Plugin Service, so it is not the normal Options+ configuration mechanism.
@@ -172,8 +183,8 @@ restarting Options+. This bounded smoke test is the hardware evidence; automated
 or simulated checks are not treated as substitutes for it.
 
 The maintainer confirmed the issue #6 multi-task physical demonstration through
-schema v5: exact task opening, native pagination, live completion/removal/addition,
-inert empty slots, project/task navigation, and the absence of synthetic page or
-project-overview Back tiles. The schema v6 coordinator-ordering follow-up requires
-one focused device confirmation that the first task row is native Home,
-project-icon coordinator, and Back.
+schema v6: exact task opening, native pagination, live completion/removal/addition,
+inert empty slots, project/task navigation, coordinator ordering, and the absence
+of synthetic page or project-overview Back tiles. Schema v8 attention rendering
+still requires the focused physical-device checklist linked above; automated
+validation is not reported as hardware acceptance.
