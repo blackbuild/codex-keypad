@@ -35,10 +35,14 @@ working trees and all linked worktrees discovered from their Git metadata. The
 configuration names repository working trees rather than `.git` internals, and
 this association remains owned by the Codex state-source boundary.
 An optional explicit coordinator task identity distinguishes the stable Hive from
-delegated tasks that may share the same wrapper working directory. When present,
-the coordinator is pinned before the semantic Back tile and receives the project
-icon; all remaining tasks retain recency/identity ordering. The explicit identity
-avoids guessing from user-visible titles or shared working directories.
+delegated tasks that may share the same wrapper working directory. It accepts a
+raw ID or Codex thread deep link. A case-insensitive wildcard pattern provides a
+durable fallback across coordinator replacement: project patterns override the
+configuration-level default, and the first match in deterministic task order is
+selected. When present, the coordinator is pinned before the semantic Back tile
+and receives the project icon; all remaining tasks retain recency/identity
+ordering. This avoids guessing from shared working directories while allowing a
+stable policy independent of one task ID.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 Accordingly, the project overview contains no redundant product Back tile; native
 Back/Home exits to the surrounding Logitech profile. The selected-project task

@@ -48,12 +48,16 @@ export function readProjectStates(
     const coordinator = configuration.coordinatorTaskId
       ? { coordinatorTaskId: configuration.coordinatorTaskId }
       : {};
+    const coordinatorPattern = configuration.coordinatorTaskPattern
+      ? { coordinatorTaskPattern: configuration.coordinatorTaskPattern }
+      : {};
 
     try {
       if (!isProjectDirectory(configuration.root)) {
         return {
           project,
           ...coordinator,
+          ...coordinatorPattern,
           activeWorkerCount: unavailableActiveWorkerCount,
           tasks: [],
         };
@@ -72,6 +76,7 @@ export function readProjectStates(
         return {
           project,
           ...coordinator,
+          ...coordinatorPattern,
           activeWorkerCount: unavailableActiveWorkerCount,
           tasks,
         };
@@ -79,6 +84,7 @@ export function readProjectStates(
       return {
         project,
         ...coordinator,
+        ...coordinatorPattern,
         activeWorkerCount: hasUnusableEvidence || workers.length > MAXIMUM_EXACT_ACTIVE_WORKERS
           ? truncatedActiveWorkerCount(currentWorkers.length)
           : exactActiveWorkerCount(currentWorkers.length),
@@ -88,6 +94,7 @@ export function readProjectStates(
       return {
         project,
         ...coordinator,
+        ...coordinatorPattern,
         activeWorkerCount: unavailableActiveWorkerCount,
         tasks: [],
       };

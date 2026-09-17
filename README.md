@@ -45,6 +45,7 @@ file at `~/Library/Application Support/Codex Keypad/config.json`:
 mkdir -p "$HOME/Library/Application Support/Codex Keypad"
 cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
 {
+  "coordinatorTaskPattern": "* Hive",
   "projects": [
     {
       "id": "codex-keypad",
@@ -53,7 +54,8 @@ cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
       "repositories": [
         "/absolute/path/to/codex-project/repo"
       ],
-      "coordinatorTaskId": "01example-coordinator-task-id",
+      "coordinatorTaskId": "codex://threads/01example-coordinator-task-id",
+      "coordinatorTaskPattern": "Codex Keypad Hive*",
       "icon": "/absolute/path/to/codex-keypad.png"
     },
     {
@@ -74,10 +76,17 @@ adapter resolves each repository's Git metadata and automatically associates its
 linked worktrees. This lets a wrapper-style project include both Hive tasks rooted
 at the wrapper and worker tasks rooted at nested repositories or worktrees. An
 optional `coordinatorTaskId` identifies the project's stable Hive/coordinator
-task. When that task is present, it is pinned before Back in the selected-project
-view and uses the project's icon; the remaining tasks retain deterministic
-recency ordering. An optional `icon` is an absolute path to a PNG of at most 1
-MiB. Project tiles follow the configuration order; the Logitech runtime uses the
+task. It accepts either the raw task ID or the `codex://threads/...` deep link
+copied from Codex. A configuration-level `coordinatorTaskPattern` supplies a
+default for all projects, while a project-level pattern overrides that default.
+Patterns are case-insensitive, match the complete task name, and use `*` for any
+text and `?` for one character. An exact matching ID wins; if that ID is absent,
+the first pattern match in deterministic recency/identity order becomes the
+coordinator. Multiple matches therefore need no conflict handling. When a
+coordinator is present, it is pinned before Back in the selected-project view and
+uses the project's icon; the remaining tasks retain deterministic recency
+ordering. An optional `icon` is an absolute path to a PNG of at most 1 MiB.
+Project tiles follow the configuration order; the Logitech runtime uses the
 device's native page controls when they do not fit on one touch page.
 
 The project overview contains only project tiles. Its parent is the surrounding
@@ -122,8 +131,9 @@ Logi Plugin Service, so it is not the normal Options+ configuration mechanism.
 The optional `CODEX_KEYPAD_PROJECT_ID`, `CODEX_KEYPAD_PROJECT_NAME`, and
 `CODEX_KEYPAD_PROJECT_ICON` environment variables control the normalized tile
 identity, label, and PNG for such development runs. The optional
-`CODEX_KEYPAD_COORDINATOR_TASK_ID` pins a matching coordinator task. They default
-to `codex-keypad`, `Codex Keypad`, no custom icon, and no pinned coordinator.
+`CODEX_KEYPAD_COORDINATOR_TASK_ID` pins a matching coordinator task, with
+`CODEX_KEYPAD_COORDINATOR_TASK_PATTERN` as its wildcard fallback. They default to
+`codex-keypad`, `Codex Keypad`, no custom icon, and no pinned coordinator.
 
 By default, the state adapter finds the highest-versioned `state_*.sqlite` and
 `thread_history_*.sqlite` files under `CODEX_HOME` or `~/.codex`. Tests may use

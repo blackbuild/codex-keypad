@@ -14,6 +14,7 @@ export interface CodexProjectIdentity {
 export interface CodexProjectState {
   readonly project: CodexProjectIdentity;
   readonly coordinatorTaskId?: string;
+  readonly coordinatorTaskPattern?: string;
   readonly activeWorkerCount: ActiveWorkerCount;
   readonly tasks: readonly CodexTask[];
 }
@@ -90,6 +91,7 @@ export function buildProjectControlSurface(
     ? taskTiles(
         selected!.tasks,
         selected!.coordinatorTaskId,
+        selected!.coordinatorTaskPattern,
         selected!.project.icon?.path,
       )
     : overviewTiles(projects);
@@ -134,13 +136,17 @@ function projectTile(state: CodexProjectState): ControlSurfaceTile {
 function taskTiles(
   tasks: readonly CodexTask[],
   coordinatorTaskId?: string,
+  coordinatorTaskPattern?: string,
   projectIconPath?: string,
 ): readonly ControlSurfaceTile[] {
   const ordered = [...tasks].sort((left, right) =>
     right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
-  const coordinator = coordinatorTaskId
+  const coordinator = (coordinatorTaskId
     ? ordered.find((task) => task.id === coordinatorTaskId)
-    : undefined;
+    : undefined)
+    ?? (coordinatorTaskPattern
+      ? ordered.find((task) => wildcardMatches(task.title, coordinatorTaskPattern))
+      : undefined);
   const remaining = coordinator
     ? ordered.filter((task) => task.id !== coordinator.id)
     : ordered;
@@ -153,6 +159,38 @@ function taskTiles(
     ...(coordinator ? [taskTile(coordinator, true, projectIconPath), back] : [back]),
     ...remaining.map((task) => taskTile(task)),
   ];
+}
+
+function wildcardMatches(value: string, pattern: string): boolean {
+  const candidate = value.toLowerCase();
+  const wildcard = pattern.toLowerCase();
+  let candidateIndex = 0;
+  let patternIndex = 0;
+  let starIndex = -1;
+  let retryCandidateIndex = 0;
+
+  while (candidateIndex < candidate.length) {
+    if (patternIndex < wildcard.length
+      && (wildcard[patternIndex] === '?' || wildcard[patternIndex] === candidate[candidateIndex])) {
+      candidateIndex += 1;
+      patternIndex += 1;
+    } else if (wildcard[patternIndex] === '*') {
+      starIndex = patternIndex;
+      retryCandidateIndex = candidateIndex;
+      patternIndex += 1;
+    } else if (starIndex >= 0) {
+      patternIndex = starIndex + 1;
+      retryCandidateIndex += 1;
+      candidateIndex = retryCandidateIndex;
+    } else {
+      return false;
+    }
+  }
+
+  while (wildcard[patternIndex] === '*') {
+    patternIndex += 1;
+  }
+  return patternIndex === wildcard.length;
 }
 
 function taskTile(

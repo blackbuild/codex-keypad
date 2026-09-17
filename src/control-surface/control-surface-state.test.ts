@@ -128,6 +128,7 @@ test('places the configured coordinator before Back and gives it the project ico
   const selected: CodexProjectState = {
     ...project('codex-keypad', 'Codex Keypad', 1, '/icons/codex-keypad.png'),
     coordinatorTaskId: olderTask.id,
+    coordinatorTaskPattern: '*live*',
     tasks: [task, olderTask],
   };
   const state = buildProjectControlSurface([selected], {
@@ -153,6 +154,29 @@ test('places the configured coordinator before Back and gives it the project ico
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
   ]);
+});
+
+test('uses the first deterministic wildcard match when an exact coordinator is absent', () => {
+  const newerHive = { ...task, id: 'newer-hive', title: 'Replacement HIVE', updatedAt: 5000 };
+  const olderHive = { ...olderTask, id: 'older-hive', title: 'Original Hive', updatedAt: 4000 };
+  const selected: CodexProjectState = {
+    ...project('codex-keypad', 'Codex Keypad', 1, '/icons/codex-keypad.png'),
+    coordinatorTaskId: 'retired-hive',
+    coordinatorTaskPattern: '*hive',
+    tasks: [olderHive, task, newerHive],
+  };
+  const state = buildProjectControlSurface([selected], {
+    level: 'task-view',
+    selectedProjectId: 'codex-keypad',
+  });
+
+  assert.deepEqual(state.view.tiles.map(({ id }) => id), [
+    'task:newer-hive',
+    'nav.back',
+    'task:older-hive',
+    'task:thread-123',
+  ]);
+  assert.equal(state.view.tiles[0]?.role, 'coordinator');
 });
 
 test('bounds task identity without dropping its normalized state', () => {

@@ -53,6 +53,7 @@ test('includes configured repository roots with the Codex project root', () => {
       root: '/projects/hive',
       repositories: ['/projects/hive/repo', '/projects/hive/other-repo'],
       coordinatorTaskId: 'hive-thread',
+      coordinatorTaskPattern: '* Hive',
     }],
     (roots) => {
       requestedRoots.push(roots);
@@ -67,6 +68,7 @@ test('includes configured repository roots with the Codex project root', () => {
     '/projects/hive/other-repo',
   ]]);
   assert.equal(states[0]?.coordinatorTaskId, 'hive-thread');
+  assert.equal(states[0]?.coordinatorTaskPattern, '* Hive');
 });
 
 test('includes every active project task independently of the worker count', () => {

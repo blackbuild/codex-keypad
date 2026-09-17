@@ -22,13 +22,15 @@ test('reads configured project identity, root, and custom icon', async () => {
   await writeFile(
     join(configurationDirectory, 'config.json'),
     JSON.stringify({
+      coordinatorTaskPattern: '* Hive',
       projects: [
         {
           id: 'architecture',
           name: 'Architecture',
           root: '/projects/architecture',
           repositories: ['/repositories/architecture'],
-          coordinatorTaskId: 'thread-coordinator',
+          coordinatorTaskId: 'codex://threads/thread-coordinator',
+          coordinatorTaskPattern: 'Architecture Coordinator',
           icon: '/icons/architecture.png',
         },
         { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
@@ -43,9 +45,15 @@ test('reads configured project identity, root, and custom icon', async () => {
       root: '/projects/architecture',
       repositories: ['/repositories/architecture'],
       coordinatorTaskId: 'thread-coordinator',
+      coordinatorTaskPattern: 'Architecture Coordinator',
       icon: '/icons/architecture.png',
     },
-    { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
+    {
+      id: 'codex-keypad',
+      name: 'Codex Keypad',
+      root: '/projects/codex-keypad',
+      coordinatorTaskPattern: '* Hive',
+    },
   ]);
 });
 
@@ -111,6 +119,22 @@ test('rejects duplicate project identities and relative repository or icon paths
     }],
   }));
   assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskId must be a safe/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{
+      id: 'safe',
+      name: 'Safe',
+      root: '/projects/safe',
+      coordinatorTaskId: 'codex://threads/safe-task?view=review',
+    }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskId must be a safe/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    coordinatorTaskPattern: '   ',
+    projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe' }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskPattern must contain/);
 });
 
 test('observes project additions without retaining a startup snapshot', async () => {
