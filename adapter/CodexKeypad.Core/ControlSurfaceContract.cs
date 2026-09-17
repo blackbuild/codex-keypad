@@ -24,6 +24,7 @@ public sealed record ControlSurfaceTile(
     String Label,
     String? IconPath,
     String? Status,
+    String? Role,
     SemanticAction Action);
 
 public abstract record SemanticAction(
@@ -78,7 +79,7 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 5
+        if (wire.SchemaVersion != 6
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
@@ -118,7 +119,8 @@ public static partial class ControlSurfaceContract
         tile = null;
         if (!IsSafeTileId(wire.Id)
             || !IsLabel(wire.Label)
-            || wire.IconPath is not null && !IsIconPath(wire.IconPath))
+            || wire.IconPath is not null && !IsIconPath(wire.IconPath)
+            || wire.Role is not null and not "coordinator")
         {
             return false;
         }
@@ -142,7 +144,13 @@ public static partial class ControlSurfaceContract
             return false;
         }
 
-        tile = new ControlSurfaceTile(wire.Id, wire.Label, wire.IconPath, wire.Status, action);
+        tile = new ControlSurfaceTile(
+            wire.Id,
+            wire.Label,
+            wire.IconPath,
+            wire.Status,
+            wire.Role,
+            action);
         return true;
     }
 
@@ -157,28 +165,47 @@ public static partial class ControlSurfaceContract
         {
             return tiles.All(tile => tile switch
             {
-                { Action: OpenTaskViewAction projectAction, Status: null }
+                { Action: OpenTaskViewAction projectAction, Status: null, Role: null }
                     when tile.Id == $"project:{projectAction.ProjectId}" => true,
                 _ => false,
             });
         }
 
-        if (level != "task-view"
-            || tiles.Count == 0
-            || tiles[0].Id != "nav.back"
-            || tiles[0].Action is not OpenProjectOverviewAction
-            || tiles[0].Status is not null
-            || tiles[0].IconPath is not null)
+        if (level != "task-view" || tiles.Count == 0)
         {
             return false;
         }
 
-        return tiles.Skip(1).All(tile => tile switch
+        var backIndexes = tiles
+            .Select((tile, index) => (tile, index))
+            .Where(entry => entry.tile.Id == "nav.back")
+            .Select(entry => entry.index)
+            .ToArray();
+        var coordinatorIndexes = tiles
+            .Select((tile, index) => (tile, index))
+            .Where(entry => entry.tile.Role == "coordinator")
+            .Select(entry => entry.index)
+            .ToArray();
+        var expectedBackIndex = coordinatorIndexes.Length == 1 ? 1 : 0;
+        if (backIndexes is not [var backIndex]
+            || coordinatorIndexes.Length > 1
+            || coordinatorIndexes.Length == 1 && coordinatorIndexes[0] != 0
+            || backIndex != expectedBackIndex
+            || tiles[backIndex].Action is not OpenProjectOverviewAction
+            || tiles[backIndex].Status is not null
+            || tiles[backIndex].IconPath is not null
+            || tiles[backIndex].Role is not null)
         {
-            { Action: OpenCodexTaskAction taskAction, IconPath: null }
+            return false;
+        }
+
+        return tiles.Where((_, index) => index != backIndex).All(tile => tile switch
+        {
+            { Action: OpenCodexTaskAction taskAction }
                 when tile.Id == $"task:{taskAction.ThreadId}"
                     && tile.Status is not null
-                    && TaskStatuses.Contains(tile.Status) => true,
+                    && TaskStatuses.Contains(tile.Status)
+                    && (tile.Role == "coordinator" || tile.IconPath is null) => true,
             _ => false,
         });
     }
@@ -261,6 +288,9 @@ public static partial class ControlSurfaceContract
 
         [JsonProperty("status")]
         public String? Status { get; init; }
+
+        [JsonProperty("role")]
+        public String? Role { get; init; }
 
         [JsonProperty("action", Required = Required.Always)]
         public WireAction Action { get; init; } = new();

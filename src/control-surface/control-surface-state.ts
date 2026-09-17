@@ -13,6 +13,7 @@ export interface CodexProjectIdentity {
 
 export interface CodexProjectState {
   readonly project: CodexProjectIdentity;
+  readonly coordinatorTaskId?: string;
   readonly activeWorkerCount: ActiveWorkerCount;
   readonly tasks: readonly CodexTask[];
 }
@@ -50,11 +51,12 @@ export interface ControlSurfaceTile {
   readonly label: string;
   readonly iconPath?: string;
   readonly status?: CodexTaskStatus;
+  readonly role?: 'coordinator';
   readonly action: SemanticAction;
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 5;
+  readonly schemaVersion: 6;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
@@ -85,7 +87,11 @@ export function buildProjectControlSurface(
     : 'project-overview';
 
   const tiles = level === 'task-view'
-    ? taskTiles(selected!.tasks)
+    ? taskTiles(
+        selected!.tasks,
+        selected!.coordinatorTaskId,
+        selected!.project.icon?.path,
+      )
     : overviewTiles(projects);
   const entry = {
     id: 'codex' as const,
@@ -99,7 +105,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -125,26 +131,42 @@ function projectTile(state: CodexProjectState): ControlSurfaceTile {
   };
 }
 
-function taskTiles(tasks: readonly CodexTask[]): readonly ControlSurfaceTile[] {
+function taskTiles(
+  tasks: readonly CodexTask[],
+  coordinatorTaskId?: string,
+  projectIconPath?: string,
+): readonly ControlSurfaceTile[] {
+  const ordered = [...tasks].sort((left, right) =>
+    right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
+  const coordinator = coordinatorTaskId
+    ? ordered.find((task) => task.id === coordinatorTaskId)
+    : undefined;
+  const remaining = coordinator
+    ? ordered.filter((task) => task.id !== coordinator.id)
+    : ordered;
+  const back: ControlSurfaceTile = {
+    id: 'nav.back',
+    label: 'Back',
+    action: { type: 'open-project-overview' },
+  };
   return [
-    {
-      id: 'nav.back',
-      label: 'Back',
-      action: { type: 'open-project-overview' },
-    },
-    ...[...tasks]
-      .sort((left, right) =>
-        right.updatedAt - left.updatedAt || compareDescending(left.id, right.id))
-      .map(taskTile),
+    ...(coordinator ? [taskTile(coordinator, true, projectIconPath), back] : [back]),
+    ...remaining.map((task) => taskTile(task)),
   ];
 }
 
-function taskTile(task: CodexTask): ControlSurfaceTile {
+function taskTile(
+  task: CodexTask,
+  coordinator = false,
+  projectIconPath?: string,
+): ControlSurfaceTile {
   const status = taskStatusLabel(task.status);
   const identity = compactLabel(task.title, 80 - status.length - 3);
   return {
     id: `task:${task.id}`,
     label: `${identity} · ${status}`,
+    ...(projectIconPath ? { iconPath: projectIconPath } : {}),
+    ...(coordinator ? { role: 'coordinator' as const } : {}),
     status: task.status,
     action: {
       type: 'open-codex-task',

@@ -34,6 +34,11 @@ repository roots extend task association to nested or otherwise related Git
 working trees and all linked worktrees discovered from their Git metadata. The
 configuration names repository working trees rather than `.git` internals, and
 this association remains owned by the Codex state-source boundary.
+An optional explicit coordinator task identity distinguishes the stable Hive from
+delegated tasks that may share the same wrapper working directory. When present,
+the coordinator is pinned before the semantic Back tile and receives the project
+icon; all remaining tasks retain recency/identity ordering. The explicit identity
+avoids guessing from user-visible titles or shared working directories.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 Accordingly, the project overview contains no redundant product Back tile; native
 Back/Home exits to the surrounding Logitech profile. The selected-project task

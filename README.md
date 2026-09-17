@@ -53,6 +53,7 @@ cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
       "repositories": [
         "/absolute/path/to/codex-project/repo"
       ],
+      "coordinatorTaskId": "01example-coordinator-task-id",
       "icon": "/absolute/path/to/codex-keypad.png"
     },
     {
@@ -72,9 +73,12 @@ otherwise associated with that Codex project. Do not point it at `.git`; the
 adapter resolves each repository's Git metadata and automatically associates its
 linked worktrees. This lets a wrapper-style project include both Hive tasks rooted
 at the wrapper and worker tasks rooted at nested repositories or worktrees. An
-optional `icon` is an absolute path to a PNG of at most 1 MiB. Project tiles
-follow the configuration order; the Logitech runtime uses the device's native
-page controls when they do not fit on one touch page.
+optional `coordinatorTaskId` identifies the project's stable Hive/coordinator
+task. When that task is present, it is pinned before Back in the selected-project
+view and uses the project's icon; the remaining tasks retain deterministic
+recency ordering. An optional `icon` is an absolute path to a PNG of at most 1
+MiB. Project tiles follow the configuration order; the Logitech runtime uses the
+device's native page controls when they do not fit on one touch page.
 
 The project overview contains only project tiles. Its parent is the surrounding
 Logitech profile, so the device's native Back/Home control exits the dynamic
@@ -100,6 +104,10 @@ or a bounded opaque task identifier when no name exists; raw prompt and transcri
 text are never used as the fallback label. In the selected-project task view,
 the explicit Back tile performs the product-level task-to-project transition;
 the SDK's native Back/Home behavior closes the entire dynamic folder instead.
+With a matching `coordinatorTaskId`, the published leading controls are
+coordinator then Back, so the runtime's prepended native Home control produces a
+first row of Home, coordinator, and Back. If the configured coordinator is not a
+current included task, Back remains first and all tasks use the normal ordering.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
@@ -113,8 +121,9 @@ override. A shell `export` does not configure an already-running, GUI-launched
 Logi Plugin Service, so it is not the normal Options+ configuration mechanism.
 The optional `CODEX_KEYPAD_PROJECT_ID`, `CODEX_KEYPAD_PROJECT_NAME`, and
 `CODEX_KEYPAD_PROJECT_ICON` environment variables control the normalized tile
-identity, label, and PNG for such development runs. They default to
-`codex-keypad`, `Codex Keypad`, and no custom icon.
+identity, label, and PNG for such development runs. The optional
+`CODEX_KEYPAD_COORDINATOR_TASK_ID` pins a matching coordinator task. They default
+to `codex-keypad`, `Codex Keypad`, no custom icon, and no pinned coordinator.
 
 By default, the state adapter finds the highest-versioned `state_*.sqlite` and
 `thread_history_*.sqlite` files under `CODEX_HOME` or `~/.codex`. Tests may use
@@ -149,8 +158,9 @@ refresh, one-level Back behavior, and device Home exit all worked without
 restarting Options+. This bounded smoke test is the hardware evidence; automated
 or simulated checks are not treated as substitutes for it.
 
-Issue #6 still requires a maintainer-confirmed physical demonstration with at
-least two tasks in one project: open each exact task, exercise task pagination
-when enough tasks are available, observe completion/removal/new-task refreshes,
-verify unused slots do nothing, confirm no synthetic page tile or project-overview
-Back tile appears, and use the task-view Back tile to return to the project overview.
+The maintainer confirmed the issue #6 multi-task physical demonstration through
+schema v5: exact task opening, native pagination, live completion/removal/addition,
+inert empty slots, project/task navigation, and the absence of synthetic page or
+project-overview Back tiles. The schema v6 coordinator-ordering follow-up requires
+one focused device confirmation that the first task row is native Home,
+project-icon coordinator, and Back.

@@ -45,10 +45,18 @@ export function readProjectStates(
         ? { icon: readIcon(configuration.icon, readIconMetadata) }
         : {}),
     };
+    const coordinator = configuration.coordinatorTaskId
+      ? { coordinatorTaskId: configuration.coordinatorTaskId }
+      : {};
 
     try {
       if (!isProjectDirectory(configuration.root)) {
-        return { project, activeWorkerCount: unavailableActiveWorkerCount, tasks: [] };
+        return {
+          project,
+          ...coordinator,
+          activeWorkerCount: unavailableActiveWorkerCount,
+          tasks: [],
+        };
       }
       const source = createTaskSource([
         configuration.root,
@@ -61,17 +69,28 @@ export function readProjectStates(
         && task.updatedAt <= observedAt + MAXIMUM_FUTURE_CLOCK_SKEW_MS);
       const hasUnusableEvidence = currentWorkers.length !== workers.length;
       if (currentWorkers.length === 0 && hasUnusableEvidence) {
-        return { project, activeWorkerCount: unavailableActiveWorkerCount, tasks };
+        return {
+          project,
+          ...coordinator,
+          activeWorkerCount: unavailableActiveWorkerCount,
+          tasks,
+        };
       }
       return {
         project,
+        ...coordinator,
         activeWorkerCount: hasUnusableEvidence || workers.length > MAXIMUM_EXACT_ACTIVE_WORKERS
           ? truncatedActiveWorkerCount(currentWorkers.length)
           : exactActiveWorkerCount(currentWorkers.length),
         tasks,
       };
     } catch {
-      return { project, activeWorkerCount: unavailableActiveWorkerCount, tasks: [] };
+      return {
+        project,
+        ...coordinator,
+        activeWorkerCount: unavailableActiveWorkerCount,
+        tasks: [],
+      };
     }
   });
 }

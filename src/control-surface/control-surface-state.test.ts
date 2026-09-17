@@ -31,7 +31,7 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 5);
+  assert.equal(state.schemaVersion, 6);
   assert.deepEqual(state.view.tiles, [
     {
       id: 'project:architecture',
@@ -107,7 +107,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 5);
+  assert.equal(state.schemaVersion, 6);
   assert.deepEqual(state.view.tiles.slice(1), [
     {
       id: 'task:thread-123',
@@ -120,6 +120,37 @@ test('normalizes every selected-project task in deterministic recency order', ()
       label: 'Review the adapter contract · Completed',
       status: 'completed',
       action: { type: 'open-codex-task', threadId: 'thread-older' },
+    },
+  ]);
+});
+
+test('places the configured coordinator before Back and gives it the project icon', () => {
+  const selected: CodexProjectState = {
+    ...project('codex-keypad', 'Codex Keypad', 1, '/icons/codex-keypad.png'),
+    coordinatorTaskId: olderTask.id,
+    tasks: [task, olderTask],
+  };
+  const state = buildProjectControlSurface([selected], {
+    level: 'task-view',
+    selectedProjectId: 'codex-keypad',
+  });
+
+  assert.equal(state.schemaVersion, 6);
+  assert.deepEqual(state.view.tiles, [
+    {
+      id: 'task:thread-older',
+      label: 'Review the adapter contract · Completed',
+      iconPath: '/icons/codex-keypad.png',
+      role: 'coordinator',
+      status: 'completed',
+      action: { type: 'open-codex-task', threadId: 'thread-older' },
+    },
+    { id: 'nav.back', label: 'Back', action: { type: 'open-project-overview' } },
+    {
+      id: 'task:thread-123',
+      label: 'Implement the live project overview · Working',
+      status: 'working',
+      action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
   ]);
 });

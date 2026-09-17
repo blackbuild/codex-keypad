@@ -28,6 +28,7 @@ test('reads configured project identity, root, and custom icon', async () => {
           name: 'Architecture',
           root: '/projects/architecture',
           repositories: ['/repositories/architecture'],
+          coordinatorTaskId: 'thread-coordinator',
           icon: '/icons/architecture.png',
         },
         { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
@@ -41,6 +42,7 @@ test('reads configured project identity, root, and custom icon', async () => {
       name: 'Architecture',
       root: '/projects/architecture',
       repositories: ['/repositories/architecture'],
+      coordinatorTaskId: 'thread-coordinator',
       icon: '/icons/architecture.png',
     },
     { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
@@ -99,6 +101,16 @@ test('rejects duplicate project identities and relative repository or icon paths
     projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe', icon: 'icon.png' }],
   }));
   assert.throws(() => configuredProjects({}, homeDirectory), /icon must be an absolute PNG path/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{
+      id: 'safe',
+      name: 'Safe',
+      root: '/projects/safe',
+      coordinatorTaskId: '../unsafe',
+    }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskId must be a safe/);
 });
 
 test('observes project additions without retaining a startup snapshot', async () => {

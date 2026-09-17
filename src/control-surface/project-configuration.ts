@@ -5,12 +5,14 @@ import { extname, isAbsolute, join } from 'node:path';
 const MAXIMUM_PROJECTS = 64;
 const MAXIMUM_REPOSITORIES_PER_PROJECT = 16;
 const SAFE_PROJECT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const SAFE_TASK_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export interface CodexProjectConfiguration {
   readonly id: string;
   readonly name: string;
   readonly root: string;
   readonly repositories?: readonly string[];
+  readonly coordinatorTaskId?: string;
   readonly icon?: string;
 }
 
@@ -24,6 +26,10 @@ export function configuredProjects(
       id: projectId(environment.CODEX_KEYPAD_PROJECT_ID ?? 'codex-keypad'),
       name: projectName(environment.CODEX_KEYPAD_PROJECT_NAME ?? 'Codex Keypad'),
       root: absoluteProjectRoot(environmentRoot, 'CODEX_KEYPAD_PROJECT_ROOT'),
+      ...optionalCoordinatorTaskId(
+        environment.CODEX_KEYPAD_COORDINATOR_TASK_ID,
+        'CODEX_KEYPAD_COORDINATOR_TASK_ID',
+      ),
       ...optionalIcon(environment.CODEX_KEYPAD_PROJECT_ICON, 'CODEX_KEYPAD_PROJECT_ICON'),
     }];
   }
@@ -81,14 +87,19 @@ export function configuredProjects(
 
 function parseProject(value: unknown, index: number): CodexProjectConfiguration {
   if (!isRecord(value)
-    || !hasExactOptionalKeys(value, ['id', 'name', 'root'], ['icon', 'repositories'])
+    || !hasExactOptionalKeys(
+      value,
+      ['id', 'name', 'root'],
+      ['coordinatorTaskId', 'icon', 'repositories'],
+    )
     || typeof value.id !== 'string'
     || typeof value.name !== 'string'
     || typeof value.root !== 'string'
+    || (value.coordinatorTaskId !== undefined && typeof value.coordinatorTaskId !== 'string')
     || (value.icon !== undefined && typeof value.icon !== 'string')
     || (value.repositories !== undefined && !Array.isArray(value.repositories))) {
     throw new Error(
-      `projects[${index}] must contain id, name, root, and optional icon and repositories`,
+      `projects[${index}] must contain id, name, root, and optional coordinatorTaskId, icon, and repositories`,
     );
   }
 
@@ -103,6 +114,10 @@ function parseProject(value: unknown, index: number): CodexProjectConfiguration 
     name: projectName(value.name),
     root,
     ...(repositories.length > 0 ? { repositories } : {}),
+    ...optionalCoordinatorTaskId(
+      value.coordinatorTaskId,
+      `projects[${index}].coordinatorTaskId`,
+    ),
     ...optionalIcon(value.icon, `projects[${index}].icon`),
   };
 }
@@ -141,6 +156,20 @@ function projectName(value: string): string {
     throw new Error('project name must contain 1-64 display characters');
   }
   return normalized;
+}
+
+function optionalCoordinatorTaskId(
+  value: string | undefined,
+  setting: string,
+): { readonly coordinatorTaskId?: string } {
+  if (value === undefined) {
+    return {};
+  }
+  const normalized = value.trim();
+  if (!SAFE_TASK_ID.test(normalized)) {
+    throw new Error(`${setting} must be a safe 1-128 character task identifier`);
+  }
+  return { coordinatorTaskId: normalized };
 }
 
 function absoluteProjectRoot(value: string, setting: string): string {

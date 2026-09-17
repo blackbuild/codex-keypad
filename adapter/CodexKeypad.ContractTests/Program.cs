@@ -27,6 +27,21 @@ try
             && state!.View.Tiles[1].Action is OpenCodexTaskAction { ThreadId: "thread-123" });
     });
 
+    Run("accepts a project-icon coordinator before the task-view Back tile", () =>
+    {
+        File.WriteAllText(fixturePath, CoordinatorTaskView());
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.View.Tiles[0] is
+            {
+                Role: "coordinator",
+                IconPath: "/icons/codex-keypad.png",
+                Action: OpenCodexTaskAction { ThreadId: "hive-thread" },
+            }
+            && state.View.Tiles[1].Id == "nav.back"
+            && state.View.Tiles[1].Action is OpenProjectOverviewAction);
+    });
+
     Run("rejects a redundant Back tile in the project overview", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview().Replace(
@@ -107,7 +122,7 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
@@ -136,7 +151,7 @@ static String ProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
@@ -153,6 +168,39 @@ static String TaskView(String taskActionType, String threadId) => $$"""
         "label": "Exact task · Working",
         "status": "working",
         "action": { "type": "{{taskActionType}}", "threadId": "{{threadId}}" }
+      }
+    ]
+  }
+}
+""";
+
+static String CoordinatorTaskView() => """
+{
+  "schemaVersion": 6,
+  "revision": "task-view:hive-thread:456",
+  "entry": {
+    "id": "codex",
+    "label": "Codex · 1 active",
+    "action": { "type": "open-project-overview" }
+  },
+  "view": {
+    "level": "task-view",
+    "title": "Codex Keypad",
+    "tiles": [
+      {
+        "id": "task:hive-thread",
+        "label": "Codex Keypad Hive · Working",
+        "iconPath": "/icons/codex-keypad.png",
+        "role": "coordinator",
+        "status": "working",
+        "action": { "type": "open-codex-task", "threadId": "hive-thread" }
+      },
+      { "id": "nav.back", "label": "Back", "action": { "type": "open-project-overview" } },
+      {
+        "id": "task:worker-thread",
+        "label": "Worker · Working",
+        "status": "working",
+        "action": { "type": "open-codex-task", "threadId": "worker-thread" }
       }
     ]
   }
@@ -178,7 +226,7 @@ static String ManyTaskView(Int32 taskCount)
     }));
     return JsonSerializer.Serialize(new
     {
-        schemaVersion = 5,
+        schemaVersion = 6,
         revision = "many-tasks:456",
         entry = new
         {

@@ -46,12 +46,13 @@ test('reports all current workers exactly while preserving project order', () =>
 
 test('includes configured repository roots with the Codex project root', () => {
   const requestedRoots: Array<readonly string[]> = [];
-  readProjectStates(
+  const states = readProjectStates(
     [{
       id: 'hive',
       name: 'Hive',
       root: '/projects/hive',
       repositories: ['/projects/hive/repo', '/projects/hive/other-repo'],
+      coordinatorTaskId: 'hive-thread',
     }],
     (roots) => {
       requestedRoots.push(roots);
@@ -65,6 +66,7 @@ test('includes configured repository roots with the Codex project root', () => {
     '/projects/hive/repo',
     '/projects/hive/other-repo',
   ]]);
+  assert.equal(states[0]?.coordinatorTaskId, 'hive-thread');
 });
 
 test('includes every active project task independently of the worker count', () => {
