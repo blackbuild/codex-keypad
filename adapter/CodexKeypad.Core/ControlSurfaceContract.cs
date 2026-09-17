@@ -24,6 +24,7 @@ public sealed record ControlSurfaceTile(
     String Label,
     String? IconPath,
     String? Status,
+    String? Role,
     SemanticAction Action);
 
 public abstract record SemanticAction(
@@ -31,13 +32,6 @@ public abstract record SemanticAction(
 
 public sealed record OpenProjectOverviewAction() :
     SemanticAction("open-project-overview");
-
-public sealed record OpenProjectPageAction(
-    [property: JsonProperty("page")] Int32 Page) :
-    SemanticAction("open-project-page");
-
-public sealed record CloseControlSurfaceAction() :
-    SemanticAction("close-control-surface");
 
 public sealed record OpenTaskViewAction(
     [property: JsonProperty("projectId")] String ProjectId) :
@@ -49,7 +43,8 @@ public sealed record OpenCodexTaskAction(
 
 public static partial class ControlSurfaceContract
 {
-    private const Int32 MaximumContractBytes = 64 * 1024;
+    private const Int32 MaximumContractBytes = 256 * 1024;
+    private const Int32 MaximumTiles = 257;
     private const Int32 MaximumLabelLength = 80;
     private static readonly HashSet<String> TaskStatuses =
     [
@@ -59,6 +54,7 @@ public static partial class ControlSurfaceContract
         "completed",
         "failed",
         "interrupted",
+        "unavailable",
     ];
 
     public static Boolean TryRead(String path, out ControlSurfaceState? state)
@@ -84,14 +80,14 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 2
+        if (wire.SchemaVersion != 7
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
             || !IsLabel(wire.Entry.Label)
             || !IsAction(wire.Entry.Action, "open-project-overview")
             || !IsLabel(wire.View.Title)
-            || wire.View.Tiles.Count is < 1 or > 9)
+            || wire.View.Tiles.Count > MaximumTiles)
         {
             return false;
         }
@@ -124,7 +120,8 @@ public static partial class ControlSurfaceContract
         tile = null;
         if (!IsSafeTileId(wire.Id)
             || !IsLabel(wire.Label)
-            || wire.IconPath is not null && !IsIconPath(wire.IconPath))
+            || wire.IconPath is not null && !IsIconPath(wire.IconPath)
+            || wire.Role is not null and not "coordinator")
         {
             return false;
         }
@@ -133,12 +130,6 @@ public static partial class ControlSurfaceContract
         {
             "open-project-overview" when IsAction(wire.Action, "open-project-overview") =>
                 new OpenProjectOverviewAction(),
-            "open-project-page" when wire.Action.ProjectId is null
-                && wire.Action.ThreadId is null
-                && wire.Action.Page is >= 0 and <= 63 =>
-                new OpenProjectPageAction(wire.Action.Page.Value),
-            "close-control-surface" when IsAction(wire.Action, "close-control-surface") =>
-                new CloseControlSurfaceAction(),
             "open-task-view" when wire.Action.ThreadId is null
                 && wire.Action.Page is null
                 && IsSafeIdentifier(wire.Action.ProjectId) =>
@@ -154,16 +145,18 @@ public static partial class ControlSurfaceContract
             return false;
         }
 
-        tile = new ControlSurfaceTile(wire.Id, wire.Label, wire.IconPath, wire.Status, action);
+        tile = new ControlSurfaceTile(
+            wire.Id,
+            wire.Label,
+            wire.IconPath,
+            wire.Status,
+            wire.Role,
+            action);
         return true;
     }
 
     private static Boolean IsValidView(String level, IReadOnlyList<ControlSurfaceTile> tiles)
     {
-        if (tiles[0].Id != "nav.back")
-        {
-            return false;
-        }
         if (tiles.Select(tile => tile.Id).Distinct(StringComparer.Ordinal).Count() != tiles.Count)
         {
             return false;
@@ -171,38 +164,51 @@ public static partial class ControlSurfaceContract
 
         if (level == "project-overview")
         {
-            if (tiles[0].Action is not CloseControlSurfaceAction
-                || tiles[0].Status is not null
-                || tiles[0].IconPath is not null)
+            return tiles.All(tile => tile switch
             {
-                return false;
-            }
-
-            return tiles.Skip(1).All(tile => tile switch
-            {
-                { Action: OpenTaskViewAction projectAction, Status: null }
+                { Action: OpenTaskViewAction projectAction, Status: null, Role: null }
                     when tile.Id == $"project:{projectAction.ProjectId}" => true,
-                { Id: "page.previous" or "page.next", IconPath: null, Status: null,
-                    Action: OpenProjectPageAction } => true,
                 _ => false,
             });
         }
 
-        if (level != "task-view"
-            || tiles[0].Action is not OpenProjectOverviewAction
-            || tiles[0].Status is not null
-            || tiles[0].IconPath is not null)
+        if (level != "task-view" || tiles.Count == 0)
         {
             return false;
         }
 
-        return tiles.Count == 1
-            || tiles.Count == 2
-                && tiles[1].Action is OpenCodexTaskAction taskAction
-                && tiles[1].Id == $"task:{taskAction.ThreadId}"
-                && tiles[1].IconPath is null
-                && tiles[1].Status is not null
-                && TaskStatuses.Contains(tiles[1].Status!);
+        var backIndexes = tiles
+            .Select((tile, index) => (tile, index))
+            .Where(entry => entry.tile.Id == "nav.back")
+            .Select(entry => entry.index)
+            .ToArray();
+        var coordinatorIndexes = tiles
+            .Select((tile, index) => (tile, index))
+            .Where(entry => entry.tile.Role == "coordinator")
+            .Select(entry => entry.index)
+            .ToArray();
+        var expectedBackIndex = coordinatorIndexes.Length == 1 ? 1 : 0;
+        if (backIndexes is not [var backIndex]
+            || coordinatorIndexes.Length > 1
+            || coordinatorIndexes.Length == 1 && coordinatorIndexes[0] != 0
+            || backIndex != expectedBackIndex
+            || tiles[backIndex].Action is not OpenProjectOverviewAction
+            || tiles[backIndex].Status is not null
+            || tiles[backIndex].IconPath is not null
+            || tiles[backIndex].Role is not null)
+        {
+            return false;
+        }
+
+        return tiles.Where((_, index) => index != backIndex).All(tile => tile switch
+        {
+            { Action: OpenCodexTaskAction taskAction }
+                when tile.Id == $"task:{taskAction.ThreadId}"
+                    && tile.Status is not null
+                    && TaskStatuses.Contains(tile.Status)
+                    && (tile.Role == "coordinator" || tile.IconPath is null) => true,
+            _ => false,
+        });
     }
 
     private static Boolean IsAction(WireAction action, String type) =>
@@ -283,6 +289,9 @@ public static partial class ControlSurfaceContract
 
         [JsonProperty("status")]
         public String? Status { get; init; }
+
+        [JsonProperty("role")]
+        public String? Role { get; init; }
 
         [JsonProperty("action", Required = Required.Always)]
         public WireAction Action { get; init; } = new();

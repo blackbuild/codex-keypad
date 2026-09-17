@@ -21,11 +21,33 @@ particular local workspace layout.
 
 The live adapter uses a C# dynamic-folder package. A fixed TypeScript sidecar owns
 the semantic navigation state machine and publishes its current view for the
-configured projects and at most one task in the selected project as versioned,
-normalized JSON. It also owns deterministic project order and nine-key page
-selection. The C# adapter strictly validates that contract, renders configured
-project icons, and relays typed action requests back to TypeScript.
+configured projects and bounded non-archived tasks in the selected project as
+versioned, normalized JSON. It also owns deterministic project/task order,
+slot reuse, and exact-task validation. The C# adapter strictly validates that
+contract, exposes the complete ordered action list, renders configured project
+icons, and relays typed semantic action requests back to TypeScript. The Logitech
+runtime creates overflow touch pages and uses the device's native page controls;
+the product does not add synthetic Previous or Next tiles.
+
+A configured project root is the Codex task working directory. Optional
+repository roots extend task association to nested or otherwise related Git
+working trees and all linked worktrees discovered from their Git metadata. The
+configuration names repository working trees rather than `.git` internals, and
+this association remains owned by the Codex state-source boundary.
+An optional explicit coordinator task identity distinguishes the stable Hive from
+delegated tasks that may share the same wrapper working directory. It accepts a
+raw ID or Codex thread deep link. A case-insensitive wildcard pattern provides a
+durable fallback across coordinator replacement: project patterns override the
+configuration-level default, and the first match in deterministic task order is
+selected. When present, the coordinator is pinned before the semantic Back tile
+and receives the project icon; all remaining tasks retain recency/identity
+ordering. This avoids guessing from shared working directories while allowing a
+stable policy independent of one task ID.
 The device Home behavior and the close effect are owned by the Logitech runtime.
+Accordingly, the project overview contains no redundant product Back tile; native
+Back/Home exits to the surrounding Logitech profile. The selected-project task
+view retains one semantic Back tile because it returns to the project overview
+without closing the dynamic folder.
 The issue 4 one-project path completed its bounded physical-device smoke test.
 The superseded TypeScript startup-snapshot plugin was removed after that
 validation, leaving the live adapter as the single package path. The issue 5
@@ -35,13 +57,15 @@ and a worker count from a linked Codex worktree without restarting Options+.
 Custom project icons and multi-page project navigation remain automated-only
 evidence for issue 5.
 
-TypeScript accepts only the normalized `open-project-overview`,
-`open-project-page`, `open-task-view`, and `open-codex-task` requests. Project
-and page routes must match the current configuration, and the task action must
-match the current selected-project task. Tasks are opened by the existing
+TypeScript accepts only the normalized `open-project-overview`, `open-task-view`,
+and `open-codex-task` requests. Project routes must match the current
+configuration, and the task action must match a current task in the selected
+project. Pagination remains native device navigation rather than a semantic
+product action. Tasks are opened by the existing
 shell-free, validated Codex deep-link adapter. Unknown action types and unknown
-JSON members are rejected. General task population remains a later roadmap
-slice.
+JSON members are rejected. Task labels use normalized task names or an opaque
+identifier fallback, never raw prompt or transcript content. Attention
+aggregation and agent-customized layouts remain later roadmap slices.
 
 ## Target navigation model
 

@@ -28,10 +28,7 @@ do {
   try {
     const projects = readProjectStates(
       configuredProjects(),
-      (projectRoot) => createDefaultCodexTaskSource({
-        ...process.env,
-        CODEX_KEYPAD_PROJECT_ROOT: projectRoot,
-      }),
+      (projectRoots) => createDefaultCodexTaskSource(process.env, projectRoots),
     );
     const action = await inbox.take();
     if (action) {

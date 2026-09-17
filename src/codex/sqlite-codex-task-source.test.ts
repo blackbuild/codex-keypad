@@ -31,8 +31,32 @@ after(async () => {
   await rm(fixtureDirectory, { recursive: true, force: true });
 });
 
-test('returns only current, top-level Codex Desktop work', () => {
-  assert.deepEqual(source.listActiveTasks(9), [
+test('returns non-archived top-level Codex Desktop tasks with normalized states', () => {
+  assert.deepEqual(source.listTasks(10), [
+    {
+      id: 'finished',
+      title: 'Finished',
+      status: 'completed',
+      updatedAt: 7000,
+    },
+    {
+      id: 'failed-task',
+      title: 'Failed task',
+      status: 'failed',
+      updatedAt: 6900,
+    },
+    {
+      id: 'interrupted-task',
+      title: 'Interrupted task',
+      status: 'interrupted',
+      updatedAt: 6800,
+    },
+    {
+      id: 'unknown-status-task',
+      title: 'Unknown status task',
+      status: 'unavailable',
+      updatedAt: 6700,
+    },
     {
       id: 'desktop-new',
       title: 'Named current task',
@@ -41,7 +65,7 @@ test('returns only current, top-level Codex Desktop work', () => {
     },
     {
       id: 'desktop-legacy',
-      title: 'Fallback heading',
+      title: 'Task · desktop-legacy',
       status: 'working',
       updatedAt: 3000,
     },
@@ -72,10 +96,29 @@ test('returns only current, top-level Codex Desktop work', () => {
   ]);
 });
 
+test('keeps an otherwise included task when its raw status is unknown', () => {
+  assert.deepEqual(
+    source.listTasks(20).find(({ id }) => id === 'unknown-status-task'),
+    {
+      id: 'unknown-status-task',
+      title: 'Unknown status task',
+      status: 'unavailable',
+      updatedAt: 6700,
+    },
+  );
+});
+
 test('applies the requested LCD slot limit', () => {
-  assert.equal(source.listActiveTasks(1).length, 1);
-  assert.deepEqual(source.listActiveTasks(0), []);
-  assert.throws(() => source.listActiveTasks(-1), RangeError);
+  assert.equal(source.listTasks(1).length, 1);
+  assert.deepEqual(source.listTasks(0), []);
+  assert.throws(() => source.listTasks(-1), RangeError);
+});
+
+test('does not expose a stored prompt when a task has no display name', () => {
+  const unnamed = source.listTasks(9).find(({ id }) => id === 'desktop-legacy');
+
+  assert.equal(unnamed?.title, 'Task · desktop-legacy');
+  assert.equal(unnamed?.title.includes('Fallback heading'), false);
 });
 
 test('counts only agent-created, forked, or handed-off sessions as active workers', () => {
@@ -85,18 +128,30 @@ test('counts only agent-created, forked, or handed-off sessions as active worker
     'desktop-created',
     'desktop-forked',
   ]);
+  assert.equal(
+    source.listActiveWorkerTasks(20).some(({ id }) => id === 'unknown-status-task'),
+    false,
+  );
+});
+
+test('keeps archived, unrelated, and non-top-level tasks excluded', () => {
+  const includedIds = source.listTasks(20).map(({ id }) => id);
+
+  assert.equal(includedIds.includes('archived-task'), false);
+  assert.equal(includedIds.includes('other-app'), false);
+  assert.equal(includedIds.includes('subagent'), false);
 });
 
 test('can limit active tasks to one configured project root', () => {
   const projectSource = new SqliteCodexTaskSource({
     stateDatabase: join(fixtureDirectory, 'state.sqlite'),
     historyDatabase: join(fixtureDirectory, 'history.sqlite'),
-    workingDirectory: '/projects/codex-keypad',
+    workingDirectories: ['/projects/codex-keypad'],
   });
 
   assert.deepEqual(
-    projectSource.listActiveTasks(9).map((task) => task.id),
-    ['desktop-new'],
+    projectSource.listTasks(9).map((task) => task.id),
+    ['finished', 'desktop-new'],
   );
 });
 
@@ -104,12 +159,25 @@ test('associates a Codex worktree worker with its configured Git project', () =>
   const projectSource = new SqliteCodexTaskSource({
     stateDatabase: join(fixtureDirectory, 'state.sqlite'),
     historyDatabase: join(fixtureDirectory, 'history.sqlite'),
-    workingDirectory: configuredRepositoryRoot,
+    workingDirectories: [configuredRepositoryRoot],
   });
 
   assert.deepEqual(
     projectSource.listActiveWorkerTasks(9).map((task) => task.id),
     ['worktree-worker'],
+  );
+});
+
+test('combines a Codex project root with nested repositories and their worktrees', () => {
+  const projectSource = new SqliteCodexTaskSource({
+    stateDatabase: join(fixtureDirectory, 'state.sqlite'),
+    historyDatabase: join(fixtureDirectory, 'history.sqlite'),
+    workingDirectories: ['/projects/codex-keypad', configuredRepositoryRoot],
+  });
+
+  assert.deepEqual(
+    projectSource.listTasks(9).map((task) => task.id),
+    ['finished', 'desktop-new', 'worktree-worker'],
   );
 });
 
@@ -146,6 +214,14 @@ function createStateFixture(databasePath: string): void {
     'JetBrains.IntelliJ IDEA', 'user', '/projects/codex-keypad');
   addThread(database, 'finished', 'Finished', 'Finished', 7000,
     'Codex Desktop', 'user', '/projects/codex-keypad');
+  addThread(database, 'failed-task', 'Failed task', 'Failed task', 6900,
+    'Codex Desktop', 'user', '/projects/elsewhere');
+  addThread(database, 'interrupted-task', 'Interrupted task', 'Interrupted task', 6800,
+    'Codex Desktop', 'user', '/projects/elsewhere');
+  addThread(database, 'unknown-status-task', 'Unknown status task', 'Unknown status task', 6700,
+    'Codex Desktop', 'agent_created_thread', '/projects/elsewhere');
+  addThread(database, 'archived-task', 'Archived task', 'Archived task', 8000,
+    'Codex Desktop', 'user', '/projects/elsewhere', 1);
   database.close();
 }
 
@@ -158,6 +234,7 @@ function addThread(
   originator: string,
   threadSource: string,
   workingDirectory: string,
+  archived = 0,
 ): void {
   const rolloutPath = join(fixtureDirectory, 'rollouts', `${id}.jsonl`);
   writeFileSync(rolloutPath, `${JSON.stringify({
@@ -172,8 +249,8 @@ function addThread(
   database.prepare(`
     INSERT INTO threads
       (id, name, title, rollout_path, cwd, recency_at_ms, source, archived)
-    VALUES (?, ?, ?, ?, ?, ?, 'vscode', 0)
-  `).run(id, name, title, rolloutPath, workingDirectory, recencyAt);
+    VALUES (?, ?, ?, ?, ?, ?, 'vscode', ?)
+  `).run(id, name, title, rolloutPath, workingDirectory, recencyAt, archived);
 }
 
 function createHistoryFixture(databasePath: string): void {
@@ -197,6 +274,10 @@ function createHistoryFixture(databasePath: string): void {
   insert.run('other-app', 'turn-1', 1, 'inProgress');
   insert.run('finished', 'turn-1', 1, 'inProgress');
   insert.run('finished', 'turn-2', 2, 'completed');
+  insert.run('failed-task', 'turn-1', 1, 'failed');
+  insert.run('interrupted-task', 'turn-1', 1, 'interrupted');
+  insert.run('unknown-status-task', 'turn-1', 1, 'futureCodexState');
+  insert.run('archived-task', 'turn-1', 1, 'inProgress');
   database.close();
 }
 

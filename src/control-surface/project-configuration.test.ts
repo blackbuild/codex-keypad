@@ -22,11 +22,15 @@ test('reads configured project identity, root, and custom icon', async () => {
   await writeFile(
     join(configurationDirectory, 'config.json'),
     JSON.stringify({
+      coordinatorTaskPattern: '* Hive',
       projects: [
         {
           id: 'architecture',
           name: 'Architecture',
           root: '/projects/architecture',
+          repositories: ['/repositories/architecture'],
+          coordinatorTaskId: 'codex://threads/thread-coordinator',
+          coordinatorTaskPattern: 'Architecture Coordinator',
           icon: '/icons/architecture.png',
         },
         { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
@@ -39,9 +43,17 @@ test('reads configured project identity, root, and custom icon', async () => {
       id: 'architecture',
       name: 'Architecture',
       root: '/projects/architecture',
+      repositories: ['/repositories/architecture'],
+      coordinatorTaskId: 'thread-coordinator',
+      coordinatorTaskPattern: 'Architecture Coordinator',
       icon: '/icons/architecture.png',
     },
-    { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
+    {
+      id: 'codex-keypad',
+      name: 'Codex Keypad',
+      root: '/projects/codex-keypad',
+      coordinatorTaskPattern: '* Hive',
+    },
   ]);
 });
 
@@ -67,7 +79,7 @@ test('fails explicitly when neither process nor persistent configuration identif
   );
 });
 
-test('rejects duplicate project identities and relative icon paths', async () => {
+test('rejects duplicate project identities and relative repository or icon paths', async () => {
   const configurationDirectory = join(homeDirectory, 'Library', 'Application Support', 'Codex Keypad');
   await mkdir(configurationDirectory, { recursive: true });
   const configurationPath = join(configurationDirectory, 'config.json');
@@ -81,9 +93,48 @@ test('rejects duplicate project identities and relative icon paths', async () =>
   assert.throws(() => configuredProjects({}, homeDirectory), /project ids must be unique/);
 
   await writeFile(configurationPath, JSON.stringify({
+    projects: [{
+      id: 'safe',
+      name: 'Safe',
+      root: '/projects/safe',
+      repositories: ['repositories/safe'],
+    }],
+  }));
+  assert.throws(
+    () => configuredProjects({}, homeDirectory),
+    /repositories\[0\] must be an absolute project directory/,
+  );
+
+  await writeFile(configurationPath, JSON.stringify({
     projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe', icon: 'icon.png' }],
   }));
   assert.throws(() => configuredProjects({}, homeDirectory), /icon must be an absolute PNG path/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{
+      id: 'safe',
+      name: 'Safe',
+      root: '/projects/safe',
+      coordinatorTaskId: '../unsafe',
+    }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskId must be a safe/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{
+      id: 'safe',
+      name: 'Safe',
+      root: '/projects/safe',
+      coordinatorTaskId: 'codex://threads/safe-task?view=review',
+    }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskId must be a safe/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    coordinatorTaskPattern: '   ',
+    projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe' }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskPattern must contain/);
 });
 
 test('observes project additions without retaining a startup snapshot', async () => {

@@ -6,19 +6,17 @@ var actionPath = Path.Combine(Path.GetTempPath(), $"codex-keypad-action-{Guid.Ne
 
 try
 {
-    Run("accepts a normalized multi-project overview with a custom icon and page action", () =>
+    Run("accepts a normalized multi-project overview with a custom icon", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview());
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
         Expect(accepted
-            && state!.View.Tiles[0].Action is CloseControlSurfaceAction
-            && state.View.Tiles[1] is
+            && state!.View.Tiles[0] is
             {
                 IconPath: "/icons/architecture.png",
                 Action: OpenTaskViewAction { ProjectId: "architecture" },
             }
-            && state.View.Tiles[2].Action is OpenTaskViewAction { ProjectId: "codex-keypad" }
-            && state.View.Tiles[3].Action is OpenProjectPageAction { Page: 1 });
+            && state.View.Tiles[1].Action is OpenTaskViewAction { ProjectId: "codex-keypad" });
     });
 
     Run("accepts the normalized exact-task view", () =>
@@ -27,6 +25,46 @@ try
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
         Expect(accepted
             && state!.View.Tiles[1].Action is OpenCodexTaskAction { ThreadId: "thread-123" });
+    });
+
+    Run("accepts only the normalized unavailable fallback for an unknown task state", () =>
+    {
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
+            "\"status\": \"working\"",
+            "\"status\": \"unavailable\"",
+            StringComparison.Ordinal));
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted && state!.View.Tiles[1].Status == "unavailable");
+
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
+            "\"status\": \"working\"",
+            "\"status\": \"futureCodexState\"",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+    });
+
+    Run("accepts a project-icon coordinator before the task-view Back tile", () =>
+    {
+        File.WriteAllText(fixturePath, CoordinatorTaskView());
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.View.Tiles[0] is
+            {
+                Role: "coordinator",
+                IconPath: "/icons/codex-keypad.png",
+                Action: OpenCodexTaskAction { ThreadId: "hive-thread" },
+            }
+            && state.View.Tiles[1].Id == "nav.back"
+            && state.View.Tiles[1].Action is OpenProjectOverviewAction);
+    });
+
+    Run("rejects a redundant Back tile in the project overview", () =>
+    {
+        File.WriteAllText(fixturePath, ProjectOverview().Replace(
+            "\"tiles\": [",
+            "\"tiles\": [\n      { \"id\": \"nav.back\", \"label\": \"Back\", \"action\": { \"type\": \"close-control-surface\" } },",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
     Run("publishes one typed semantic action request", () =>
@@ -38,15 +76,6 @@ try
             && root.GetProperty("requestId").GetString()!.Length == 32
             && root.GetProperty("action").GetProperty("type").GetString() == "open-task-view"
             && root.GetProperty("action").GetProperty("projectId").GetString() == "codex-keypad");
-    });
-
-    Run("publishes a bounded project page request", () =>
-    {
-        ControlSurfaceActionPublisher.Publish(actionPath, new OpenProjectPageAction(2));
-        using var document = JsonDocument.Parse(File.ReadAllText(actionPath));
-        var action = document.RootElement.GetProperty("action");
-        Expect(action.GetProperty("type").GetString() == "open-project-page"
-            && action.GetProperty("page").GetInt32() == 2);
     });
 
     Run("rejects an arbitrary executable action", () =>
@@ -61,37 +90,22 @@ try
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
-    Run("rejects an unsafe icon path and out-of-range page", () =>
+    Run("rejects an unsafe icon path", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview().Replace(
             "/icons/architecture.png",
             "icons/architecture.png",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
-
-        File.WriteAllText(fixturePath, ProjectOverview().Replace(
-            "\"page\": 1",
-            "\"page\": 64",
-            StringComparison.Ordinal));
-        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
-    Run("rejects extra task-view tiles before issue 6", () =>
+    Run("accepts enough ordered task tiles for native device pagination", () =>
     {
-        var extraTile = """
-,
-      {
-        "id": "task:another-thread",
-        "label": "Another task",
-        "status": "working",
-        "action": { "type": "open-codex-task", "threadId": "another-thread" }
-      }
-""";
-        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
-            "\n    ]",
-            $"{extraTile}    ]",
-            StringComparison.Ordinal));
-        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+        File.WriteAllText(fixturePath, ManyTaskView(10));
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.View.Tiles.Count == 11
+            && state.View.Tiles[^1].Action is OpenCodexTaskAction { ThreadId: "thread-10" });
     });
 
     Console.WriteLine("Adapter contract tests passed.");
@@ -124,7 +138,7 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 2,
+  "schemaVersion": 7,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
@@ -135,7 +149,6 @@ static String ProjectOverview() => """
     "level": "project-overview",
     "title": "Projects",
     "tiles": [
-      { "id": "nav.back", "label": "Back", "action": { "type": "close-control-surface" } },
       {
         "id": "project:architecture",
         "label": "Architecture · 2 active",
@@ -146,11 +159,6 @@ static String ProjectOverview() => """
         "id": "project:codex-keypad",
         "label": "Codex Keypad · 1 active",
         "action": { "type": "open-task-view", "projectId": "codex-keypad" }
-      },
-      {
-        "id": "page.next",
-        "label": "Next · 2/2",
-        "action": { "type": "open-project-page", "page": 1 }
       }
     ]
   }
@@ -159,7 +167,7 @@ static String ProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 2,
+  "schemaVersion": 7,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
@@ -173,7 +181,7 @@ static String TaskView(String taskActionType, String threadId) => $$"""
       { "id": "nav.back", "label": "Back", "action": { "type": "open-project-overview" } },
       {
         "id": "task:{{threadId}}",
-        "label": "Exact task",
+        "label": "Exact task · Working",
         "status": "working",
         "action": { "type": "{{taskActionType}}", "threadId": "{{threadId}}" }
       }
@@ -181,3 +189,67 @@ static String TaskView(String taskActionType, String threadId) => $$"""
   }
 }
 """;
+
+static String CoordinatorTaskView() => """
+{
+  "schemaVersion": 7,
+  "revision": "task-view:hive-thread:456",
+  "entry": {
+    "id": "codex",
+    "label": "Codex · 1 active",
+    "action": { "type": "open-project-overview" }
+  },
+  "view": {
+    "level": "task-view",
+    "title": "Codex Keypad",
+    "tiles": [
+      {
+        "id": "task:hive-thread",
+        "label": "Codex Keypad Hive · Working",
+        "iconPath": "/icons/codex-keypad.png",
+        "role": "coordinator",
+        "status": "working",
+        "action": { "type": "open-codex-task", "threadId": "hive-thread" }
+      },
+      { "id": "nav.back", "label": "Back", "action": { "type": "open-project-overview" } },
+      {
+        "id": "task:worker-thread",
+        "label": "Worker · Working",
+        "status": "working",
+        "action": { "type": "open-codex-task", "threadId": "worker-thread" }
+      }
+    ]
+  }
+}
+""";
+
+static String ManyTaskView(Int32 taskCount)
+{
+    var tiles = new Object[]
+    {
+        new
+        {
+            id = "nav.back",
+            label = "Back",
+            action = new { type = "open-project-overview" },
+        },
+    }.Concat(Enumerable.Range(1, taskCount).Select(index => (Object)new
+    {
+        id = $"task:thread-{index}",
+        label = $"Task {index} · Working",
+        status = "working",
+        action = new { type = "open-codex-task", threadId = $"thread-{index}" },
+    }));
+    return JsonSerializer.Serialize(new
+    {
+        schemaVersion = 7,
+        revision = "many-tasks:456",
+        entry = new
+        {
+            id = "codex",
+            label = "Codex · 10 active",
+            action = new { type = "open-project-overview" },
+        },
+        view = new { level = "task-view", title = "Codex Keypad", tiles },
+    });
+}

@@ -5,15 +5,15 @@ import type { CodexTaskSource } from '../codex/codex-task-source.ts';
 import { readProjectStates } from './project-state-source.ts';
 
 test('reports all current workers exactly while preserving project order', () => {
-  const requestedRoots: string[] = [];
+  const requestedRoots: Array<readonly string[]> = [];
   const states = readProjectStates(
     [
       { id: 'second', name: 'Second', root: '/projects/second', icon: '/icons/second.png' },
       { id: 'first', name: 'First', root: '/projects/first' },
     ],
-    (root) => {
-      requestedRoots.push(root);
-      return source(root === '/projects/second' ? 2 : 0);
+    (roots) => {
+      requestedRoots.push(roots);
+      return source(roots[0] === '/projects/second' ? 2 : 0);
     },
     {
       readIconMetadata: () => ({ isFile: true, size: 4096, modifiedAt: 1234 }),
@@ -22,7 +22,10 @@ test('reports all current workers exactly while preserving project order', () =>
     },
   );
 
-  assert.deepEqual(requestedRoots, ['/projects/second', '/projects/first']);
+  assert.deepEqual(requestedRoots, [
+    ['/projects/second'],
+    ['/projects/first'],
+  ]);
   assert.deepEqual(states.map(({ project, activeWorkerCount }) => ({ project, activeWorkerCount })), [
     {
       project: {
@@ -37,6 +40,57 @@ test('reports all current workers exactly while preserving project order', () =>
       activeWorkerCount: { availability: 'available', count: 0, truncated: false },
     },
   ]);
+  assert.deepEqual(states[0]?.tasks.map(({ id }) => id), ['task-0', 'task-1']);
+  assert.deepEqual(states[1]?.tasks, []);
+});
+
+test('includes configured repository roots with the Codex project root', () => {
+  const requestedRoots: Array<readonly string[]> = [];
+  const states = readProjectStates(
+    [{
+      id: 'hive',
+      name: 'Hive',
+      root: '/projects/hive',
+      repositories: ['/projects/hive/repo', '/projects/hive/other-repo'],
+      coordinatorTaskId: 'hive-thread',
+      coordinatorTaskPattern: '* Hive',
+    }],
+    (roots) => {
+      requestedRoots.push(roots);
+      return source(0);
+    },
+    { isProjectDirectory: () => true, now: () => 1000 },
+  );
+
+  assert.deepEqual(requestedRoots, [[
+    '/projects/hive',
+    '/projects/hive/repo',
+    '/projects/hive/other-repo',
+  ]]);
+  assert.equal(states[0]?.coordinatorTaskId, 'hive-thread');
+  assert.equal(states[0]?.coordinatorTaskPattern, '* Hive');
+});
+
+test('includes every active project task independently of the worker count', () => {
+  const tasks = [
+    { id: 'coordinator', title: 'Project coordinator', status: 'working' as const, updatedAt: 3000 },
+    { id: 'worker', title: 'Bounded worker', status: 'working' as const, updatedAt: 2000 },
+  ];
+  const states = readProjectStates(
+    [{ id: 'project', name: 'Project', root: '/projects/project' }],
+    () => ({
+      listTasks: (limit) => tasks.slice(0, limit),
+      listActiveWorkerTasks: () => [tasks[1]!],
+    }),
+    { isProjectDirectory: () => true, now: () => 3000 },
+  );
+
+  assert.deepEqual(states[0]?.tasks, tasks);
+  assert.deepEqual(states[0]?.activeWorkerCount, {
+    availability: 'available',
+    count: 1,
+    truncated: false,
+  });
 });
 
 test('reports an unavailable source independently and bounds large current counts', () => {
@@ -45,8 +99,8 @@ test('reports an unavailable source independently and bounds large current count
       { id: 'missing', name: 'Missing', root: '/projects/missing' },
       { id: 'busy', name: 'Busy', root: '/projects/busy' },
     ],
-    (root) => {
-      if (root.endsWith('/missing')) {
+    (roots) => {
+      if (roots[0]?.endsWith('/missing')) {
         throw new Error('database unavailable');
       }
       return source(100);
@@ -116,7 +170,7 @@ test('preserves current workers as a lower bound when stale workers are also ret
     count: 1,
     truncated: true,
   });
-  assert.equal(states[0]?.task?.id, 'thread-0');
+  assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
 
 test('reports implausibly future-dated worker evidence as unavailable', () => {
@@ -128,7 +182,7 @@ test('reports implausibly future-dated worker evidence as unavailable', () => {
   );
 
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
-  assert.equal(states[0]?.task, undefined);
+  assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
 
 function source(count: number): CodexTaskSource {
@@ -137,7 +191,14 @@ function source(count: number): CodexTaskSource {
 
 function sourceWithUpdatedAt(...updatedAt: readonly number[]): CodexTaskSource {
   return {
-    listActiveTasks: () => [],
+    listTasks: (limit) => updatedAt
+      .slice(0, limit)
+      .map((timestamp, index) => ({
+        id: `task-${index}`,
+        title: `Task ${index}`,
+        status: 'working',
+        updatedAt: timestamp,
+      })),
     listActiveWorkerTasks: (limit) => updatedAt
       .slice(0, limit)
       .map((timestamp, index) => ({

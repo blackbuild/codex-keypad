@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import type { DatabaseSync as NodeDatabaseSync } from 'node:sqlite';
 
-import type { CodexTask, CodexTaskSource } from './codex-task-source.ts';
+import type { CodexTask, CodexTaskSource, CodexTaskStatus } from './codex-task-source.ts';
 import {
   isCodexDesktopWorkerSession,
   isTopLevelCodexDesktopSession,
@@ -12,6 +12,7 @@ import {
 
 const MAXIMUM_GIT_POINTER_BYTES = 4096;
 const MAXIMUM_LINKED_WORKTREES = 256;
+type TaskQuery = 'included-tasks' | 'active-workers';
 
 // esbuild strips the `node:` prefix from this newer built-in when bundling it as
 // an external import. Resolve it at runtime so the packaged sidecar keeps the
@@ -23,7 +24,6 @@ const { DatabaseSync } = createNodeRequire(import.meta.url)(
 interface ThreadRow {
   readonly id: string;
   readonly name: string | null;
-  readonly title: string;
   readonly rollout_path: string;
   readonly recency_at_ms: number;
 }
@@ -31,7 +31,7 @@ interface ThreadRow {
 export interface SqliteCodexTaskSourceOptions {
   readonly stateDatabase: string;
   readonly historyDatabase: string;
-  readonly workingDirectory?: string;
+  readonly workingDirectories?: readonly string[];
 }
 
 export class SqliteCodexTaskSource implements CodexTaskSource {
@@ -41,17 +41,18 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
     this.options = options;
   }
 
-  listActiveTasks(limit: number): CodexTask[] {
-    return this.listMatchingActiveTasks(limit, isTopLevelCodexDesktopSession);
+  listTasks(limit: number): CodexTask[] {
+    return this.listMatchingTasks(limit, isTopLevelCodexDesktopSession, 'included-tasks');
   }
 
   listActiveWorkerTasks(limit: number): CodexTask[] {
-    return this.listMatchingActiveTasks(limit, isCodexDesktopWorkerSession);
+    return this.listMatchingTasks(limit, isCodexDesktopWorkerSession, 'active-workers');
   }
 
-  private listMatchingActiveTasks(
+  private listMatchingTasks(
     limit: number,
     matchesSession: (rolloutPath: string, threadId: string) => boolean,
+    query: TaskQuery,
   ): CodexTask[] {
     if (!Number.isSafeInteger(limit) || limit < 0) {
       throw new RangeError('limit must be a non-negative integer');
@@ -60,21 +61,21 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
       return [];
     }
 
-    const activeThreadIds = this.readActiveThreadIds();
-    if (activeThreadIds.size === 0) {
+    const statuses = this.readThreadStatuses();
+    if (statuses.size === 0) {
       return [];
     }
 
     const database = new DatabaseSync(this.options.stateDatabase, { readOnly: true });
     try {
-      const workingDirectories = this.options.workingDirectory
-        ? projectWorkingDirectories(this.options.workingDirectory)
-        : [];
+      const workingDirectories = [...new Set(
+        (this.options.workingDirectories ?? []).flatMap(projectWorkingDirectories),
+      )];
       const workingDirectoryFilter = workingDirectories.length > 0
         ? `AND cwd IN (${workingDirectories.map(() => '?').join(', ')})`
         : '';
       const rows = database.prepare(`
-        SELECT id, name, title, rollout_path, recency_at_ms
+        SELECT id, name, rollout_path, recency_at_ms
         FROM threads
         WHERE archived = 0 AND source = 'vscode' ${workingDirectoryFilter}
         ORDER BY recency_at_ms DESC, id DESC
@@ -83,13 +84,14 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
       ) as unknown as ThreadRow[];
 
       return rows
-        .filter((row) => activeThreadIds.has(row.id))
+        .filter((row) => statuses.has(row.id))
+        .filter((row) => query === 'included-tasks' || statuses.get(row.id) === 'working')
         .filter((row) => matchesSession(row.rollout_path, row.id))
         .slice(0, limit)
         .map((row) => ({
           id: row.id,
-          title: taskTitle(row.name, row.title),
-          status: 'working',
+          title: taskTitle(row.name, row.id),
+          status: statuses.get(row.id)!,
           updatedAt: row.recency_at_ms,
         }));
     } finally {
@@ -97,11 +99,11 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
     }
   }
 
-  private readActiveThreadIds(): Set<string> {
+  private readThreadStatuses(): ReadonlyMap<string, CodexTaskStatus> {
     const database = new DatabaseSync(this.options.historyDatabase, { readOnly: true });
     try {
       const rows = database.prepare(`
-        SELECT thread_id
+        SELECT thread_id, status
         FROM (
           SELECT
             thread_id,
@@ -112,12 +114,23 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
             ) AS newest
           FROM thread_turns
         )
-        WHERE newest = 1 AND status = 'inProgress'
-      `).all() as unknown as Array<{ readonly thread_id: string }>;
-      return new Set(rows.map((row) => row.thread_id));
+        WHERE newest = 1
+      `).all() as unknown as Array<{ readonly thread_id: string; readonly status: string }>;
+      return new Map(rows.map((row) =>
+        [row.thread_id, normalizedStatus(row.status)] as const));
     } finally {
       database.close();
     }
+  }
+}
+
+function normalizedStatus(status: string): CodexTaskStatus {
+  switch (status) {
+    case 'inProgress': return 'working';
+    case 'completed': return 'completed';
+    case 'failed': return 'failed';
+    case 'interrupted': return 'interrupted';
+    default: return 'unavailable';
   }
 }
 
@@ -194,15 +207,20 @@ function readBoundedText(path: string): string {
 
 export function createDefaultCodexTaskSource(
   environment: NodeJS.ProcessEnv = process.env,
+  workingDirectories?: readonly string[],
 ): SqliteCodexTaskSource {
   const codexHome = environment.CODEX_HOME ?? join(homedir(), '.codex');
-  const workingDirectory = environment.CODEX_KEYPAD_PROJECT_ROOT;
+  const environmentRoot = environment.CODEX_KEYPAD_PROJECT_ROOT;
+  const configuredWorkingDirectories = workingDirectories
+    ?? (environmentRoot ? [environmentRoot] : []);
   return new SqliteCodexTaskSource({
     stateDatabase: environment.CODEX_STATE_DB
       ?? findLatestVersionedDatabase(codexHome, 'state'),
     historyDatabase: environment.CODEX_THREAD_HISTORY_DB
       ?? findLatestVersionedDatabase(codexHome, 'thread_history'),
-    ...(workingDirectory ? { workingDirectory } : {}),
+    ...(configuredWorkingDirectories.length > 0
+      ? { workingDirectories: configuredWorkingDirectories }
+      : {}),
   });
 }
 
@@ -219,7 +237,9 @@ function findLatestVersionedDatabase(directory: string, stem: string): string {
   return join(directory, match.fileName);
 }
 
-function taskTitle(name: string | null, fallback: string): string {
-  const candidate = name?.trim() || fallback.split(/\r?\n/, 1)[0]?.trim() || 'Untitled task';
-  return candidate.replace(/^#+\s*/, '').replace(/\s+/g, ' ');
+function taskTitle(name: string | null, threadId: string): string {
+  const candidate = name?.trim();
+  return candidate
+    ? candidate.replace(/\s+/g, ' ')
+    : `Task · ${threadId.length <= 16 ? threadId : threadId.slice(0, 8)}`;
 }

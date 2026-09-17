@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto';
 
 import type { CodexTask, CodexTaskStatus } from '../codex/codex-task-source.ts';
 
-const MAXIMUM_LCD_TILES = 9;
-
 export interface CodexProjectIdentity {
   readonly id: string;
   readonly name: string;
@@ -15,8 +13,10 @@ export interface CodexProjectIdentity {
 
 export interface CodexProjectState {
   readonly project: CodexProjectIdentity;
+  readonly coordinatorTaskId?: string;
+  readonly coordinatorTaskPattern?: string;
   readonly activeWorkerCount: ActiveWorkerCount;
-  readonly task?: CodexTask;
+  readonly tasks: readonly CodexTask[];
 }
 
 export type ActiveWorkerCount =
@@ -44,8 +44,6 @@ export type ControlSurfaceLevel = 'project-overview' | 'task-view';
 
 export type SemanticAction =
   | { readonly type: 'open-project-overview' }
-  | { readonly type: 'open-project-page'; readonly page: number }
-  | { readonly type: 'close-control-surface' }
   | { readonly type: 'open-task-view'; readonly projectId: string }
   | { readonly type: 'open-codex-task'; readonly threadId: string };
 
@@ -54,11 +52,12 @@ export interface ControlSurfaceTile {
   readonly label: string;
   readonly iconPath?: string;
   readonly status?: CodexTaskStatus;
+  readonly role?: 'coordinator';
   readonly action: SemanticAction;
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 7;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
@@ -74,7 +73,6 @@ export interface CodexControlSurfaceState {
 
 export interface ControlSurfaceLocation {
   readonly level?: ControlSurfaceLevel;
-  readonly projectPage?: number;
   readonly selectedProjectId?: string;
 }
 
@@ -82,9 +80,6 @@ export function buildProjectControlSurface(
   projects: readonly CodexProjectState[],
   location: ControlSurfaceLocation = {},
 ): CodexControlSurfaceState {
-  const pages = projectPages(projects);
-  const requestedPage = location.projectPage ?? 0;
-  const projectPage = Math.max(0, Math.min(requestedPage, pages.length - 1));
   const selected = location.selectedProjectId
     ? projects.find(({ project }) => project.id === location.selectedProjectId)
     : undefined;
@@ -93,8 +88,13 @@ export function buildProjectControlSurface(
     : 'project-overview';
 
   const tiles = level === 'task-view'
-    ? taskTiles(selected!)
-    : overviewTiles(pages, projectPage);
+    ? taskTiles(
+        selected!.tasks,
+        selected!.coordinatorTaskId,
+        selected!.coordinatorTaskPattern,
+        selected!.project.icon?.path,
+      )
+    : overviewTiles(projects);
   const entry = {
     id: 'codex' as const,
     label: `Codex · ${aggregateActiveWorkerSummary(projects)}`,
@@ -107,7 +107,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 7,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -117,61 +117,8 @@ export function buildProjectControlSurface(
   };
 }
 
-export function projectPageCount(projectCount: number): number {
-  if (!Number.isSafeInteger(projectCount) || projectCount < 0) {
-    throw new RangeError('projectCount must be a non-negative integer');
-  }
-  return projectPageSizes(projectCount).length;
-}
-
-function projectPages(projects: readonly CodexProjectState[]): readonly (readonly CodexProjectState[])[] {
-  let offset = 0;
-  return projectPageSizes(projects.length).map((size) => {
-    const page = projects.slice(offset, offset + size);
-    offset += size;
-    return page;
-  });
-}
-
-function projectPageSizes(projectCount: number): readonly number[] {
-  if (projectCount <= MAXIMUM_LCD_TILES - 1) {
-    return [projectCount];
-  }
-
-  const sizes = [MAXIMUM_LCD_TILES - 2];
-  let remaining = projectCount - sizes[0]!;
-  while (remaining > 0) {
-    const size = remaining <= MAXIMUM_LCD_TILES - 2
-      ? remaining
-      : MAXIMUM_LCD_TILES - 3;
-    sizes.push(size);
-    remaining -= size;
-  }
-  return sizes;
-}
-
-function overviewTiles(
-  pages: readonly (readonly CodexProjectState[])[],
-  page: number,
-): readonly ControlSurfaceTile[] {
-  return [
-    { id: 'nav.back', label: 'Back', action: { type: 'close-control-surface' } },
-    ...(page > 0
-      ? [{
-          id: 'page.previous',
-          label: `Previous · ${page}/${pages.length}`,
-          action: { type: 'open-project-page' as const, page: page - 1 },
-        }]
-      : []),
-    ...pages[page]!.map(projectTile),
-    ...(page < pages.length - 1
-      ? [{
-          id: 'page.next',
-          label: `Next · ${page + 2}/${pages.length}`,
-          action: { type: 'open-project-page' as const, page: page + 1 },
-        }]
-      : []),
-  ];
+function overviewTiles(projects: readonly CodexProjectState[]): readonly ControlSurfaceTile[] {
+  return projects.map(projectTile);
 }
 
 function projectTile(state: CodexProjectState): ControlSurfaceTile {
@@ -186,25 +133,100 @@ function projectTile(state: CodexProjectState): ControlSurfaceTile {
   };
 }
 
-function taskTiles(selected: CodexProjectState): readonly ControlSurfaceTile[] {
+function taskTiles(
+  tasks: readonly CodexTask[],
+  coordinatorTaskId?: string,
+  coordinatorTaskPattern?: string,
+  projectIconPath?: string,
+): readonly ControlSurfaceTile[] {
+  const ordered = [...tasks].sort((left, right) =>
+    right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
+  const coordinator = (coordinatorTaskId
+    ? ordered.find((task) => task.id === coordinatorTaskId)
+    : undefined)
+    ?? (coordinatorTaskPattern
+      ? ordered.find((task) => wildcardMatches(task.title, coordinatorTaskPattern))
+      : undefined);
+  const remaining = coordinator
+    ? ordered.filter((task) => task.id !== coordinator.id)
+    : ordered;
+  const back: ControlSurfaceTile = {
+    id: 'nav.back',
+    label: 'Back',
+    action: { type: 'open-project-overview' },
+  };
   return [
-    {
-      id: 'nav.back',
-      label: 'Back',
-      action: { type: 'open-project-overview' },
-    },
-    ...(selected.task
-      ? [{
-          id: `task:${selected.task.id}`,
-          label: compactLabel(selected.task.title, 40),
-          status: selected.task.status,
-          action: {
-            type: 'open-codex-task' as const,
-            threadId: selected.task.id,
-          },
-        }]
-      : []),
+    ...(coordinator ? [taskTile(coordinator, true, projectIconPath), back] : [back]),
+    ...remaining.map((task) => taskTile(task)),
   ];
+}
+
+function wildcardMatches(value: string, pattern: string): boolean {
+  const candidate = value.toLowerCase();
+  const wildcard = pattern.toLowerCase();
+  let candidateIndex = 0;
+  let patternIndex = 0;
+  let starIndex = -1;
+  let retryCandidateIndex = 0;
+
+  while (candidateIndex < candidate.length) {
+    if (patternIndex < wildcard.length
+      && (wildcard[patternIndex] === '?' || wildcard[patternIndex] === candidate[candidateIndex])) {
+      candidateIndex += 1;
+      patternIndex += 1;
+    } else if (wildcard[patternIndex] === '*') {
+      starIndex = patternIndex;
+      retryCandidateIndex = candidateIndex;
+      patternIndex += 1;
+    } else if (starIndex >= 0) {
+      patternIndex = starIndex + 1;
+      retryCandidateIndex += 1;
+      candidateIndex = retryCandidateIndex;
+    } else {
+      return false;
+    }
+  }
+
+  while (wildcard[patternIndex] === '*') {
+    patternIndex += 1;
+  }
+  return patternIndex === wildcard.length;
+}
+
+function taskTile(
+  task: CodexTask,
+  coordinator = false,
+  projectIconPath?: string,
+): ControlSurfaceTile {
+  const status = taskStatusLabel(task.status);
+  const identity = compactLabel(task.title, 80 - status.length - 3);
+  return {
+    id: `task:${task.id}`,
+    label: `${identity} · ${status}`,
+    ...(projectIconPath ? { iconPath: projectIconPath } : {}),
+    ...(coordinator ? { role: 'coordinator' as const } : {}),
+    status: task.status,
+    action: {
+      type: 'open-codex-task',
+      threadId: task.id,
+    },
+  };
+}
+
+function taskStatusLabel(status: CodexTaskStatus): string {
+  switch (status) {
+    case 'working': return 'Working';
+    case 'waiting-for-approval': return 'Waiting for approval';
+    case 'waiting-for-input': return 'Waiting for input';
+    case 'completed': return 'Completed';
+    case 'failed': return 'Failed';
+    case 'interrupted': return 'Interrupted';
+    case 'unavailable': return 'State unavailable';
+  }
+}
+
+function compareDescending(left: string, right: string): number {
+  return left < right ? 1 : left > right ? -1 : 0;
 }
 
 function aggregateActiveWorkerSummary(projects: readonly CodexProjectState[]): string {

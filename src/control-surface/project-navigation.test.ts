@@ -13,7 +13,7 @@ const task: CodexTask = {
 };
 const projects: readonly CodexProjectState[] = [
   project('architecture'),
-  { ...project('codex-keypad'), task },
+  { ...project('codex-keypad'), tasks: [task] },
 ];
 
 test('opens the task view for the matching project and returns to its overview', async () => {
@@ -26,19 +26,6 @@ test('opens the task view for the matching project and returns to its overview',
   assert.equal(navigation.snapshot(projects).view.title, 'codex-keypad');
   assert.equal(await navigation.perform({ type: 'open-project-overview' }, projects), true);
   assert.equal(navigation.snapshot(projects).view.level, 'project-overview');
-});
-
-test('accepts only project pages that exist for the current configuration', async () => {
-  const navigation = new ProjectNavigation(async () => undefined);
-  const manyProjects = Array.from({ length: 15 }, (_, index) => project(`project-${index}`));
-
-  assert.equal(await navigation.perform({ type: 'open-project-page', page: 2 }, manyProjects), true);
-  assert.equal(navigation.snapshot(manyProjects).view.tiles[2]?.id, 'project:project-13');
-  assert.equal(await navigation.perform({ type: 'open-project-page', page: 3 }, manyProjects), false);
-  assert.equal(await navigation.perform(
-    { type: 'open-project-page', page: 2 },
-    manyProjects.slice(0, 14),
-  ), false);
 });
 
 test('returns safely to the overview when the selected project is removed', async () => {
@@ -66,6 +53,31 @@ test('opens only the exact current task in the selected project', async () => {
   assert.deepEqual(opened, ['thread-123']);
 });
 
+test('reflects newly active and removed tasks without resetting navigation', async () => {
+  const navigation = new ProjectNavigation(async () => undefined);
+  await navigation.perform({ type: 'open-task-view', projectId: 'codex-keypad' }, projects);
+
+  const newlyActive: CodexTask = {
+    id: 'thread-new',
+    title: 'New task',
+    status: 'working',
+    updatedAt: 999,
+  };
+  const updated = [
+    project('architecture'),
+    { ...project('codex-keypad'), tasks: [newlyActive] },
+  ];
+
+  assert.deepEqual(navigation.snapshot(updated).view.tiles.map(({ id }) => id), [
+    'nav.back',
+    'task:thread-new',
+  ]);
+  assert.equal(await navigation.perform(
+    { type: 'open-codex-task', threadId: 'thread-123' },
+    updated,
+  ), false);
+});
+
 function project(id: string): CodexProjectState {
-  return { project: { id, name: id }, activeWorkerCount: exactActiveWorkerCount(0) };
+  return { project: { id, name: id }, activeWorkerCount: exactActiveWorkerCount(0), tasks: [] };
 }
