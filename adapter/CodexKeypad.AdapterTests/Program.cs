@@ -60,7 +60,23 @@ Expect(ContainsColor(
 
 using var unavailableImage = ControlSurfaceBitmapRenderer.RenderUnavailable(
     PluginImageSize.Width90Pixels);
-Expect(unavailableImage.ToArray(BitmapImageFormat.Png).Length > 100);
+var unavailable = Snapshot(unavailableImage);
+Expect(unavailable.Png.Length > 100);
+ExpectPixel(unavailable, 0, 0, "#3F3F46");
+Expect(ContainsColor(
+    unavailable,
+    "#FFFFFF",
+    0,
+    unavailable.Width,
+    0,
+    unavailable.Height / 2));
+Expect(ContainsColor(
+    unavailable,
+    "#FFFFFF",
+    0,
+    unavailable.Width,
+    unavailable.Height / 2,
+    unavailable.Height));
 
 Console.WriteLine("Adapter bitmap tests passed.");
 
@@ -73,12 +89,16 @@ static (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) Render(
         iconPath,
         visual,
         PluginImageSize.Width90Pixels);
-    return (
+    return Snapshot(image);
+}
+
+static (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) Snapshot(
+    BitmapImage image) =>
+    (
         image.ToArray(BitmapImageFormat.Png),
         image.ToArray(BitmapImageFormat.Rgb565),
         image.Width,
         image.Height);
-}
 
 static VisualPresentation WorkingVisual() => new(
     "task",
