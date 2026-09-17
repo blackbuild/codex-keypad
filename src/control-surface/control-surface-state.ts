@@ -12,6 +12,8 @@ import {
   type VisualPresentation,
 } from './attention.ts';
 
+const MAXIMUM_TASK_TITLE_CUE_LENGTH = 18;
+
 export interface CodexProjectIdentity {
   readonly id: string;
   readonly name: string;
@@ -231,7 +233,7 @@ function taskTile(
   projectIconPath?: string,
 ): ControlSurfaceTile {
   const status = taskStatusLabel(task.status);
-  const identity = compactLabel(task.title, 80 - status.length - 3);
+  const identity = compactLabel(task.title, MAXIMUM_TASK_TITLE_CUE_LENGTH);
   const attention = aggregateAttention([taskAttentionState(task.status)]);
   return {
     id: `task:${task.id}`,

@@ -6,7 +6,7 @@ var fallback = Render(WorkingVisual(), null);
 Expect(fallback.Png.Length > 100);
 Expect(fallback.Pixels.Length == fallback.Width * fallback.Height * 2);
 Expect(ContainsColor(fallback, "#FFFFFF", 0, fallback.Width * 2 / 3, 5, fallback.Height / 2));
-Expect(ContainsColor(fallback, "#FFFFFF", 0, fallback.Width, fallback.Height / 2, fallback.Height));
+Expect(!ContainsColor(fallback, "#FFFFFF", 0, fallback.Width, fallback.Height / 2, fallback.Height));
 
 var missingIcon = Render(WorkingVisual(), "/missing/codex-keypad-icon.png");
 Expect(fallback.Png.SequenceEqual(missingIcon.Png));
@@ -64,6 +64,13 @@ Expect(ContainsColor(
     concurrent.Width,
     concurrent.Height / 2,
     concurrent.Height));
+Expect(!ContainsColor(
+    concurrent,
+    "#FFFFFF",
+    0,
+    concurrent.Width,
+    concurrent.Height / 2,
+    concurrent.Height));
 
 var badgeOnly = Render(new VisualPresentation(
     "task",
@@ -89,20 +96,15 @@ using var unavailableImage = ControlSurfaceBitmapRenderer.RenderUnavailable(
 var unavailable = Snapshot(unavailableImage);
 Expect(unavailable.Png.Length > 100);
 ExpectPixel(unavailable, 0, 0, "#3F3F46");
-Expect(ContainsColor(
+var unavailableCue = ColorStats(
     unavailable,
     "#FFFFFF",
     0,
     unavailable.Width,
     0,
-    unavailable.Height / 2));
-Expect(ContainsColor(
-    unavailable,
-    "#FFFFFF",
-    0,
-    unavailable.Width,
-    unavailable.Height / 2,
-    unavailable.Height));
+    unavailable.Height);
+Expect(unavailableCue.Count > 0);
+Expect(unavailableCue.Right - unavailableCue.Left + 1 <= 24);
 
 Console.WriteLine("Adapter bitmap tests passed.");
 
@@ -111,7 +113,6 @@ static (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) Render(
     String? iconPath)
 {
     using var image = ControlSurfaceBitmapRenderer.Render(
-        "Task · Working",
         iconPath,
         visual,
         PluginImageSize.Width90Pixels);
@@ -164,7 +165,7 @@ static Boolean ContainsColor(
     return false;
 }
 
-static (Int32 Count, Int32 Top, Int32 Bottom) ColorStats(
+static (Int32 Count, Int32 Left, Int32 Right, Int32 Top, Int32 Bottom) ColorStats(
     (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
     String color,
     Int32 left,
@@ -174,6 +175,8 @@ static (Int32 Count, Int32 Top, Int32 Bottom) ColorStats(
 {
     var expected = Rgb565(color);
     var count = 0;
+    var firstX = right;
+    var lastX = left - 1;
     var first = bottom;
     var last = top - 1;
     for (var y = top; y < bottom; y += 1)
@@ -183,12 +186,14 @@ static (Int32 Count, Int32 Top, Int32 Bottom) ColorStats(
             if (ReadPixel(image, x, y) == expected)
             {
                 count += 1;
+                firstX = Math.Min(firstX, x);
+                lastX = Math.Max(lastX, x);
                 first = Math.Min(first, y);
                 last = Math.Max(last, y);
             }
         }
     }
-    return (count, first, last);
+    return (count, firstX, lastX, first, last);
 }
 
 static UInt16 ReadPixel(

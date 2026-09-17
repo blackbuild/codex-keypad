@@ -7,11 +7,13 @@ colors. These defaults apply without an agent-authored layout.
 
 ## Attention legend
 
-Every attention-bearing tile has a text label, an ASCII badge, a primary
-background, and one top-edge segment per visible condition. White text is drawn
-on a solid primary-color panel even when a custom PNG is present. The contrast
-ratios below use the WCAG relative-luminance formula; they are design-time sRGB
-figures, not a substitute for checking the physical LCD.
+Every attention-bearing tile has a native Logitech display label below its
+bitmap, an ASCII badge inside the bitmap, a primary background, and one top-edge
+segment per visible condition. The bitmap does not repeat the display label.
+White fallback glyphs and badges are drawn on the primary background even when a
+custom PNG is present. The contrast ratios below use the WCAG
+relative-luminance formula; they are design-time sRGB figures, not a substitute
+for checking the physical LCD.
 
 | Normalized state | Label cue | Badge | Background | Segment | White-text contrast |
 |---|---|---:|---:|---:|---:|
@@ -70,8 +72,9 @@ non-idle or diagnostic condition is present.
 
 A configured project PNG may replace the baseline imagery on its project tile
 and coordinator task tile. If the path is absent, unreadable, oversized, or not
-a decodable PNG, the normalized fallback glyph is still rendered. The label,
-badge, and segmented attention edge remain visible with either image path.
+a decodable PNG, the normalized fallback glyph is still rendered. The native
+display label below the bitmap, badge, and segmented attention edge remain
+visible with either image path.
 
 Back uses the navigation background `#111827` with white text (17.74:1). It has
 no attention summary or state segments. No visual field carries a command; the
@@ -82,10 +85,12 @@ on the unavailable background. It never presents the last healthy image as fresh
 
 ## Device constraints
 
-The Logitech adapter receives compact bitmap dimensions from the SDK. It reserves
-the upper half for baseline/custom imagery and badges, the lower half for a solid
-high-contrast label panel, and four pixels at the top for at most three state
-segments. Labels remain bounded to 80 characters by the core. ASCII fallback
-glyphs avoid depending on optional font symbols. Actual cropping, panel
+The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
+the full bitmap for baseline/custom imagery, reserves four pixels at the top for
+at most three state segments, and places a padded status badge below that strip.
+The SDK renders the display label separately below the bitmap. Task-title cues
+are bounded to 18 characters before their full normalized state suffix; project
+and global labels retain the contract's general bound. ASCII fallback glyphs
+avoid depending on optional font symbols. Actual cropping, native-label
 legibility, color separation, and brightness behavior still require the physical
 checks in [physical-device-validation.md](physical-device-validation.md).

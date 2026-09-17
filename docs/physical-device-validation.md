@@ -26,10 +26,12 @@ brightness, and pass/fail for each check; do not record private task content.
    plus stale evidence, a source read failure, and an unknown persisted task
    status. Confirm `~`/Stale is distinct from `?`/Unavailable and neither looks
    idle or healthy.
-7. **Legibility:** at the normal operating brightness, read every label/badge at
-   arm's length, including a busy custom icon. Confirm white text remains on the
-   solid lower panel and the three segment colors are distinguishable. Repeat at
-   the lowest brightness the maintainer considers supported.
+7. **Legibility:** at the normal operating brightness, read every native display
+   label and bitmap badge at arm's length, including a busy custom icon. Confirm
+   the label appears only once below the bitmap, compact task titles remain
+   recognizable, badges do not crowd the top strip, and the three segment colors
+   are distinguishable. Repeat at the lowest brightness the maintainer considers
+   supported.
 8. **Navigation safety:** press every attention-bearing entry, project, and task
    tile. Confirm it reaches only the corresponding overview, project, or exact
    current task; a removed task is inert and no executable command is accepted.

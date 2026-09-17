@@ -111,9 +111,12 @@ state. A task with a present but unrecognized persisted status remains visible a
 `State unavailable`; the raw status is never published. Archived or deleted tasks
 leave the view and newly created tasks appear.
 Vacated positions are reused by the next task in the same ordering, while
-unpopulated keypad positions have no action. Task labels use the Codex task name,
-or a bounded opaque task identifier when no name exists; raw prompt and transcript
-text are never used as the fallback label. In the selected-project task view,
+unpopulated keypad positions have no action. Native keypad labels use an
+18-character compact cue from the Codex task name followed by its normalized
+state, or a bounded opaque task identifier when no name exists; the complete
+task ID still backs exact navigation, and raw prompt and transcript text are
+never used as the fallback label. The bitmap does not repeat the native display
+label. In the selected-project task view,
 the explicit Back tile performs the product-level task-to-project transition;
 the SDK's native Back/Home behavior closes the entire dynamic folder instead.
 With a matching `coordinatorTaskId`, the published leading controls are

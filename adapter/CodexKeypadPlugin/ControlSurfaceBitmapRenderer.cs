@@ -10,7 +10,6 @@ public static class ControlSurfaceBitmapRenderer
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
     public static BitmapImage Render(
-        String label,
         String? iconPath,
         VisualPresentation visual,
         PluginImageSize imageSize)
@@ -46,17 +45,6 @@ public static class ControlSurfaceBitmapRenderer
             badgeFontSize,
             background,
             foreground);
-
-        var labelTop = builder.Height / 2;
-        builder.FillRectangle(0, labelTop, builder.Width, builder.Height - labelTop, background);
-        builder.DrawText(
-            label,
-            3,
-            labelTop + 2,
-            Math.Max(1, builder.Width - 6),
-            Math.Max(1, builder.Height - labelTop - 4),
-            foreground,
-            fontSize: 12);
         return builder.ToImage();
     }
 
@@ -64,7 +52,7 @@ public static class ControlSurfaceBitmapRenderer
     {
         using var builder = new BitmapBuilder(imageSize);
         builder.Clear(BitmapColor.FromRgb(0x3F3F46));
-        builder.DrawText("?\nCodex unavailable", BitmapColor.White, fontSize: 16);
+        builder.DrawText("?", BitmapColor.White, fontSize: 32);
         return builder.ToImage();
     }
 

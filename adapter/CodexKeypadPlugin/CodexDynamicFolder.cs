@@ -32,7 +32,6 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         return this.WithState(state => state is null
             ? ControlSurfaceBitmapRenderer.RenderUnavailable(imageSize)
             : ControlSurfaceBitmapRenderer.Render(
-                state.Entry.Label,
                 null,
                 state.Entry.Visual,
                 imageSize));
@@ -55,7 +54,6 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
             return tile is null
                 ? null
                 : ControlSurfaceBitmapRenderer.Render(
-                    tile.Label,
                     tile.IconPath,
                     tile.Visual,
                     imageSize);

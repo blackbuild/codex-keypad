@@ -200,13 +200,13 @@ test('normalizes every selected-project task in deterministic recency order', ()
   })), [
     {
       id: 'task:thread-123',
-      label: 'Implement the live project overview · Working',
+      label: 'Implement the liv… · Working',
       status: 'working',
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
     {
       id: 'task:thread-older',
-      label: 'Review the adapter contract · Completed',
+      label: 'Review the adapte… · Completed',
       status: 'completed',
       action: { type: 'open-codex-task', threadId: 'thread-older' },
     },
@@ -239,7 +239,7 @@ test('places the configured coordinator before Back and gives it the project ico
   })), [
     {
       id: 'task:thread-older',
-      label: 'Review the adapter contract · Completed',
+      label: 'Review the adapte… · Completed',
       iconPath: '/icons/codex-keypad.png',
       role: 'coordinator',
       status: 'completed',
@@ -248,7 +248,7 @@ test('places the configured coordinator before Back and gives it the project ico
     { id: 'nav.back', label: 'Back', action: { type: 'open-project-overview' } },
     {
       id: 'task:thread-123',
-      label: 'Implement the live project overview · Working',
+      label: 'Implement the liv… · Working',
       status: 'working',
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
@@ -290,7 +290,14 @@ test('bounds task identity without dropping its normalized state', () => {
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(69)}… · Working`);
+  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(17)}… · Working`);
+  assert.equal(state.view.tiles[1]?.action.type, 'open-codex-task');
+  assert.equal(
+    state.view.tiles[1]?.action.type === 'open-codex-task'
+      ? state.view.tiles[1].action.threadId
+      : undefined,
+    'thread-123',
+  );
 });
 
 test('renders the bounded normalized unavailable state without exposing a raw status', () => {
@@ -306,7 +313,7 @@ test('renders the bounded normalized unavailable state without exposing a raw st
   assert.equal(state.view.tiles[1]?.status, 'unavailable');
   assert.equal(
     state.view.tiles[1]?.label,
-    'Implement the live project overview · State unavailable',
+    'Implement the liv… · State unavailable',
   );
 });
 
