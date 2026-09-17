@@ -73,8 +73,8 @@ adapter resolves each repository's Git metadata and automatically associates its
 linked worktrees. This lets a wrapper-style project include both Hive tasks rooted
 at the wrapper and worker tasks rooted at nested repositories or worktrees. An
 optional `icon` is an absolute path to a PNG of at most 1 MiB. Project tiles
-follow the configuration order and use deterministic nine-key pages when
-necessary.
+follow the configuration order; the Logitech runtime uses the device's native
+page controls when they do not fit on one touch page.
 
 The sidecar re-reads configuration and live Codex state on every refresh, so
 adding, removing, renaming, reordering, or changing an icon path does not require
@@ -85,14 +85,17 @@ unreadable icon falls back to the text tile. The issue 4 single-project
 `{"projectRoot":"/absolute/path"}` form remains supported for upgrades.
 
 The selected-project view includes up to 256 non-archived top-level Codex tasks,
-ordered by most-recent update and then stable task identity. Nine-key pages keep
-Back in the first slot and add Previous/Next controls only when needed. Completed
-tasks remain visible with their normalized state; archived or deleted tasks leave
-the view, newly created tasks appear, and an out-of-range page is clamped after a
-live removal. Vacated positions are reused by the next task in the same ordering,
-while unpopulated keypad positions have no action. Task labels use the Codex task
-name, or a bounded opaque task identifier when no name exists; raw prompt and
-transcript text are never used as the fallback label.
+ordered by most-recent update and then stable task identity. The normalized view
+publishes that complete ordered list and lets the Logitech runtime create touch
+pages navigated by the device's native page controls; it does not add synthetic
+Previous or Next tiles. Completed tasks remain visible with their normalized
+state; archived or deleted tasks leave the view and newly created tasks appear.
+Vacated positions are reused by the next task in the same ordering, while
+unpopulated keypad positions have no action. Task labels use the Codex task name,
+or a bounded opaque task identifier when no name exists; raw prompt and transcript
+text are never used as the fallback label. The explicit Back tile performs the
+product-level task-to-project transition; the SDK's native Back/Home behavior
+closes the entire dynamic folder instead.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
@@ -145,4 +148,5 @@ or simulated checks are not treated as substitutes for it.
 Issue #6 still requires a maintainer-confirmed physical demonstration with at
 least two tasks in one project: open each exact task, exercise task pagination
 when enough tasks are available, observe completion/removal/new-task refreshes,
-verify unused slots do nothing, and use Back to return to the project overview.
+verify unused slots do nothing, confirm no synthetic page tile appears, and use
+the explicit Back tile to return to the project overview.

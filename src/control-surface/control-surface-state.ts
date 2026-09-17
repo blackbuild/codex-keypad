@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto';
 
 import type { CodexTask, CodexTaskStatus } from '../codex/codex-task-source.ts';
 
-const MAXIMUM_LCD_TILES = 9;
-
 export interface CodexProjectIdentity {
   readonly id: string;
   readonly name: string;
@@ -44,8 +42,6 @@ export type ControlSurfaceLevel = 'project-overview' | 'task-view';
 
 export type SemanticAction =
   | { readonly type: 'open-project-overview' }
-  | { readonly type: 'open-project-page'; readonly page: number }
-  | { readonly type: 'open-task-page'; readonly page: number }
   | { readonly type: 'close-control-surface' }
   | { readonly type: 'open-task-view'; readonly projectId: string }
   | { readonly type: 'open-codex-task'; readonly threadId: string };
@@ -59,7 +55,7 @@ export interface ControlSurfaceTile {
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 4;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
@@ -75,8 +71,6 @@ export interface CodexControlSurfaceState {
 
 export interface ControlSurfaceLocation {
   readonly level?: ControlSurfaceLevel;
-  readonly projectPage?: number;
-  readonly taskPage?: number;
   readonly selectedProjectId?: string;
 }
 
@@ -84,22 +78,16 @@ export function buildProjectControlSurface(
   projects: readonly CodexProjectState[],
   location: ControlSurfaceLocation = {},
 ): CodexControlSurfaceState {
-  const pages = projectPages(projects);
-  const requestedPage = location.projectPage ?? 0;
-  const projectPage = Math.max(0, Math.min(requestedPage, pages.length - 1));
   const selected = location.selectedProjectId
     ? projects.find(({ project }) => project.id === location.selectedProjectId)
     : undefined;
   const level: ControlSurfaceLevel = location.level === 'task-view' && selected
     ? 'task-view'
     : 'project-overview';
-  const taskPages_ = selected ? taskPages(selected.tasks) : [[]];
-  const requestedTaskPage = location.taskPage ?? 0;
-  const taskPage = Math.max(0, Math.min(requestedTaskPage, taskPages_.length - 1));
 
   const tiles = level === 'task-view'
-    ? taskTiles(taskPages_, taskPage)
-    : overviewTiles(pages, projectPage);
+    ? taskTiles(selected!.tasks)
+    : overviewTiles(projects);
   const entry = {
     id: 'codex' as const,
     label: `Codex · ${aggregateActiveWorkerSummary(projects)}`,
@@ -112,7 +100,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -122,57 +110,10 @@ export function buildProjectControlSurface(
   };
 }
 
-export function projectPageCount(projectCount: number): number {
-  if (!Number.isSafeInteger(projectCount) || projectCount < 0) {
-    throw new RangeError('projectCount must be a non-negative integer');
-  }
-  return projectPageSizes(projectCount).length;
-}
-
-export function taskPageCount(taskCount: number): number {
-  if (!Number.isSafeInteger(taskCount) || taskCount < 0) {
-    throw new RangeError('taskCount must be a non-negative integer');
-  }
-  return pageSizes(taskCount).length;
-}
-
-function projectPages(projects: readonly CodexProjectState[]): readonly (readonly CodexProjectState[])[] {
-  let offset = 0;
-  return projectPageSizes(projects.length).map((size) => {
-    const page = projects.slice(offset, offset + size);
-    offset += size;
-    return page;
-  });
-}
-
-function projectPageSizes(projectCount: number): readonly number[] {
-  return pageSizes(projectCount);
-}
-
-function pageSizes(itemCount: number): readonly number[] {
-  if (itemCount <= MAXIMUM_LCD_TILES - 1) {
-    return [itemCount];
-  }
-
-  const sizes = [MAXIMUM_LCD_TILES - 2];
-  let remaining = itemCount - sizes[0]!;
-  while (remaining > 0) {
-    const size = remaining <= MAXIMUM_LCD_TILES - 2
-      ? remaining
-      : MAXIMUM_LCD_TILES - 3;
-    sizes.push(size);
-    remaining -= size;
-  }
-  return sizes;
-}
-
-function overviewTiles(
-  pages: readonly (readonly CodexProjectState[])[],
-  page: number,
-): readonly ControlSurfaceTile[] {
+function overviewTiles(projects: readonly CodexProjectState[]): readonly ControlSurfaceTile[] {
   return [
     { id: 'nav.back', label: 'Back', action: { type: 'close-control-surface' } },
-    ...pageTiles(pages[page]!.map(projectTile), page, pages.length, 'open-project-page'),
+    ...projects.map(projectTile),
   ];
 }
 
@@ -188,55 +129,17 @@ function projectTile(state: CodexProjectState): ControlSurfaceTile {
   };
 }
 
-function taskPages(tasks: readonly CodexTask[]): readonly (readonly CodexTask[])[] {
-  const ordered = [...tasks].sort((left, right) =>
-    right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
-  let offset = 0;
-  return pageSizes(ordered.length).map((size) => {
-    const page = ordered.slice(offset, offset + size);
-    offset += size;
-    return page;
-  });
-}
-
-function taskTiles(
-  pages: readonly (readonly CodexTask[])[],
-  page: number,
-): readonly ControlSurfaceTile[] {
+function taskTiles(tasks: readonly CodexTask[]): readonly ControlSurfaceTile[] {
   return [
     {
       id: 'nav.back',
       label: 'Back',
       action: { type: 'open-project-overview' },
     },
-    ...pageTiles(pages[page]!.map(taskTile), page, pages.length, 'open-task-page'),
-  ];
-}
-
-type PageActionType = 'open-project-page' | 'open-task-page';
-
-function pageTiles(
-  tiles: readonly ControlSurfaceTile[],
-  page: number,
-  pageCount: number,
-  actionType: PageActionType,
-): readonly ControlSurfaceTile[] {
-  return [
-    ...(page > 0
-      ? [{
-          id: 'page.previous',
-          label: `Previous · ${page}/${pageCount}`,
-          action: { type: actionType, page: page - 1 },
-        }]
-      : []),
-    ...tiles,
-    ...(page < pageCount - 1
-      ? [{
-          id: 'page.next',
-          label: `Next · ${page + 2}/${pageCount}`,
-          action: { type: actionType, page: page + 1 },
-        }]
-      : []),
+    ...[...tasks]
+      .sort((left, right) =>
+        right.updatedAt - left.updatedAt || compareDescending(left.id, right.id))
+      .map(taskTile),
   ];
 }
 

@@ -32,14 +32,6 @@ public abstract record SemanticAction(
 public sealed record OpenProjectOverviewAction() :
     SemanticAction("open-project-overview");
 
-public sealed record OpenProjectPageAction(
-    [property: JsonProperty("page")] Int32 Page) :
-    SemanticAction("open-project-page");
-
-public sealed record OpenTaskPageAction(
-    [property: JsonProperty("page")] Int32 Page) :
-    SemanticAction("open-task-page");
-
 public sealed record CloseControlSurfaceAction() :
     SemanticAction("close-control-surface");
 
@@ -53,7 +45,8 @@ public sealed record OpenCodexTaskAction(
 
 public static partial class ControlSurfaceContract
 {
-    private const Int32 MaximumContractBytes = 64 * 1024;
+    private const Int32 MaximumContractBytes = 256 * 1024;
+    private const Int32 MaximumTiles = 257;
     private const Int32 MaximumLabelLength = 80;
     private static readonly HashSet<String> TaskStatuses =
     [
@@ -88,14 +81,14 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 3
+        if (wire.SchemaVersion != 4
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
             || !IsLabel(wire.Entry.Label)
             || !IsAction(wire.Entry.Action, "open-project-overview")
             || !IsLabel(wire.View.Title)
-            || wire.View.Tiles.Count is < 1 or > 9)
+            || wire.View.Tiles.Count is < 1 or > MaximumTiles)
         {
             return false;
         }
@@ -137,14 +130,6 @@ public static partial class ControlSurfaceContract
         {
             "open-project-overview" when IsAction(wire.Action, "open-project-overview") =>
                 new OpenProjectOverviewAction(),
-            "open-project-page" when wire.Action.ProjectId is null
-                && wire.Action.ThreadId is null
-                && wire.Action.Page is >= 0 and <= 63 =>
-                new OpenProjectPageAction(wire.Action.Page.Value),
-            "open-task-page" when wire.Action.ProjectId is null
-                && wire.Action.ThreadId is null
-                && wire.Action.Page is >= 0 and <= 63 =>
-                new OpenTaskPageAction(wire.Action.Page.Value),
             "close-control-surface" when IsAction(wire.Action, "close-control-surface") =>
                 new CloseControlSurfaceAction(),
             "open-task-view" when wire.Action.ThreadId is null
@@ -190,8 +175,6 @@ public static partial class ControlSurfaceContract
             {
                 { Action: OpenTaskViewAction projectAction, Status: null }
                     when tile.Id == $"project:{projectAction.ProjectId}" => true,
-                { Id: "page.previous" or "page.next", IconPath: null, Status: null,
-                    Action: OpenProjectPageAction } => true,
                 _ => false,
             });
         }
@@ -210,8 +193,6 @@ public static partial class ControlSurfaceContract
                 when tile.Id == $"task:{taskAction.ThreadId}"
                     && tile.Status is not null
                     && TaskStatuses.Contains(tile.Status) => true,
-            { Id: "page.previous" or "page.next", IconPath: null, Status: null,
-                Action: OpenTaskPageAction } => true,
             _ => false,
         });
     }

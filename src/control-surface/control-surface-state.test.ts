@@ -31,7 +31,7 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 3);
+  assert.equal(state.schemaVersion, 4);
   assert.deepEqual(state.view.tiles, [
     { id: 'nav.back', label: 'Back', action: { type: 'close-control-surface' } },
     {
@@ -54,16 +54,14 @@ test('normalizes configured projects in stable order with icons and active-worke
   assert.equal(state.entry.label, 'Codex · 3 active');
 });
 
-test('paginates configured projects deterministically within nine LCD keys', () => {
+test('orders every configured project for native device pagination', () => {
   const projects = Array.from({ length: 15 }, (_, index) =>
     project(`project-${String(index + 1).padStart(2, '0')}`, `Project ${index + 1}`, 0));
 
-  const first = buildProjectControlSurface(projects, { projectPage: 0 });
-  const second = buildProjectControlSurface(projects, { projectPage: 1 });
-  const third = buildProjectControlSurface(projects, { projectPage: 2 });
+  const state = buildProjectControlSurface(projects);
 
-  assert.equal(first.view.tiles.length, 9);
-  assert.deepEqual(first.view.tiles.slice(1, -1).map((tile) => tile.id), [
+  assert.equal(state.view.tiles.length, 16);
+  assert.deepEqual(state.view.tiles.slice(1).map((tile) => tile.id), [
     'project:project-01',
     'project:project-02',
     'project:project-03',
@@ -71,23 +69,12 @@ test('paginates configured projects deterministically within nine LCD keys', () 
     'project:project-05',
     'project:project-06',
     'project:project-07',
-  ]);
-  assert.deepEqual(first.view.tiles.at(-1), {
-    id: 'page.next',
-    label: 'Next · 2/3',
-    action: { type: 'open-project-page', page: 1 },
-  });
-
-  assert.equal(second.view.tiles.length, 9);
-  assert.deepEqual(second.view.tiles.slice(2, -1).map((tile) => tile.id), [
     'project:project-08',
     'project:project-09',
     'project:project-10',
     'project:project-11',
     'project:project-12',
     'project:project-13',
-  ]);
-  assert.deepEqual(third.view.tiles.slice(2).map((tile) => tile.id), [
     'project:project-14',
     'project:project-15',
   ]);
@@ -114,7 +101,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 3);
+  assert.equal(state.schemaVersion, 4);
   assert.deepEqual(state.view.tiles.slice(1), [
     {
       id: 'task:thread-123',
@@ -144,7 +131,7 @@ test('bounds task identity without dropping its normalized state', () => {
   assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(69)}… · Working`);
 });
 
-test('paginates tasks deterministically and reuses vacated slots', () => {
+test('orders every task for native device pagination and reuses vacated slots', () => {
   const tasks = Array.from({ length: 10 }, (_, index): CodexTask => ({
     id: `thread-${String(index + 1).padStart(2, '0')}`,
     title: `Task ${index + 1}`,
@@ -156,12 +143,6 @@ test('paginates tasks deterministically and reuses vacated slots', () => {
   const first = buildProjectControlSurface([selected], {
     level: 'task-view',
     selectedProjectId: 'codex-keypad',
-    taskPage: 0,
-  });
-  const second = buildProjectControlSurface([selected], {
-    level: 'task-view',
-    selectedProjectId: 'codex-keypad',
-    taskPage: 1,
   });
   const afterRemoval = buildProjectControlSurface([{
     ...selected,
@@ -169,7 +150,6 @@ test('paginates tasks deterministically and reuses vacated slots', () => {
   }], {
     level: 'task-view',
     selectedProjectId: 'codex-keypad',
-    taskPage: 0,
   });
 
   assert.deepEqual(first.view.tiles.map(({ id }) => id), [
@@ -181,17 +161,11 @@ test('paginates tasks deterministically and reuses vacated slots', () => {
     'task:thread-05',
     'task:thread-06',
     'task:thread-07',
-    'page.next',
-  ]);
-  assert.deepEqual(first.view.tiles.at(-1)?.action, { type: 'open-task-page', page: 1 });
-  assert.deepEqual(second.view.tiles.map(({ id }) => id), [
-    'nav.back',
-    'page.previous',
     'task:thread-08',
     'task:thread-09',
     'task:thread-10',
   ]);
-  assert.deepEqual(afterRemoval.view.tiles.slice(1, -1).map(({ id }) => id), [
+  assert.deepEqual(afterRemoval.view.tiles.slice(1).map(({ id }) => id), [
     'task:thread-01',
     'task:thread-02',
     'task:thread-04',
@@ -199,6 +173,8 @@ test('paginates tasks deterministically and reuses vacated slots', () => {
     'task:thread-06',
     'task:thread-07',
     'task:thread-08',
+    'task:thread-09',
+    'task:thread-10',
   ]);
 });
 

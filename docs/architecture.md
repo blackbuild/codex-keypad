@@ -23,9 +23,11 @@ The live adapter uses a C# dynamic-folder package. A fixed TypeScript sidecar ow
 the semantic navigation state machine and publishes its current view for the
 configured projects and bounded non-archived tasks in the selected project as
 versioned, normalized JSON. It also owns deterministic project/task order,
-nine-key page selection, live page clamping, and exact-task validation. The C#
-adapter strictly validates that contract, renders configured project icons, and
-relays typed action requests back to TypeScript.
+slot reuse, and exact-task validation. The C# adapter strictly validates that
+contract, exposes the complete ordered action list, renders configured project
+icons, and relays typed semantic action requests back to TypeScript. The Logitech
+runtime creates overflow touch pages and uses the device's native page controls;
+the product does not add synthetic Previous or Next tiles.
 
 A configured project root is the Codex task working directory. Optional
 repository roots extend task association to nested or otherwise related Git
@@ -42,10 +44,11 @@ and a worker count from a linked Codex worktree without restarting Options+.
 Custom project icons and multi-page project navigation remain automated-only
 evidence for issue 5.
 
-TypeScript accepts only the normalized `open-project-overview`,
-`open-project-page`, `open-task-view`, `open-task-page`, and `open-codex-task`
-requests. Project and page routes must match the current configuration, and the
-task action must match a current task in the selected project. Tasks are opened by the existing
+TypeScript accepts only the normalized `open-project-overview`, `open-task-view`,
+and `open-codex-task` requests. Project routes must match the current
+configuration, and the task action must match a current task in the selected
+project. Pagination remains native device navigation rather than a semantic
+product action. Tasks are opened by the existing
 shell-free, validated Codex deep-link adapter. Unknown action types and unknown
 JSON members are rejected. Task labels use normalized task names or an opaque
 identifier fallback, never raw prompt or transcript content. Attention

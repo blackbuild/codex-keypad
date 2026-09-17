@@ -4,19 +4,13 @@ import type {
   ControlSurfaceLevel,
   SemanticAction,
 } from './control-surface-state.ts';
-import {
-  buildProjectControlSurface,
-  projectPageCount,
-  taskPageCount,
-} from './control-surface-state.ts';
+import { buildProjectControlSurface } from './control-surface-state.ts';
 
 export type OpenThread = (threadId: string) => Promise<void>;
 
 export class ProjectNavigation {
   private readonly openThread: OpenThread;
   private level: ControlSurfaceLevel = 'project-overview';
-  private projectPage = 0;
-  private taskPage = 0;
   private selectedProjectId: string | undefined;
 
   constructor(openThread: OpenThread) {
@@ -29,13 +23,8 @@ export class ProjectNavigation {
       this.level = 'project-overview';
       this.selectedProjectId = undefined;
     }
-    this.projectPage = Math.min(this.projectPage, projectPageCount(projects.length) - 1);
-    const selected = projects.find(({ project }) => project.id === this.selectedProjectId);
-    this.taskPage = Math.min(this.taskPage, taskPageCount(selected?.tasks.length ?? 0) - 1);
     return buildProjectControlSurface(projects, {
       level: this.level,
-      projectPage: this.projectPage,
-      taskPage: this.taskPage,
       ...(this.selectedProjectId ? { selectedProjectId: this.selectedProjectId } : {}),
     });
   }
@@ -48,29 +37,12 @@ export class ProjectNavigation {
       case 'open-project-overview':
         this.level = 'project-overview';
         return true;
-      case 'open-project-page':
-        if (action.page < 0 || action.page >= projectPageCount(projects.length)) {
-          return false;
-        }
-        this.level = 'project-overview';
-        this.projectPage = action.page;
-        return true;
-      case 'open-task-page': {
-        const selected = projects.find(({ project }) => project.id === this.selectedProjectId);
-        if (!selected || action.page < 0 || action.page >= taskPageCount(selected.tasks.length)) {
-          return false;
-        }
-        this.level = 'task-view';
-        this.taskPage = action.page;
-        return true;
-      }
       case 'open-task-view':
         if (!projects.some(({ project }) => project.id === action.projectId)) {
           return false;
         }
         this.level = 'task-view';
         this.selectedProjectId = action.projectId;
-        this.taskPage = 0;
         return true;
       case 'open-codex-task': {
         const selected = projects.find(({ project }) => project.id === this.selectedProjectId);
