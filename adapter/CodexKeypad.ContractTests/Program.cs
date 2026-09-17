@@ -27,6 +27,22 @@ try
             && state!.View.Tiles[1].Action is OpenCodexTaskAction { ThreadId: "thread-123" });
     });
 
+    Run("accepts only the normalized unavailable fallback for an unknown task state", () =>
+    {
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
+            "\"status\": \"working\"",
+            "\"status\": \"unavailable\"",
+            StringComparison.Ordinal));
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted && state!.View.Tiles[1].Status == "unavailable");
+
+        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
+            "\"status\": \"working\"",
+            "\"status\": \"futureCodexState\"",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+    });
+
     Run("accepts a project-icon coordinator before the task-view Back tile", () =>
     {
         File.WriteAllText(fixturePath, CoordinatorTaskView());
@@ -122,7 +138,7 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
@@ -151,7 +167,7 @@ static String ProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
@@ -176,7 +192,7 @@ static String TaskView(String taskActionType, String threadId) => $$"""
 
 static String CoordinatorTaskView() => """
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "revision": "task-view:hive-thread:456",
   "entry": {
     "id": "codex",
@@ -226,7 +242,7 @@ static String ManyTaskView(Int32 taskCount)
     }));
     return JsonSerializer.Serialize(new
     {
-        schemaVersion = 6,
+        schemaVersion = 7,
         revision = "many-tasks:456",
         entry = new
         {

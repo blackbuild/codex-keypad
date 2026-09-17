@@ -54,6 +54,7 @@ public static partial class ControlSurfaceContract
         "completed",
         "failed",
         "interrupted",
+        "unavailable",
     ];
 
     public static Boolean TryRead(String path, out ControlSurfaceState? state)
@@ -79,7 +80,7 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 6
+        if (wire.SchemaVersion != 7
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"

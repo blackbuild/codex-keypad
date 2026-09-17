@@ -31,7 +31,7 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 6);
+  assert.equal(state.schemaVersion, 7);
   assert.deepEqual(state.view.tiles, [
     {
       id: 'project:architecture',
@@ -107,7 +107,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 6);
+  assert.equal(state.schemaVersion, 7);
   assert.deepEqual(state.view.tiles.slice(1), [
     {
       id: 'task:thread-123',
@@ -136,7 +136,7 @@ test('places the configured coordinator before Back and gives it the project ico
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 6);
+  assert.equal(state.schemaVersion, 7);
   assert.deepEqual(state.view.tiles, [
     {
       id: 'task:thread-older',
@@ -190,6 +190,23 @@ test('bounds task identity without dropping its normalized state', () => {
   });
 
   assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(69)}… · Working`);
+});
+
+test('renders the bounded normalized unavailable state without exposing a raw status', () => {
+  const selected = {
+    ...project('codex-keypad', 'Codex Keypad', 1),
+    tasks: [{ ...task, status: 'unavailable' as const }],
+  };
+  const state = buildProjectControlSurface([selected], {
+    level: 'task-view',
+    selectedProjectId: 'codex-keypad',
+  });
+
+  assert.equal(state.view.tiles[1]?.status, 'unavailable');
+  assert.equal(
+    state.view.tiles[1]?.label,
+    'Implement the live project overview · State unavailable',
+  );
 });
 
 test('orders every task for native device pagination and reuses vacated slots', () => {

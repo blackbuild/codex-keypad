@@ -116,23 +116,21 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
         )
         WHERE newest = 1
       `).all() as unknown as Array<{ readonly thread_id: string; readonly status: string }>;
-      return new Map(rows.flatMap((row) => {
-        const status = normalizedStatus(row.status);
-        return status ? [[row.thread_id, status] as const] : [];
-      }));
+      return new Map(rows.map((row) =>
+        [row.thread_id, normalizedStatus(row.status)] as const));
     } finally {
       database.close();
     }
   }
 }
 
-function normalizedStatus(status: string): CodexTaskStatus | undefined {
+function normalizedStatus(status: string): CodexTaskStatus {
   switch (status) {
     case 'inProgress': return 'working';
     case 'completed': return 'completed';
     case 'failed': return 'failed';
     case 'interrupted': return 'interrupted';
-    default: return undefined;
+    default: return 'unavailable';
   }
 }
 

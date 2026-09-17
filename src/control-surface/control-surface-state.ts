@@ -57,7 +57,7 @@ export interface ControlSurfaceTile {
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 6;
+  readonly schemaVersion: 7;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
@@ -107,7 +107,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -221,6 +221,7 @@ function taskStatusLabel(status: CodexTaskStatus): string {
     case 'completed': return 'Completed';
     case 'failed': return 'Failed';
     case 'interrupted': return 'Interrupted';
+    case 'unavailable': return 'State unavailable';
   }
 }
 

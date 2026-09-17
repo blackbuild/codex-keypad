@@ -106,7 +106,9 @@ ordered by most-recent update and then stable task identity. The normalized view
 publishes that complete ordered list and lets the Logitech runtime create touch
 pages navigated by the device's native page controls; it does not add synthetic
 Previous or Next tiles. Completed tasks remain visible with their normalized
-state; archived or deleted tasks leave the view and newly created tasks appear.
+state. A task with a present but unrecognized persisted status remains visible as
+`State unavailable`; the raw status is never published. Archived or deleted tasks
+leave the view and newly created tasks appear.
 Vacated positions are reused by the next task in the same ordering, while
 unpopulated keypad positions have no action. Task labels use the Codex task name,
 or a bounded opaque task identifier when no name exists; raw prompt and transcript
@@ -120,7 +122,8 @@ current included task, Back remains first and all tasks use the normal ordering.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
-do not inflate the worker badge. A missing project root or exclusively stale or
+do not inflate the worker badge, and an unrecognized task status is not counted
+as evidence of active work. A missing project root or exclusively stale or
 implausibly future-dated worker evidence is shown as `Count unavailable` rather
 than `Idle`. When current workers are returned alongside unusable worker state,
 the current workers remain visible as a lower bound such as `2+ active`.

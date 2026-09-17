@@ -4,7 +4,8 @@ export type CodexTaskStatus =
   | 'waiting-for-input'
   | 'completed'
   | 'failed'
-  | 'interrupted';
+  | 'interrupted'
+  | 'unavailable';
 
 export interface CodexTask {
   readonly id: string;
