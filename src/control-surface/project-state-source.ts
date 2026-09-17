@@ -95,9 +95,11 @@ export function readProjectStates(
         project,
         ...coordinator,
         ...coordinatorPattern,
-        activeWorkerCount: staleWorkers.length > 0
-          ? { ...activeWorkerCount, staleEvidence: true }
-          : activeWorkerCount,
+        activeWorkerCount: {
+          ...activeWorkerCount,
+          ...(staleWorkers.length > 0 ? { staleEvidence: true as const } : {}),
+          ...(futureWorkers.length > 0 ? { unavailableEvidence: true as const } : {}),
+        },
         tasks,
       };
     } catch {

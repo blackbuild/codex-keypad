@@ -56,6 +56,12 @@ try
             "\"icon\": \"task\"",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+
+        File.WriteAllText(fixturePath, AttentionProjectOverview().Replace(
+            "\"badge\": \"!A~+1\"",
+            "\"badge\": \"XA~+1\"",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
     Run("accepts a normalized multi-project overview with a custom icon", () =>
@@ -81,10 +87,7 @@ try
 
     Run("accepts only the normalized unavailable fallback for an unknown task state", () =>
     {
-        File.WriteAllText(fixturePath, TaskView("open-codex-task", "thread-123").Replace(
-            "\"working\"",
-            "\"unavailable\"",
-            StringComparison.Ordinal));
+        File.WriteAllText(fixturePath, UnavailableTaskView("thread-123"));
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
         Expect(accepted && state!.View.Tiles[1].Status == "unavailable");
 
@@ -286,6 +289,13 @@ static String TaskView(String taskActionType, String threadId) => $$"""
   }
 }
 """;
+
+static String UnavailableTaskView(String threadId) =>
+    TaskView("open-codex-task", threadId)
+        .Replace("\"working\"", "\"unavailable\"", StringComparison.Ordinal)
+        .Replace("#075985", "#3F3F46", StringComparison.Ordinal)
+        .Replace("#38BDF8", "#D4D4D8", StringComparison.Ordinal)
+        .Replace("\"badge\": \">\"", "\"badge\": \"?\"", StringComparison.Ordinal);
 
 static String CoordinatorTaskView() => """
 {

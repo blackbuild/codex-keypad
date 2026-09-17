@@ -46,18 +46,19 @@ const ATTENTION_PRECEDENCE: readonly AttentionState[] = [
 ];
 
 const VISUAL_TOKENS: Readonly<Record<AttentionState, {
+  readonly label: string;
   readonly backgroundColor: string;
   readonly borderColor: string;
   readonly badge: string;
 }>> = {
-  idle: { backgroundColor: '#1F2937', borderColor: '#9CA3AF', badge: 'OK' },
-  working: { backgroundColor: '#075985', borderColor: '#38BDF8', badge: '>' },
-  'waiting-for-input': { backgroundColor: '#1E3A8A', borderColor: '#60A5FA', badge: 'I' },
-  'waiting-for-approval': { backgroundColor: '#713F12', borderColor: '#FACC15', badge: 'A' },
-  interrupted: { backgroundColor: '#4C1D95', borderColor: '#A78BFA', badge: 'X' },
-  failed: { backgroundColor: '#7F1D1D', borderColor: '#F87171', badge: '!' },
-  unavailable: { backgroundColor: '#3F3F46', borderColor: '#D4D4D8', badge: '?' },
-  stale: { backgroundColor: '#57534E', borderColor: '#FDBA74', badge: '~' },
+  idle: { label: 'Idle', backgroundColor: '#1F2937', borderColor: '#9CA3AF', badge: 'OK' },
+  working: { label: 'Working', backgroundColor: '#075985', borderColor: '#38BDF8', badge: '>' },
+  'waiting-for-input': { label: 'Waiting for input', backgroundColor: '#1E3A8A', borderColor: '#60A5FA', badge: 'I' },
+  'waiting-for-approval': { label: 'Waiting for approval', backgroundColor: '#713F12', borderColor: '#FACC15', badge: 'A' },
+  interrupted: { label: 'Interrupted', backgroundColor: '#4C1D95', borderColor: '#A78BFA', badge: 'X' },
+  failed: { label: 'Failed', backgroundColor: '#7F1D1D', borderColor: '#F87171', badge: '!' },
+  unavailable: { label: 'Unavailable', backgroundColor: '#3F3F46', borderColor: '#D4D4D8', badge: '?' },
+  stale: { label: 'Stale', backgroundColor: '#57534E', borderColor: '#FDBA74', badge: '~' },
 };
 
 const ICON_GLYPHS: Readonly<Record<VisualIcon, string>> = {
@@ -90,6 +91,13 @@ export function aggregateAttention(states: readonly AttentionState[]): Attention
 
 export function taskAttentionState(status: CodexTaskStatus): AttentionState {
   return status === 'completed' ? 'idle' : status;
+}
+
+export function attentionSummaryLabel(summary: AttentionSummary): string {
+  const primary = summary.indicators[0]!;
+  const otherStates = summary.indicators.length - 1 + summary.additionalStates;
+  return `${VISUAL_TOKENS[primary.state].label}${primary.count > 1 ? ` x${primary.count}` : ''}`
+    + `${otherStates > 0 ? ` +${otherStates} state${otherStates === 1 ? '' : 's'}` : ''}`;
 }
 
 export function visualizeAttention(

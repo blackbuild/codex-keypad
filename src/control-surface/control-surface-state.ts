@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { CodexTask, CodexTaskStatus } from '../codex/codex-task-source.ts';
 import {
   aggregateAttention,
+  attentionSummaryLabel,
   navigationVisual,
   taskAttentionState,
   visualizeAttention,
@@ -34,6 +35,7 @@ export type ActiveWorkerCount =
       readonly count: number;
       readonly truncated: boolean;
       readonly staleEvidence?: true;
+      readonly unavailableEvidence?: true;
     }
   | { readonly availability: 'unavailable' }
   | { readonly availability: 'stale' };
@@ -254,32 +256,19 @@ function projectAttentionStates(state: CodexProjectState): readonly AttentionSta
     case 'stale':
       return [...taskStates, 'stale'];
     case 'available': {
-      const sourceStates: AttentionState[] = state.activeWorkerCount.staleEvidence
-        ? ['stale']
-        : [];
+      const sourceStates: AttentionState[] = [];
+      if (state.activeWorkerCount.unavailableEvidence) {
+        sourceStates.push('unavailable');
+      }
+      if (state.activeWorkerCount.staleEvidence) {
+        sourceStates.push('stale');
+      }
       if (state.activeWorkerCount.count > 0 && !taskStates.includes('working')) {
         sourceStates.push('working');
       }
       return [...taskStates, ...sourceStates];
     }
   }
-}
-
-function attentionSummaryLabel(summary: AttentionSummary): string {
-  const names: Readonly<Record<AttentionState, string>> = {
-    idle: 'Idle',
-    working: 'Working',
-    'waiting-for-input': 'Waiting for input',
-    'waiting-for-approval': 'Waiting for approval',
-    interrupted: 'Interrupted',
-    failed: 'Failed',
-    unavailable: 'Unavailable',
-    stale: 'Stale',
-  };
-  const primary = summary.indicators[0]!;
-  const otherStates = summary.indicators.length - 1 + summary.additionalStates;
-  return `${names[primary.state]}${primary.count > 1 ? ` x${primary.count}` : ''}`
-    + `${otherStates > 0 ? ` +${otherStates} state${otherStates === 1 ? '' : 's'}` : ''}`;
 }
 
 function taskStatusLabel(status: CodexTaskStatus): string {

@@ -78,6 +78,26 @@ public static partial class ControlSurfaceContract
         "stale",
     ];
     private static readonly HashSet<String> VisualIcons = ["entry", "project", "task", "back"];
+    private static readonly IReadOnlyDictionary<String, AttentionVisualToken> AttentionVisualTokens =
+        new Dictionary<String, AttentionVisualToken>(StringComparer.Ordinal)
+        {
+            ["idle"] = new("#1F2937", "#9CA3AF", "OK"),
+            ["working"] = new("#075985", "#38BDF8", ">"),
+            ["waiting-for-input"] = new("#1E3A8A", "#60A5FA", "I"),
+            ["waiting-for-approval"] = new("#713F12", "#FACC15", "A"),
+            ["interrupted"] = new("#4C1D95", "#A78BFA", "X"),
+            ["failed"] = new("#7F1D1D", "#F87171", "!"),
+            ["unavailable"] = new("#3F3F46", "#D4D4D8", "?"),
+            ["stale"] = new("#57534E", "#FDBA74", "~"),
+        };
+    private static readonly IReadOnlyDictionary<String, String> IconGlyphs =
+        new Dictionary<String, String>(StringComparer.Ordinal)
+        {
+            ["entry"] = "C",
+            ["project"] = "P",
+            ["task"] = "T",
+            ["back"] = "<",
+        };
     private static readonly HashSet<String> TaskStatuses =
     [
         "working",
@@ -119,9 +139,7 @@ public static partial class ControlSurfaceContract
             || !IsLabel(wire.Entry.Label)
             || !TryNormalizeAttention(wire.Entry.Attention, out var entryAttention)
             || !TryNormalizeVisual(wire.Entry.Visual, out var entryVisual)
-            || entryVisual!.Icon != "entry"
-            || entryVisual.Tone != entryAttention!.Primary
-            || entryVisual.BorderColors.Count != entryAttention.Indicators.Count
+            || !IsCanonicalVisual(entryVisual!, entryAttention!, "entry")
             || !IsAction(wire.Entry.Action, "open-project-overview")
             || !IsLabel(wire.View.Title)
             || wire.View.Tiles.Count > MaximumTiles)
@@ -221,9 +239,7 @@ public static partial class ControlSurfaceContract
                 { Action: OpenTaskViewAction projectAction, Status: null, Role: null }
                     when tile.Id == $"project:{projectAction.ProjectId}"
                         && tile.Attention is not null
-                        && tile.Visual.Icon == "project"
-                        && tile.Visual.Tone == tile.Attention.Primary
-                        && tile.Visual.BorderColors.Count == tile.Attention.Indicators.Count => true,
+                        && IsCanonicalVisual(tile.Visual, tile.Attention, "project") => true,
                 _ => false,
             });
         }
@@ -253,13 +269,7 @@ public static partial class ControlSurfaceContract
             || tiles[backIndex].IconPath is not null
             || tiles[backIndex].Role is not null
             || tiles[backIndex].Attention is not null
-            || tiles[backIndex].Visual is not
-            {
-                Icon: "back",
-                Tone: "navigation",
-                BorderColors.Count: 0,
-                Badge: "",
-            })
+            || !IsCanonicalNavigationVisual(tiles[backIndex].Visual))
         {
             return false;
         }
@@ -271,9 +281,7 @@ public static partial class ControlSurfaceContract
                     && tile.Status is not null
                     && TaskStatuses.Contains(tile.Status)
                     && IsTaskAttention(tile.Status, tile.Attention)
-                    && tile.Visual.Icon == "task"
-                    && tile.Visual.Tone == tile.Attention.Primary
-                    && tile.Visual.BorderColors.Count == tile.Attention.Indicators.Count
+                    && IsCanonicalVisual(tile.Visual, tile.Attention, "task")
                     && (tile.Role == "coordinator" || tile.IconPath is null) => true,
             _ => false,
         });
@@ -293,6 +301,37 @@ public static partial class ControlSurfaceContract
             && state == expected
             && attention.AdditionalStates == 0;
     }
+
+    private static Boolean IsCanonicalVisual(
+        VisualPresentation visual,
+        AttentionSummary attention,
+        String expectedIcon)
+    {
+        var primary = AttentionVisualTokens[attention.Primary];
+        var expectedBadge = String.Concat(attention.Indicators.Select(indicator =>
+            AttentionVisualTokens[indicator.State].Badge))
+            + (attention.AdditionalStates > 0 ? $"+{attention.AdditionalStates}" : String.Empty);
+        return visual.Icon == expectedIcon
+            && visual.Glyph == IconGlyphs[expectedIcon]
+            && visual.Tone == attention.Primary
+            && visual.BackgroundColor == primary.BackgroundColor
+            && visual.ForegroundColor == "#FFFFFF"
+            && visual.BorderColors.SequenceEqual(attention.Indicators.Select(indicator =>
+                AttentionVisualTokens[indicator.State].BorderColor))
+            && visual.Badge == expectedBadge;
+    }
+
+    private static Boolean IsCanonicalNavigationVisual(VisualPresentation visual) =>
+        visual is
+        {
+            Icon: "back",
+            Glyph: "<",
+            Tone: "navigation",
+            BackgroundColor: "#111827",
+            ForegroundColor: "#FFFFFF",
+            BorderColors.Count: 0,
+            Badge: "",
+        };
 
     private static Boolean TryNormalizeAttention(
         WireAttention wire,
@@ -377,6 +416,11 @@ public static partial class ControlSurfaceContract
 
     [GeneratedRegex("^#[0-9A-F]{6}$", RegexOptions.CultureInvariant)]
     private static partial Regex HexColor();
+
+    private sealed record AttentionVisualToken(
+        String BackgroundColor,
+        String BorderColor,
+        String Badge);
 
     private sealed class WireState
     {

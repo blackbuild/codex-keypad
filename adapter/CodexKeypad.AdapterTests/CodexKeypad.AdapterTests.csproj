@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CodexKeypadPlugin/CodexKeypadPlugin.csproj" />
+    <Reference Include="PluginApi">
+      <HintPath>/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/PluginApi.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="SkiaSharp">
+      <HintPath>/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/.xamarin/osx-arm64/SkiaSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="HarfBuzzSharp">
+      <HintPath>/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/.xamarin/osx-arm64/HarfBuzzSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="SkiaSharp.HarfBuzz">
+      <HintPath>/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/SkiaSharp.HarfBuzz.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <None Include="../CodexKeypadPlugin/package/metadata/Icon256x256.png"
+          Link="Icon256x256.png"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/libSkiaSharp.dylib"
+          Link="libSkiaSharp.dylib"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/libHarfBuzzSharp.dylib"
+          Link="libHarfBuzzSharp.dylib"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

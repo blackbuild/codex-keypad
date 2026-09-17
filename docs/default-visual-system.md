@@ -28,8 +28,14 @@ An unrecognized persisted task status is normalized to `unavailable`; raw
 provider status text is never published. A source read failure is also
 `unavailable`. Worker evidence older than 24 hours, with no current evidence, is
 `stale`. Current workers accompanied by stale evidence remain a lower-bound
-count and add `stale` as a concurrent condition. Implausibly future-dated data is
-unavailable rather than stale.
+count and add `stale` as a concurrent condition. Implausibly future-dated data
+adds `unavailable`, including when a valid current lower-bound count is retained.
+
+The current Codex SQLite source exposes in-progress, completed, failed, and
+interrupted task states. Waiting-for-input and waiting-for-approval already have
+stable normalized and rendered tokens, but they appear only when a state source
+can supply those conditions; the SQLite adapter does not infer them from prompts,
+transcripts, or provider-private details.
 
 ## Composition and precedence
 
@@ -70,6 +76,9 @@ badge, and segmented attention edge remain visible with either image path.
 Back uses the navigation background `#111827` with white text (17.74:1). It has
 no attention summary or state segments. No visual field carries a command; the
 only accepted actions are the closed semantic navigation actions shown above.
+If no fresh validated contract exists at all, the device adapter cannot receive a
+core-owned presentation; its sole local safety fallback is `? Codex unavailable`
+on the unavailable background. It never presents the last healthy image as fresh.
 
 ## Device constraints
 

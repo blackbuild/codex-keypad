@@ -186,6 +186,22 @@ test('reports implausibly future-dated worker evidence as unavailable', () => {
   assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
 
+test('preserves current workers while marking concurrent future evidence unavailable', () => {
+  const now = 1000;
+  const states = readProjectStates(
+    [{ id: 'mixed-future', name: 'Mixed Future', root: '/projects/mixed-future' }],
+    () => sourceWithUpdatedAt(now, now + 5 * 60 * 1000 + 1),
+    { isProjectDirectory: () => true, now: () => now },
+  );
+
+  assert.deepEqual(states[0]?.activeWorkerCount, {
+    availability: 'available',
+    count: 1,
+    truncated: true,
+    unavailableEvidence: true,
+  });
+});
+
 function source(count: number): CodexTaskSource {
   return sourceWithUpdatedAt(...Array.from({ length: count }, (_, index) => index));
 }

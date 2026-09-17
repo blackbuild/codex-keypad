@@ -65,7 +65,8 @@ product action. Tasks are opened by the existing
 shell-free, validated Codex deep-link adapter. Unknown action types and unknown
 JSON members are rejected. Task labels use normalized task names or an opaque
 identifier fallback, never raw prompt or transcript content. Attention
-aggregation and agent-customized layouts remain later roadmap slices.
+aggregation uses the schema-v8 defaults below; agent-customized layouts remain a
+later roadmap slice.
 
 ## Target navigation model
 

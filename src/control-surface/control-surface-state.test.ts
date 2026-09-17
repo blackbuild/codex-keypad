@@ -162,6 +162,25 @@ test('aggregates task attention across project and entry tiles with bounded comp
   ]);
 });
 
+test('shows a valid lower-bound worker count with unavailable concurrent evidence', () => {
+  const state = buildProjectControlSurface([{
+    ...project('mixed', 'Mixed', 1),
+    activeWorkerCount: {
+      availability: 'available',
+      count: 1,
+      truncated: true,
+      unavailableEvidence: true,
+    },
+    tasks: [task],
+  }]);
+
+  assert.equal(state.view.tiles[0]?.label, 'Mixed · Unavailable +1 state · 1+ active');
+  assert.deepEqual(state.view.tiles[0]?.attention?.indicators, [
+    { state: 'unavailable', count: 1 },
+    { state: 'working', count: 1 },
+  ]);
+});
+
 test('normalizes every selected-project task in deterministic recency order', () => {
   const selected = {
     ...project('codex-keypad', 'Codex Keypad', 1),

@@ -124,10 +124,11 @@ current included task, Back remains first and all tasks use the normal ordering.
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
 do not inflate the worker badge, and an unrecognized task status is not counted
-as evidence of active work. A missing project root or exclusively stale or
-implausibly future-dated worker evidence is shown as `Count unavailable` rather
-than `Idle`. When current workers are returned alongside unusable worker state,
-the current workers remain visible as a lower bound such as `2+ active`.
+as evidence of active work. A missing project root or implausibly future-dated
+worker evidence is shown as `Count unavailable` rather than `Idle`; exclusively
+stale worker evidence is shown separately as `Count stale`. When current workers
+are returned alongside stale or otherwise unusable worker state, the current
+workers remain visible as a lower bound such as `2+ active`.
 
 Schema v8 presents the same normalized attention contract at task, project, and
 global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
@@ -161,9 +162,10 @@ npm test
 npm run build
 ```
 
-`npm test` runs the TypeScript behavior tests and the executable C# contract
-harness. `npm run build` typechecks and bundles the TypeScript live-state
-sidecar, then compiles and assembles the C# plugin in `dist-adapter/`.
+`npm test` runs the TypeScript behavior tests, the executable C# contract
+harness, and SDK-backed bitmap rendering/fallback checks. `npm run build`
+typechecks and bundles the TypeScript live-state sidecar, then compiles and
+assembles the C# plugin in `dist-adapter/`.
 
 Create the installable C# package with:
 
