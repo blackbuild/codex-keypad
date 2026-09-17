@@ -31,9 +31,8 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 4);
+  assert.equal(state.schemaVersion, 5);
   assert.deepEqual(state.view.tiles, [
-    { id: 'nav.back', label: 'Back', action: { type: 'close-control-surface' } },
     {
       id: 'project:architecture',
       label: 'Architecture · 2 active',
@@ -60,8 +59,8 @@ test('orders every configured project for native device pagination', () => {
 
   const state = buildProjectControlSurface(projects);
 
-  assert.equal(state.view.tiles.length, 16);
-  assert.deepEqual(state.view.tiles.slice(1).map((tile) => tile.id), [
+  assert.equal(state.view.tiles.length, 15);
+  assert.deepEqual(state.view.tiles.map((tile) => tile.id), [
     'project:project-01',
     'project:project-02',
     'project:project-03',
@@ -80,6 +79,13 @@ test('orders every configured project for native device pagination', () => {
   ]);
 });
 
+test('publishes an empty project overview without a redundant Back tile', () => {
+  const state = buildProjectControlSurface([]);
+
+  assert.equal(state.view.level, 'project-overview');
+  assert.deepEqual(state.view.tiles, []);
+});
+
 test('presents unavailable and bounded counts without claiming idle state', () => {
   const state = buildProjectControlSurface([
     project('missing', 'Missing', undefined),
@@ -87,8 +93,8 @@ test('presents unavailable and bounded counts without claiming idle state', () =
   ]);
 
   assert.equal(state.entry.label, 'Codex · count unavailable');
-  assert.equal(state.view.tiles[1]?.label, 'Missing · Count unavailable');
-  assert.equal(state.view.tiles[2]?.label, 'Very Busy · 100+ active');
+  assert.equal(state.view.tiles[0]?.label, 'Missing · Count unavailable');
+  assert.equal(state.view.tiles[1]?.label, 'Very Busy · 100+ active');
 });
 
 test('normalizes every selected-project task in deterministic recency order', () => {
@@ -101,7 +107,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 4);
+  assert.equal(state.schemaVersion, 5);
   assert.deepEqual(state.view.tiles.slice(1), [
     {
       id: 'task:thread-123',

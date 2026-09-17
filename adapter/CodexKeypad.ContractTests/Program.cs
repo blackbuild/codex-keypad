@@ -11,13 +11,12 @@ try
         File.WriteAllText(fixturePath, ProjectOverview());
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
         Expect(accepted
-            && state!.View.Tiles[0].Action is CloseControlSurfaceAction
-            && state.View.Tiles[1] is
+            && state!.View.Tiles[0] is
             {
                 IconPath: "/icons/architecture.png",
                 Action: OpenTaskViewAction { ProjectId: "architecture" },
             }
-            && state.View.Tiles[2].Action is OpenTaskViewAction { ProjectId: "codex-keypad" });
+            && state.View.Tiles[1].Action is OpenTaskViewAction { ProjectId: "codex-keypad" });
     });
 
     Run("accepts the normalized exact-task view", () =>
@@ -26,6 +25,15 @@ try
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
         Expect(accepted
             && state!.View.Tiles[1].Action is OpenCodexTaskAction { ThreadId: "thread-123" });
+    });
+
+    Run("rejects a redundant Back tile in the project overview", () =>
+    {
+        File.WriteAllText(fixturePath, ProjectOverview().Replace(
+            "\"tiles\": [",
+            "\"tiles\": [\n      { \"id\": \"nav.back\", \"label\": \"Back\", \"action\": { \"type\": \"close-control-surface\" } },",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
     Run("publishes one typed semantic action request", () =>
@@ -99,7 +107,7 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
@@ -110,7 +118,6 @@ static String ProjectOverview() => """
     "level": "project-overview",
     "title": "Projects",
     "tiles": [
-      { "id": "nav.back", "label": "Back", "action": { "type": "close-control-surface" } },
       {
         "id": "project:architecture",
         "label": "Architecture · 2 active",
@@ -129,7 +136,7 @@ static String ProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
@@ -171,7 +178,7 @@ static String ManyTaskView(Int32 taskCount)
     }));
     return JsonSerializer.Serialize(new
     {
-        schemaVersion = 4,
+        schemaVersion = 5,
         revision = "many-tasks:456",
         entry = new
         {

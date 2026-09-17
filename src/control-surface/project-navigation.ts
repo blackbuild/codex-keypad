@@ -53,8 +53,6 @@ export class ProjectNavigation {
         await this.openThread(task.id);
         return true;
       }
-      case 'close-control-surface':
-        return false;
     }
   }
 }

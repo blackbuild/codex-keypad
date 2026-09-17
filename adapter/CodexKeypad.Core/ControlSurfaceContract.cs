@@ -32,9 +32,6 @@ public abstract record SemanticAction(
 public sealed record OpenProjectOverviewAction() :
     SemanticAction("open-project-overview");
 
-public sealed record CloseControlSurfaceAction() :
-    SemanticAction("close-control-surface");
-
 public sealed record OpenTaskViewAction(
     [property: JsonProperty("projectId")] String ProjectId) :
     SemanticAction("open-task-view");
@@ -81,14 +78,14 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 4
+        if (wire.SchemaVersion != 5
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
             || !IsLabel(wire.Entry.Label)
             || !IsAction(wire.Entry.Action, "open-project-overview")
             || !IsLabel(wire.View.Title)
-            || wire.View.Tiles.Count is < 1 or > MaximumTiles)
+            || wire.View.Tiles.Count > MaximumTiles)
         {
             return false;
         }
@@ -130,8 +127,6 @@ public static partial class ControlSurfaceContract
         {
             "open-project-overview" when IsAction(wire.Action, "open-project-overview") =>
                 new OpenProjectOverviewAction(),
-            "close-control-surface" when IsAction(wire.Action, "close-control-surface") =>
-                new CloseControlSurfaceAction(),
             "open-task-view" when wire.Action.ThreadId is null
                 && wire.Action.Page is null
                 && IsSafeIdentifier(wire.Action.ProjectId) =>
@@ -153,10 +148,6 @@ public static partial class ControlSurfaceContract
 
     private static Boolean IsValidView(String level, IReadOnlyList<ControlSurfaceTile> tiles)
     {
-        if (tiles[0].Id != "nav.back")
-        {
-            return false;
-        }
         if (tiles.Select(tile => tile.Id).Distinct(StringComparer.Ordinal).Count() != tiles.Count)
         {
             return false;
@@ -164,14 +155,7 @@ public static partial class ControlSurfaceContract
 
         if (level == "project-overview")
         {
-            if (tiles[0].Action is not CloseControlSurfaceAction
-                || tiles[0].Status is not null
-                || tiles[0].IconPath is not null)
-            {
-                return false;
-            }
-
-            return tiles.Skip(1).All(tile => tile switch
+            return tiles.All(tile => tile switch
             {
                 { Action: OpenTaskViewAction projectAction, Status: null }
                     when tile.Id == $"project:{projectAction.ProjectId}" => true,
@@ -180,6 +164,8 @@ public static partial class ControlSurfaceContract
         }
 
         if (level != "task-view"
+            || tiles.Count == 0
+            || tiles[0].Id != "nav.back"
             || tiles[0].Action is not OpenProjectOverviewAction
             || tiles[0].Status is not null
             || tiles[0].IconPath is not null)

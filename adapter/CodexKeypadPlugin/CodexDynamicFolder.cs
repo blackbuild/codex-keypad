@@ -55,12 +55,6 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     {
         var action = this.WithState(state => state?.View.Tiles
             .SingleOrDefault(tile => tile.Id == actionParameter)?.Action);
-        if (action is CloseControlSurfaceAction)
-        {
-            this.Close();
-            return;
-        }
-
         var actionPath = this._actionPath;
         if (action is not null && actionPath is not null)
         {

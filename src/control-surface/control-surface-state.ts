@@ -42,7 +42,6 @@ export type ControlSurfaceLevel = 'project-overview' | 'task-view';
 
 export type SemanticAction =
   | { readonly type: 'open-project-overview' }
-  | { readonly type: 'close-control-surface' }
   | { readonly type: 'open-task-view'; readonly projectId: string }
   | { readonly type: 'open-codex-task'; readonly threadId: string };
 
@@ -55,7 +54,7 @@ export interface ControlSurfaceTile {
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 4;
+  readonly schemaVersion: 5;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
@@ -100,7 +99,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -111,10 +110,7 @@ export function buildProjectControlSurface(
 }
 
 function overviewTiles(projects: readonly CodexProjectState[]): readonly ControlSurfaceTile[] {
-  return [
-    { id: 'nav.back', label: 'Back', action: { type: 'close-control-surface' } },
-    ...projects.map(projectTile),
-  ];
+  return projects.map(projectTile);
 }
 
 function projectTile(state: CodexProjectState): ControlSurfaceTile {

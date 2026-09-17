@@ -35,6 +35,10 @@ working trees and all linked worktrees discovered from their Git metadata. The
 configuration names repository working trees rather than `.git` internals, and
 this association remains owned by the Codex state-source boundary.
 The device Home behavior and the close effect are owned by the Logitech runtime.
+Accordingly, the project overview contains no redundant product Back tile; native
+Back/Home exits to the surrounding Logitech profile. The selected-project task
+view retains one semantic Back tile because it returns to the project overview
+without closing the dynamic folder.
 The issue 4 one-project path completed its bounded physical-device smoke test.
 The superseded TypeScript startup-snapshot plugin was removed after that
 validation, leaving the live adapter as the single package path. The issue 5
