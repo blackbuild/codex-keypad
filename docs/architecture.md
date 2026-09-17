@@ -23,9 +23,12 @@ The live adapter uses a C# dynamic-folder package. A fixed TypeScript sidecar ow
 the semantic navigation state machine and publishes its current view for the
 configured projects and bounded non-archived tasks in the selected project as
 versioned, normalized JSON. It also owns deterministic project/task order,
-slot reuse, and exact-task validation. The C# adapter strictly validates that
-contract, exposes the complete ordered action list, renders configured project
-icons, and relays typed semantic action requests back to TypeScript. The Logitech
+slot reuse, exact-task validation, and canonical visual-token values. The C#
+adapter strictly validates the contract's versioned structure, bounds, tile
+roles, and semantic-action relationships without reconstructing TypeScript-owned
+visual policy. It exposes the complete ordered action list, renders the normalized
+presentation and configured project icons, and relays typed semantic action
+requests back to TypeScript. The Logitech
 runtime creates overflow touch pages and uses the device's native page controls;
 the product does not add synthetic Previous or Next tiles.
 

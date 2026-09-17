@@ -41,6 +41,12 @@ try
             "{ \"state\": \"stale\", \"count\": 1 }, { \"state\": \"working\", \"count\": 1 }",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+
+        File.WriteAllText(fixturePath, ProjectOverview().Replace(
+            "\"additionalStates\": 0",
+            "\"additionalStates\": 1",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
     Run("rejects malformed colors and mismatched fallback icons", () =>
@@ -57,11 +63,6 @@ try
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
 
-        File.WriteAllText(fixturePath, AttentionProjectOverview().Replace(
-            "\"badge\": \"!A~+1\"",
-            "\"badge\": \"XA~+1\"",
-            StringComparison.Ordinal));
-        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
     Run("accepts a normalized multi-project overview with a custom icon", () =>

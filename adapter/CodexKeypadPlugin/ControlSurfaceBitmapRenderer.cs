@@ -67,7 +67,10 @@ public static class ControlSurfaceBitmapRenderer
             if (iconPath is null
                 || !File.Exists(iconPath)
                 || new FileInfo(iconPath).Length > MaximumIconBytes
-                || !BitmapImage.TryCreateFromFile(iconPath, out icon))
+                || !HasPngSignature(iconPath)
+                || !BitmapImage.TryCreateFromFile(iconPath, out icon)
+                || icon.Width <= 0
+                || icon.Height <= 0)
             {
                 return false;
             }
@@ -78,6 +81,14 @@ public static class ControlSurfaceBitmapRenderer
             Trace.TraceWarning($"Unable to load a Codex Keypad custom icon: {error}");
             return false;
         }
+    }
+
+    private static Boolean HasPngSignature(String path)
+    {
+        ReadOnlySpan<Byte> expected = [137, 80, 78, 71, 13, 10, 26, 10];
+        Span<Byte> actual = stackalloc Byte[expected.Length];
+        using var stream = File.OpenRead(path);
+        return stream.Read(actual) == actual.Length && actual.SequenceEqual(expected);
     }
 
     private static void DrawAttentionSegments(
