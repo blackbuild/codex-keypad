@@ -116,7 +116,7 @@ test('can limit active tasks to one configured project root', () => {
   const projectSource = new SqliteCodexTaskSource({
     stateDatabase: join(fixtureDirectory, 'state.sqlite'),
     historyDatabase: join(fixtureDirectory, 'history.sqlite'),
-    workingDirectory: '/projects/codex-keypad',
+    workingDirectories: ['/projects/codex-keypad'],
   });
 
   assert.deepEqual(
@@ -129,12 +129,25 @@ test('associates a Codex worktree worker with its configured Git project', () =>
   const projectSource = new SqliteCodexTaskSource({
     stateDatabase: join(fixtureDirectory, 'state.sqlite'),
     historyDatabase: join(fixtureDirectory, 'history.sqlite'),
-    workingDirectory: configuredRepositoryRoot,
+    workingDirectories: [configuredRepositoryRoot],
   });
 
   assert.deepEqual(
     projectSource.listActiveWorkerTasks(9).map((task) => task.id),
     ['worktree-worker'],
+  );
+});
+
+test('combines a Codex project root with nested repositories and their worktrees', () => {
+  const projectSource = new SqliteCodexTaskSource({
+    stateDatabase: join(fixtureDirectory, 'state.sqlite'),
+    historyDatabase: join(fixtureDirectory, 'history.sqlite'),
+    workingDirectories: ['/projects/codex-keypad', configuredRepositoryRoot],
+  });
+
+  assert.deepEqual(
+    projectSource.listTasks(9).map((task) => task.id),
+    ['finished', 'desktop-new', 'worktree-worker'],
   );
 });
 

@@ -27,6 +27,7 @@ test('reads configured project identity, root, and custom icon', async () => {
           id: 'architecture',
           name: 'Architecture',
           root: '/projects/architecture',
+          repositories: ['/repositories/architecture'],
           icon: '/icons/architecture.png',
         },
         { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
@@ -39,6 +40,7 @@ test('reads configured project identity, root, and custom icon', async () => {
       id: 'architecture',
       name: 'Architecture',
       root: '/projects/architecture',
+      repositories: ['/repositories/architecture'],
       icon: '/icons/architecture.png',
     },
     { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
@@ -67,7 +69,7 @@ test('fails explicitly when neither process nor persistent configuration identif
   );
 });
 
-test('rejects duplicate project identities and relative icon paths', async () => {
+test('rejects duplicate project identities and relative repository or icon paths', async () => {
   const configurationDirectory = join(homeDirectory, 'Library', 'Application Support', 'Codex Keypad');
   await mkdir(configurationDirectory, { recursive: true });
   const configurationPath = join(configurationDirectory, 'config.json');
@@ -79,6 +81,19 @@ test('rejects duplicate project identities and relative icon paths', async () =>
     ],
   }));
   assert.throws(() => configuredProjects({}, homeDirectory), /project ids must be unique/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{
+      id: 'safe',
+      name: 'Safe',
+      root: '/projects/safe',
+      repositories: ['repositories/safe'],
+    }],
+  }));
+  assert.throws(
+    () => configuredProjects({}, homeDirectory),
+    /repositories\[0\] must be an absolute project directory/,
+  );
 
   await writeFile(configurationPath, JSON.stringify({
     projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe', icon: 'icon.png' }],

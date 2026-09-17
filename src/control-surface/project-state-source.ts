@@ -16,7 +16,7 @@ const MAXIMUM_ICON_BYTES = 1024 * 1024;
 const MAXIMUM_ACTIVE_STATE_AGE_MS = 24 * 60 * 60 * 1000;
 const MAXIMUM_FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
-export type ProjectTaskSourceFactory = (projectRoot: string) => CodexTaskSource;
+export type ProjectTaskSourceFactory = (projectRoots: readonly string[]) => CodexTaskSource;
 export type ReadIconMetadata = (path: string) => {
   readonly isFile: boolean;
   readonly size: number;
@@ -50,7 +50,10 @@ export function readProjectStates(
       if (!isProjectDirectory(configuration.root)) {
         return { project, activeWorkerCount: unavailableActiveWorkerCount, tasks: [] };
       }
-      const source = createTaskSource(configuration.root);
+      const source = createTaskSource([
+        configuration.root,
+        ...(configuration.repositories ?? []),
+      ]);
       const tasks = source.listTasks(MAXIMUM_INCLUDED_TASKS);
       const workers = source.listActiveWorkerTasks(MAXIMUM_EXACT_ACTIVE_WORKERS + 1);
       const observedAt = now();

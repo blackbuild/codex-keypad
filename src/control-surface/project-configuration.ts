@@ -3,12 +3,14 @@ import { homedir } from 'node:os';
 import { extname, isAbsolute, join } from 'node:path';
 
 const MAXIMUM_PROJECTS = 64;
+const MAXIMUM_REPOSITORIES_PER_PROJECT = 16;
 const SAFE_PROJECT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 export interface CodexProjectConfiguration {
   readonly id: string;
   readonly name: string;
   readonly root: string;
+  readonly repositories?: readonly string[];
   readonly icon?: string;
 }
 
@@ -79,20 +81,51 @@ export function configuredProjects(
 
 function parseProject(value: unknown, index: number): CodexProjectConfiguration {
   if (!isRecord(value)
-    || !hasExactOptionalKeys(value, ['id', 'name', 'root'], ['icon'])
+    || !hasExactOptionalKeys(value, ['id', 'name', 'root'], ['icon', 'repositories'])
     || typeof value.id !== 'string'
     || typeof value.name !== 'string'
     || typeof value.root !== 'string'
-    || (value.icon !== undefined && typeof value.icon !== 'string')) {
-    throw new Error(`projects[${index}] must contain id, name, root, and optional icon strings`);
+    || (value.icon !== undefined && typeof value.icon !== 'string')
+    || (value.repositories !== undefined && !Array.isArray(value.repositories))) {
+    throw new Error(
+      `projects[${index}] must contain id, name, root, and optional icon and repositories`,
+    );
+  }
+
+  const root = absoluteProjectRoot(value.root.trim(), `projects[${index}].root`);
+  const repositories = repositoryRoots(value.repositories, index);
+  if (repositories.includes(root)) {
+    throw new Error(`projects[${index}].repositories must not repeat its root`);
   }
 
   return {
     id: projectId(value.id),
     name: projectName(value.name),
-    root: absoluteProjectRoot(value.root.trim(), `projects[${index}].root`),
+    root,
+    ...(repositories.length > 0 ? { repositories } : {}),
     ...optionalIcon(value.icon, `projects[${index}].icon`),
   };
+}
+
+function repositoryRoots(value: unknown, projectIndex: number): readonly string[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)
+    || value.length > MAXIMUM_REPOSITORIES_PER_PROJECT
+    || value.some((entry) => typeof entry !== 'string')) {
+    throw new Error(
+      `projects[${projectIndex}].repositories must contain at most ${MAXIMUM_REPOSITORIES_PER_PROJECT} paths`,
+    );
+  }
+  const roots = value.map((entry, repositoryIndex) => absoluteProjectRoot(
+    entry.trim(),
+    `projects[${projectIndex}].repositories[${repositoryIndex}]`,
+  ));
+  if (new Set(roots).size !== roots.length) {
+    throw new Error(`projects[${projectIndex}].repositories must be unique`);
+  }
+  return roots;
 }
 
 function projectId(value: string): string {

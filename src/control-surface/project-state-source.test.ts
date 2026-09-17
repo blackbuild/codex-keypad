@@ -5,15 +5,15 @@ import type { CodexTaskSource } from '../codex/codex-task-source.ts';
 import { readProjectStates } from './project-state-source.ts';
 
 test('reports all current workers exactly while preserving project order', () => {
-  const requestedRoots: string[] = [];
+  const requestedRoots: Array<readonly string[]> = [];
   const states = readProjectStates(
     [
       { id: 'second', name: 'Second', root: '/projects/second', icon: '/icons/second.png' },
       { id: 'first', name: 'First', root: '/projects/first' },
     ],
-    (root) => {
-      requestedRoots.push(root);
-      return source(root === '/projects/second' ? 2 : 0);
+    (roots) => {
+      requestedRoots.push(roots);
+      return source(roots[0] === '/projects/second' ? 2 : 0);
     },
     {
       readIconMetadata: () => ({ isFile: true, size: 4096, modifiedAt: 1234 }),
@@ -22,7 +22,10 @@ test('reports all current workers exactly while preserving project order', () =>
     },
   );
 
-  assert.deepEqual(requestedRoots, ['/projects/second', '/projects/first']);
+  assert.deepEqual(requestedRoots, [
+    ['/projects/second'],
+    ['/projects/first'],
+  ]);
   assert.deepEqual(states.map(({ project, activeWorkerCount }) => ({ project, activeWorkerCount })), [
     {
       project: {
@@ -39,6 +42,29 @@ test('reports all current workers exactly while preserving project order', () =>
   ]);
   assert.deepEqual(states[0]?.tasks.map(({ id }) => id), ['task-0', 'task-1']);
   assert.deepEqual(states[1]?.tasks, []);
+});
+
+test('includes configured repository roots with the Codex project root', () => {
+  const requestedRoots: Array<readonly string[]> = [];
+  readProjectStates(
+    [{
+      id: 'hive',
+      name: 'Hive',
+      root: '/projects/hive',
+      repositories: ['/projects/hive/repo', '/projects/hive/other-repo'],
+    }],
+    (roots) => {
+      requestedRoots.push(roots);
+      return source(0);
+    },
+    { isProjectDirectory: () => true, now: () => 1000 },
+  );
+
+  assert.deepEqual(requestedRoots, [[
+    '/projects/hive',
+    '/projects/hive/repo',
+    '/projects/hive/other-repo',
+  ]]);
 });
 
 test('includes every active project task independently of the worker count', () => {
@@ -69,8 +95,8 @@ test('reports an unavailable source independently and bounds large current count
       { id: 'missing', name: 'Missing', root: '/projects/missing' },
       { id: 'busy', name: 'Busy', root: '/projects/busy' },
     ],
-    (root) => {
-      if (root.endsWith('/missing')) {
+    (roots) => {
+      if (roots[0]?.endsWith('/missing')) {
         throw new Error('database unavailable');
       }
       return source(100);

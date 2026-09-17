@@ -31,7 +31,7 @@ interface ThreadRow {
 export interface SqliteCodexTaskSourceOptions {
   readonly stateDatabase: string;
   readonly historyDatabase: string;
-  readonly workingDirectory?: string;
+  readonly workingDirectories?: readonly string[];
 }
 
 export class SqliteCodexTaskSource implements CodexTaskSource {
@@ -68,9 +68,9 @@ export class SqliteCodexTaskSource implements CodexTaskSource {
 
     const database = new DatabaseSync(this.options.stateDatabase, { readOnly: true });
     try {
-      const workingDirectories = this.options.workingDirectory
-        ? projectWorkingDirectories(this.options.workingDirectory)
-        : [];
+      const workingDirectories = [...new Set(
+        (this.options.workingDirectories ?? []).flatMap(projectWorkingDirectories),
+      )];
       const workingDirectoryFilter = workingDirectories.length > 0
         ? `AND cwd IN (${workingDirectories.map(() => '?').join(', ')})`
         : '';
@@ -209,15 +209,20 @@ function readBoundedText(path: string): string {
 
 export function createDefaultCodexTaskSource(
   environment: NodeJS.ProcessEnv = process.env,
+  workingDirectories?: readonly string[],
 ): SqliteCodexTaskSource {
   const codexHome = environment.CODEX_HOME ?? join(homedir(), '.codex');
-  const workingDirectory = environment.CODEX_KEYPAD_PROJECT_ROOT;
+  const environmentRoot = environment.CODEX_KEYPAD_PROJECT_ROOT;
+  const configuredWorkingDirectories = workingDirectories
+    ?? (environmentRoot ? [environmentRoot] : []);
   return new SqliteCodexTaskSource({
     stateDatabase: environment.CODEX_STATE_DB
       ?? findLatestVersionedDatabase(codexHome, 'state'),
     historyDatabase: environment.CODEX_THREAD_HISTORY_DB
       ?? findLatestVersionedDatabase(codexHome, 'thread_history'),
-    ...(workingDirectory ? { workingDirectory } : {}),
+    ...(configuredWorkingDirectories.length > 0
+      ? { workingDirectories: configuredWorkingDirectories }
+      : {}),
   });
 }
 

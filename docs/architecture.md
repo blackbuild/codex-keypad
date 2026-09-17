@@ -26,6 +26,12 @@ versioned, normalized JSON. It also owns deterministic project/task order,
 nine-key page selection, live page clamping, and exact-task validation. The C#
 adapter strictly validates that contract, renders configured project icons, and
 relays typed action requests back to TypeScript.
+
+A configured project root is the Codex task working directory. Optional
+repository roots extend task association to nested or otherwise related Git
+working trees and all linked worktrees discovered from their Git metadata. The
+configuration names repository working trees rather than `.git` internals, and
+this association remains owned by the Codex state-source boundary.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 The issue 4 one-project path completed its bounded physical-device smoke test.
 The superseded TypeScript startup-snapshot plugin was removed after that

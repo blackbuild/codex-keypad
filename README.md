@@ -49,7 +49,10 @@ cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
     {
       "id": "codex-keypad",
       "name": "Codex Keypad",
-      "root": "/absolute/path/to/codex-keypad",
+      "root": "/absolute/path/to/codex-project",
+      "repositories": [
+        "/absolute/path/to/codex-project/repo"
+      ],
       "icon": "/absolute/path/to/codex-keypad.png"
     },
     {
@@ -63,10 +66,15 @@ JSON
 ```
 
 Each project needs a unique stable `id`, a display `name`, and an absolute `root`
-for its primary Git checkout. Workers running in linked Git worktrees are
-automatically associated with that project. An optional `icon` is an absolute
-path to a PNG of at most 1 MiB. Project tiles follow the configuration order and
-use deterministic nine-key pages when necessary.
+for the Codex project directory used as the task working directory. An optional
+`repositories` array names up to 16 repository working-tree roots contained in or
+otherwise associated with that Codex project. Do not point it at `.git`; the
+adapter resolves each repository's Git metadata and automatically associates its
+linked worktrees. This lets a wrapper-style project include both Hive tasks rooted
+at the wrapper and worker tasks rooted at nested repositories or worktrees. An
+optional `icon` is an absolute path to a PNG of at most 1 MiB. Project tiles
+follow the configuration order and use deterministic nine-key pages when
+necessary.
 
 The sidecar re-reads configuration and live Codex state on every refresh, so
 adding, removing, renaming, reordering, or changing an icon path does not require
