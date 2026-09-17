@@ -46,6 +46,13 @@ ExpectPixel(concurrent, concurrent.Width * 5 / 6, 1, "#60A5FA");
 Expect(ContainsColor(
     concurrent,
     "#FFFFFF",
+    0,
+    concurrent.Width / 4,
+    5,
+    concurrent.Height / 2));
+Expect(ContainsColor(
+    concurrent,
+    "#FFFFFF",
     concurrent.Width / 2,
     concurrent.Width,
     5,
@@ -57,6 +64,25 @@ Expect(ContainsColor(
     concurrent.Width,
     concurrent.Height / 2,
     concurrent.Height));
+
+var badgeOnly = Render(new VisualPresentation(
+    "task",
+    "",
+    "failed",
+    "#7F1D1D",
+    "#FFFFFF",
+    ["#F87171", "#FACC15", "#60A5FA"],
+    "!AI+2"), null);
+var badgePixels = ColorStats(
+    badgeOnly,
+    "#FFFFFF",
+    0,
+    badgeOnly.Width,
+    0,
+    badgeOnly.Height / 2);
+Expect(badgePixels.Count > 0);
+Expect(badgePixels.Top >= 8);
+Expect(badgePixels.Bottom - badgePixels.Top + 1 >= 14);
 
 using var unavailableImage = ControlSurfaceBitmapRenderer.RenderUnavailable(
     PluginImageSize.Width90Pixels);
@@ -136,6 +162,33 @@ static Boolean ContainsColor(
         }
     }
     return false;
+}
+
+static (Int32 Count, Int32 Top, Int32 Bottom) ColorStats(
+    (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
+    String color,
+    Int32 left,
+    Int32 right,
+    Int32 top,
+    Int32 bottom)
+{
+    var expected = Rgb565(color);
+    var count = 0;
+    var first = bottom;
+    var last = top - 1;
+    for (var y = top; y < bottom; y += 1)
+    {
+        for (var x = left; x < right; x += 1)
+        {
+            if (ReadPixel(image, x, y) == expected)
+            {
+                count += 1;
+                first = Math.Min(first, y);
+                last = Math.Max(last, y);
+            }
+        }
+    }
+    return (count, first, last);
 }
 
 static UInt16 ReadPixel(

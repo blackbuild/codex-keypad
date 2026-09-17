@@ -6,6 +6,7 @@ using Loupedeck;
 
 public static class ControlSurfaceBitmapRenderer
 {
+    private const Int32 AttentionSegmentHeight = 4;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
     public static BitmapImage Render(
@@ -17,6 +18,8 @@ public static class ControlSurfaceBitmapRenderer
         using var builder = new BitmapBuilder(imageSize);
         var background = ParseColor(visual.BackgroundColor);
         var foreground = ParseColor(visual.ForegroundColor);
+        var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
+        var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
         builder.Clear(background);
 
         if (TryLoadIcon(iconPath, out var icon))
@@ -29,14 +32,20 @@ public static class ControlSurfaceBitmapRenderer
                 visual.Glyph,
                 0,
                 5,
-                builder.Width,
+                badgeWidth > 0 ? Math.Max(1, builder.Width - badgeWidth) : builder.Width,
                 Math.Max(1, builder.Height / 2 - 5),
                 foreground,
                 fontSize: 24);
         }
 
         DrawAttentionSegments(builder, visual.BorderColors);
-        DrawBadge(builder, visual.Badge, background, foreground);
+        DrawBadge(
+            builder,
+            visual.Badge,
+            badgeWidth,
+            badgeFontSize,
+            background,
+            foreground);
 
         var labelTop = builder.Height / 2;
         builder.FillRectangle(0, labelTop, builder.Width, builder.Height - labelTop, background);
@@ -99,13 +108,27 @@ public static class ControlSurfaceBitmapRenderer
         {
             var start = index * builder.Width / colors.Count;
             var end = (index + 1) * builder.Width / colors.Count;
-            builder.FillRectangle(start, 0, Math.Max(1, end - start), 4, ParseColor(colors[index]));
+            builder.FillRectangle(
+                start,
+                0,
+                Math.Max(1, end - start),
+                AttentionSegmentHeight,
+                ParseColor(colors[index]));
         }
     }
+
+    private static Int32 BadgeWidth(Int32 imageWidth, String badge, Int32 fontSize) =>
+        badge.Length == 0
+            ? 0
+            : Math.Min(
+                imageWidth,
+                Math.Max(34, badge.Length * (fontSize / 2 + 2) + 8));
 
     private static void DrawBadge(
         BitmapBuilder builder,
         String badge,
+        Int32 badgeWidth,
+        Int32 fontSize,
         BitmapColor background,
         BitmapColor foreground)
     {
@@ -113,16 +136,22 @@ public static class ControlSurfaceBitmapRenderer
         {
             return;
         }
-        var badgeWidth = Math.Min(builder.Width, Math.Max(24, badge.Length * 9 + 6));
-        builder.FillRectangle(builder.Width - badgeWidth, 4, badgeWidth, 20, background);
+        var badgeTop = AttentionSegmentHeight + 4;
+        var badgeHeight = fontSize + 10;
+        builder.FillRectangle(
+            builder.Width - badgeWidth,
+            badgeTop,
+            badgeWidth,
+            badgeHeight,
+            background);
         builder.DrawText(
             badge,
             builder.Width - badgeWidth,
-            5,
+            badgeTop + 1,
             badgeWidth,
-            18,
+            badgeHeight - 2,
             foreground,
-            fontSize: 12);
+            fontSize: fontSize);
     }
 
     private static BitmapColor ParseColor(String color) =>
