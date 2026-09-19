@@ -7,7 +7,7 @@ MX Keypad. The live adapter provides a three-level path:
 2. choose from the configured project tiles;
 3. choose from the selected project's Codex tasks and open the exact task.
 
-Back returns from the task view to the project overview and closes the overview
+Up returns from the task view to the project overview and closes the overview
 at its root. The device Home button exits the dynamic folder normally. State is
 refreshed four times per second without reloading the plugin.
 
@@ -17,7 +17,8 @@ refreshed four times per second without reloading the plugin.
   details. A configured project root limits the live task selection to that
   project.
 - `src/control-surface/` owns the versioned normalized views, semantic navigation
-  state machine, exact-task opening, and atomic state/action handoff.
+  state machine, attention aggregation, default visual tokens, exact-task
+  opening, and atomic state/action handoff.
 - `adapter/CodexKeypad.Core/` strictly validates the normalized JSON and relays
   only its closed set of typed semantic actions.
 - `adapter/CodexKeypadPlugin/` is the thin Logitech C# dynamic-folder adapter. It
@@ -83,7 +84,7 @@ Patterns are case-insensitive, match the complete task name, and use `*` for any
 text and `?` for one character. An exact matching ID wins; if that ID is absent,
 the first pattern match in deterministic recency/identity order becomes the
 coordinator. Multiple matches therefore need no conflict handling. When a
-coordinator is present, it is pinned before Back in the selected-project view and
+coordinator is present, it is pinned before Up in the selected-project view and
 uses the project's icon; the remaining tasks retain deterministic recency
 ordering. An optional `icon` is an absolute path to a PNG of at most 1 MiB.
 Project tiles follow the configuration order; the Logitech runtime uses the
@@ -110,23 +111,38 @@ state. A task with a present but unrecognized persisted status remains visible a
 `State unavailable`; the raw status is never published. Archived or deleted tasks
 leave the view and newly created tasks appear.
 Vacated positions are reused by the next task in the same ordering, while
-unpopulated keypad positions have no action. Task labels use the Codex task name,
-or a bounded opaque task identifier when no name exists; raw prompt and transcript
-text are never used as the fallback label. In the selected-project task view,
-the explicit Back tile performs the product-level task-to-project transition;
+unpopulated keypad positions have no action. Native keypad labels use an
+18-character compact cue from the Codex task name followed by its normalized
+state, or a bounded opaque task identifier when no name exists; the complete
+task ID still backs exact navigation, and raw prompt and transcript text are
+never used as the fallback label. The bitmap does not repeat the native display
+label. In the selected-project task view,
+the explicit Up tile performs the product-level task-to-project transition;
 the SDK's native Back/Home behavior closes the entire dynamic folder instead.
 With a matching `coordinatorTaskId`, the published leading controls are
-coordinator then Back, so the runtime's prepended native Home control produces a
-first row of Home, coordinator, and Back. If the configured coordinator is not a
-current included task, Back remains first and all tasks use the normal ordering.
+coordinator then Up, so the runtime's prepended native Home control produces a
+first row of Home, coordinator, and Up. If the configured coordinator is not a
+current included task, Up remains first and all tasks use the normal ordering.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
 do not inflate the worker badge, and an unrecognized task status is not counted
-as evidence of active work. A missing project root or exclusively stale or
-implausibly future-dated worker evidence is shown as `Count unavailable` rather
-than `Idle`. When current workers are returned alongside unusable worker state,
-the current workers remain visible as a lower bound such as `2+ active`.
+as evidence of active work. A missing project root or implausibly future-dated
+worker evidence is shown as `Count unavailable` rather than `Idle`; exclusively
+stale worker evidence is shown separately as `Count stale`. When current workers
+are returned alongside stale or otherwise unusable worker state, the current
+workers remain visible as a lower bound such as `2+ active`.
+
+Schema v8 presents the same normalized attention contract at task, project, and
+global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
+working, and idle conditions compose with fixed precedence; up to three are
+shown as color segments and ASCII badge cues, with explicit overflow. Every tile
+also carries the packaged Codex mark plus built-in terminal fallback, folder,
+document, Hive, and Up-arrow icons, so custom project PNGs are optional. Labels
+and badges keep the states understandable without color.
+See [the default visual system](docs/default-visual-system.md) for the complete
+legend and [the device checklist](docs/physical-device-validation.md) for the
+remaining hardware acceptance checks.
 
 For a shell-launched sidecar smoke test, `CODEX_KEYPAD_PROJECT_ROOT` remains an
 override. A shell `export` does not configure an already-running, GUI-launched
@@ -150,9 +166,10 @@ npm test
 npm run build
 ```
 
-`npm test` runs the TypeScript behavior tests and the executable C# contract
-harness. `npm run build` typechecks and bundles the TypeScript live-state
-sidecar, then compiles and assembles the C# plugin in `dist-adapter/`.
+`npm test` runs the TypeScript behavior tests, the executable C# contract
+harness, and SDK-backed bitmap rendering/fallback checks. `npm run build`
+typechecks and bundles the TypeScript live-state sidecar, then compiles and
+assembles the C# plugin in `dist-adapter/`.
 
 Create the installable C# package with:
 
@@ -167,13 +184,13 @@ profile.
 Automated tests and packaged-sidecar checks cover the non-device behavior. The
 issue #4 package was also exercised on a physical MX Keypad: the assignable Codex
 entry, project and task navigation, exact-task deep link, live active/idle
-refresh, one-level Back behavior, and device Home exit all worked without
+refresh, one-level Up behavior, and device Home exit all worked without
 restarting Options+. This bounded smoke test is the hardware evidence; automated
 or simulated checks are not treated as substitutes for it.
 
 The maintainer confirmed the issue #6 multi-task physical demonstration through
-schema v5: exact task opening, native pagination, live completion/removal/addition,
-inert empty slots, project/task navigation, and the absence of synthetic page or
-project-overview Back tiles. The schema v6 coordinator-ordering follow-up requires
-one focused device confirmation that the first task row is native Home,
-project-icon coordinator, and Back.
+schema v6: exact task opening, native pagination, live completion/removal/addition,
+inert empty slots, project/task navigation, coordinator ordering, and the absence
+of synthetic page or project-overview Up tiles. Schema v8 attention rendering
+still requires the focused physical-device checklist linked above; automated
+validation is not reported as hardware acceptance.

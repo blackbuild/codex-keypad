@@ -147,14 +147,14 @@ test('does not report a missing configured project root as idle', () => {
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
 });
 
-test('reports only stale worker evidence as unavailable', () => {
+test('reports only stale worker evidence as stale', () => {
   const states = readProjectStates(
     [{ id: 'stale', name: 'Stale', root: '/projects/stale' }],
     () => source(1),
     { isProjectDirectory: () => true, now: () => 25 * 60 * 60 * 1000 },
   );
 
-  assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
+  assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'stale' });
 });
 
 test('preserves current workers as a lower bound when stale workers are also returned', () => {
@@ -169,6 +169,7 @@ test('preserves current workers as a lower bound when stale workers are also ret
     availability: 'available',
     count: 1,
     truncated: true,
+    staleEvidence: true,
   });
   assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
@@ -183,6 +184,22 @@ test('reports implausibly future-dated worker evidence as unavailable', () => {
 
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
   assert.equal(states[0]?.tasks[0]?.id, 'task-0');
+});
+
+test('preserves current workers while marking concurrent future evidence unavailable', () => {
+  const now = 1000;
+  const states = readProjectStates(
+    [{ id: 'mixed-future', name: 'Mixed Future', root: '/projects/mixed-future' }],
+    () => sourceWithUpdatedAt(now, now + 5 * 60 * 1000 + 1),
+    { isProjectDirectory: () => true, now: () => now },
+  );
+
+  assert.deepEqual(states[0]?.activeWorkerCount, {
+    availability: 'available',
+    count: 1,
+    truncated: true,
+    unavailableEvidence: true,
+  });
 });
 
 function source(count: number): CodexTaskSource {

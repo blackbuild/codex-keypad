@@ -12,7 +12,7 @@
     "build:typescript": "npm run typecheck && tsup",
     "pack": "node scripts/pack-adapter.mjs",
     "test": "npm run test:typescript && npm run test:adapter",
-    "test:adapter": "dotnet run --project adapter/CodexKeypad.ContractTests/CodexKeypad.ContractTests.csproj",
+    "test:adapter": "dotnet run --disable-build-servers --project adapter/CodexKeypad.ContractTests/CodexKeypad.ContractTests.csproj && dotnet build --disable-build-servers -m:1 -nodeReuse:false -p:UseSharedCompilation=false adapter/CodexKeypad.AdapterTests/CodexKeypad.AdapterTests.csproj && dotnet run --disable-build-servers --no-build --project adapter/CodexKeypad.AdapterTests/CodexKeypad.AdapterTests.csproj",
     "test:typescript": "node --experimental-strip-types --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

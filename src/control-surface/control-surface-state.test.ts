@@ -5,6 +5,7 @@ import type { CodexTask } from '../codex/codex-task-source.ts';
 import {
   buildProjectControlSurface,
   exactActiveWorkerCount,
+  staleActiveWorkerCount,
   truncatedActiveWorkerCount,
   unavailableActiveWorkerCount,
   type CodexProjectState,
@@ -31,26 +32,31 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 7);
-  assert.deepEqual(state.view.tiles, [
+  assert.equal(state.schemaVersion, 8);
+  assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, action }) => ({
+    id,
+    label,
+    ...(iconPath ? { iconPath } : {}),
+    action,
+  })), [
     {
       id: 'project:architecture',
-      label: 'Architecture · 2 active',
+      label: 'Architecture · Working · 2 active',
       iconPath: '/icons/architecture.png',
       action: { type: 'open-task-view', projectId: 'architecture' },
     },
     {
       id: 'project:codex-keypad',
-      label: 'Codex Keypad · 1 active',
+      label: 'Codex Keypad · Working · 1 active',
       action: { type: 'open-task-view', projectId: 'codex-keypad' },
     },
     {
       id: 'project:idle',
-      label: 'Idle Project · Idle',
+      label: 'Idle Project · Idle · Idle',
       action: { type: 'open-task-view', projectId: 'idle' },
     },
   ]);
-  assert.equal(state.entry.label, 'Codex · 3 active');
+  assert.equal(state.entry.label, 'Codex · Working x2 · 3 active');
 });
 
 test('orders every configured project for native device pagination', () => {
@@ -79,7 +85,7 @@ test('orders every configured project for native device pagination', () => {
   ]);
 });
 
-test('publishes an empty project overview without a redundant Back tile', () => {
+test('publishes an empty project overview without a redundant Up tile', () => {
   const state = buildProjectControlSurface([]);
 
   assert.equal(state.view.level, 'project-overview');
@@ -92,9 +98,87 @@ test('presents unavailable and bounded counts without claiming idle state', () =
     project('busy', 'Very Busy', '100+'),
   ]);
 
-  assert.equal(state.entry.label, 'Codex · count unavailable');
-  assert.equal(state.view.tiles[0]?.label, 'Missing · Count unavailable');
-  assert.equal(state.view.tiles[1]?.label, 'Very Busy · 100+ active');
+  assert.equal(state.entry.label, 'Codex · Unavailable +1 state · count unavailable');
+  assert.equal(state.view.tiles[0]?.label, 'Missing · Unavailable · Count unavailable');
+  assert.equal(state.view.tiles[1]?.label, 'Very Busy · Working · 100+ active');
+});
+
+test('aggregates task attention across project and entry tiles with bounded composition', () => {
+  const failing = { ...task, id: 'failed', status: 'failed' as const };
+  const approval = {
+    ...task,
+    id: 'approval',
+    status: 'waiting-for-approval' as const,
+  };
+  const state = buildProjectControlSurface([
+    { ...project('first', 'First', 1), tasks: [task, failing] },
+    {
+      ...project('second', 'Second', 0),
+      activeWorkerCount: staleActiveWorkerCount,
+      tasks: [approval],
+    },
+  ]);
+
+  assert.equal(state.schemaVersion, 8);
+  assert.deepEqual(state.entry.attention, {
+    primary: 'failed',
+    indicators: [
+      { state: 'failed', count: 1 },
+      { state: 'waiting-for-approval', count: 1 },
+      { state: 'stale', count: 1 },
+    ],
+    additionalStates: 1,
+  });
+  assert.deepEqual(state.entry.visual, {
+    icon: 'entry',
+    glyph: 'C',
+    tone: 'failed',
+    backgroundColor: '#7F1D1D',
+    foregroundColor: '#FFFFFF',
+    borderColors: ['#F87171', '#FACC15', '#FDBA74'],
+    badge: '!A~+1',
+  });
+  assert.deepEqual(state.view.tiles.map((tile) => ({
+    id: tile.id,
+    primary: tile.attention?.primary,
+    icon: tile.visual.icon,
+    glyph: tile.visual.glyph,
+    action: tile.action,
+  })), [
+    {
+      id: 'project:first',
+      primary: 'failed',
+      icon: 'project',
+      glyph: 'P',
+      action: { type: 'open-task-view', projectId: 'first' },
+    },
+    {
+      id: 'project:second',
+      primary: 'waiting-for-approval',
+      icon: 'project',
+      glyph: 'P',
+      action: { type: 'open-task-view', projectId: 'second' },
+    },
+  ]);
+});
+
+test('shows a valid lower-bound worker count with unavailable concurrent evidence', () => {
+  const state = buildProjectControlSurface([{
+    ...project('mixed', 'Mixed', 1),
+    activeWorkerCount: {
+      availability: 'available',
+      count: 1,
+      truncated: true,
+      unavailableEvidence: true,
+    },
+    tasks: [task],
+  }]);
+
+  assert.equal(state.view.tiles[0]?.label, 'Mixed · Unavailable +1 state · 1+ active');
+  assert.deepEqual(state.view.tiles[0]?.attention?.indicators, [
+    { state: 'unavailable', count: 1 },
+    { state: 'working', count: 1 },
+  ]);
 });
 
 test('normalizes every selected-project task in deterministic recency order', () => {
@@ -107,24 +191,32 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 7);
-  assert.deepEqual(state.view.tiles.slice(1), [
+  assert.equal(state.schemaVersion, 8);
+  assert.deepEqual(state.view.tiles.slice(1).map(({ id, label, status, action }) => ({
+    id,
+    label,
+    status,
+    action,
+  })), [
     {
       id: 'task:thread-123',
-      label: 'Implement the live project overview · Working',
+      label: 'Implement the liv… · Working',
       status: 'working',
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
     {
       id: 'task:thread-older',
-      label: 'Review the adapter contract · Completed',
+      label: 'Review the adapte… · Completed',
       status: 'completed',
       action: { type: 'open-codex-task', threadId: 'thread-older' },
     },
   ]);
+  assert.equal(state.view.tiles[1]?.visual.glyph, 'T');
+  assert.equal(state.view.tiles[1]?.visual.badge, '>');
+  assert.equal(state.view.tiles[2]?.visual.badge, 'OK');
 });
 
-test('places the configured coordinator before Back and gives it the project icon', () => {
+test('places the configured coordinator before Up and gives it the project icon', () => {
   const selected: CodexProjectState = {
     ...project('codex-keypad', 'Codex Keypad', 1, '/icons/codex-keypad.png'),
     coordinatorTaskId: olderTask.id,
@@ -136,24 +228,33 @@ test('places the configured coordinator before Back and gives it the project ico
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 7);
-  assert.deepEqual(state.view.tiles, [
+  assert.equal(state.schemaVersion, 8);
+  assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, role, status, action }) => ({
+    id,
+    label,
+    ...(iconPath ? { iconPath } : {}),
+    ...(role ? { role } : {}),
+    ...(status ? { status } : {}),
+    action,
+  })), [
     {
       id: 'task:thread-older',
-      label: 'Review the adapter contract · Completed',
+      label: 'Review the adapte… · Completed',
       iconPath: '/icons/codex-keypad.png',
       role: 'coordinator',
       status: 'completed',
       action: { type: 'open-codex-task', threadId: 'thread-older' },
     },
-    { id: 'nav.back', label: 'Back', action: { type: 'open-project-overview' } },
+    { id: 'nav.back', label: 'Up', action: { type: 'open-project-overview' } },
     {
       id: 'task:thread-123',
-      label: 'Implement the live project overview · Working',
+      label: 'Implement the liv… · Working',
       status: 'working',
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
   ]);
+  assert.equal(state.view.tiles[0]?.visual.glyph, 'T');
+  assert.equal(state.view.tiles[1]?.visual.glyph, '^');
 });
 
 test('uses the first deterministic wildcard match when an exact coordinator is absent', () => {
@@ -189,7 +290,14 @@ test('bounds task identity without dropping its normalized state', () => {
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(69)}… · Working`);
+  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(17)}… · Working`);
+  assert.equal(state.view.tiles[1]?.action.type, 'open-codex-task');
+  assert.equal(
+    state.view.tiles[1]?.action.type === 'open-codex-task'
+      ? state.view.tiles[1].action.threadId
+      : undefined,
+    'thread-123',
+  );
 });
 
 test('renders the bounded normalized unavailable state without exposing a raw status', () => {
@@ -205,7 +313,7 @@ test('renders the bounded normalized unavailable state without exposing a raw st
   assert.equal(state.view.tiles[1]?.status, 'unavailable');
   assert.equal(
     state.view.tiles[1]?.label,
-    'Implement the live project overview · State unavailable',
+    'Implement the liv… · State unavailable',
   );
 });
 

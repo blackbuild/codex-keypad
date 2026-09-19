@@ -8,8 +8,6 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
 {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan StateFreshness = TimeSpan.FromSeconds(2);
-    private const Int64 MaximumIconBytes = 1024 * 1024;
-
     private readonly Object _sync = new();
     private Timer? _refreshTimer;
     private Process? _sidecar;
@@ -31,9 +29,13 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
 
     public override BitmapImage GetButtonImage(PluginImageSize imageSize)
     {
-        using var builder = new BitmapBuilder(imageSize);
-        builder.DrawText(this.GetButtonDisplayName(imageSize), fontSize: 18);
-        return builder.ToImage();
+        return this.WithState(state => state is null
+            ? ControlSurfaceBitmapRenderer.RenderUnavailable(imageSize)
+            : ControlSurfaceBitmapRenderer.Render(
+                PackagedCodexIconPath(this.Plugin?.AssemblyFilePath),
+                null,
+                state.Entry.Visual,
+                imageSize));
     }
 
     public override IEnumerable<String> GetButtonPressActionNames(DeviceType _) =>
@@ -47,9 +49,17 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
             ?? "Unavailable");
 
     public override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize) =>
-        this.WithState(state => CreateTileImage(
-            state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter),
-            imageSize)) ?? null!;
+        this.WithState(state =>
+        {
+            var tile = state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter);
+            return tile is null
+                ? null
+                : ControlSurfaceBitmapRenderer.Render(
+                    tile.IconPath,
+                    tile.Role,
+                    tile.Visual,
+                    imageSize);
+        }) ?? null!;
 
     public override void RunCommand(String actionParameter)
     {
@@ -164,6 +174,18 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         return process;
     }
 
+    private static String? PackagedCodexIconPath(String? pluginAssemblyFilePath)
+    {
+        var assemblyDirectory = Path.GetDirectoryName(pluginAssemblyFilePath);
+        return assemblyDirectory is null
+            ? null
+            : Path.GetFullPath(Path.Combine(
+                assemblyDirectory,
+                "..",
+                "metadata",
+                "Icon256x256.png"));
+    }
+
     private static void DeleteTemporaryFile(String? path)
     {
         if (path is null)
@@ -190,30 +212,6 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         catch (Exception error)
         {
             Trace.TraceWarning($"Unable to relay a Codex Keypad action: {error}");
-        }
-    }
-
-    private static BitmapImage? CreateTileImage(ControlSurfaceTile? tile, PluginImageSize imageSize)
-    {
-        try
-        {
-            if (tile?.IconPath is null
-                || !File.Exists(tile.IconPath)
-                || new FileInfo(tile.IconPath).Length > MaximumIconBytes
-                || !BitmapImage.TryCreateFromFile(tile.IconPath, out var icon))
-            {
-                return null;
-            }
-
-            using var builder = new BitmapBuilder(imageSize);
-            builder.SetBackgroundImage(icon);
-            builder.DrawText(tile.Label);
-            return builder.ToImage();
-        }
-        catch (Exception error)
-        {
-            Trace.TraceWarning($"Unable to render a Codex Keypad project icon: {error}");
-            return null;
         }
     }
 
