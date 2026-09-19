@@ -7,7 +7,7 @@ MX Keypad. The live adapter provides a three-level path:
 2. choose from the configured project tiles;
 3. choose from the selected project's Codex tasks and open the exact task.
 
-Back returns from the task view to the project overview and closes the overview
+Up returns from the task view to the project overview and closes the overview
 at its root. The device Home button exits the dynamic folder normally. State is
 refreshed four times per second without reloading the plugin.
 
@@ -84,7 +84,7 @@ Patterns are case-insensitive, match the complete task name, and use `*` for any
 text and `?` for one character. An exact matching ID wins; if that ID is absent,
 the first pattern match in deterministic recency/identity order becomes the
 coordinator. Multiple matches therefore need no conflict handling. When a
-coordinator is present, it is pinned before Back in the selected-project view and
+coordinator is present, it is pinned before Up in the selected-project view and
 uses the project's icon; the remaining tasks retain deterministic recency
 ordering. An optional `icon` is an absolute path to a PNG of at most 1 MiB.
 Project tiles follow the configuration order; the Logitech runtime uses the
@@ -117,12 +117,12 @@ state, or a bounded opaque task identifier when no name exists; the complete
 task ID still backs exact navigation, and raw prompt and transcript text are
 never used as the fallback label. The bitmap does not repeat the native display
 label. In the selected-project task view,
-the explicit Back tile performs the product-level task-to-project transition;
+the explicit Up tile performs the product-level task-to-project transition;
 the SDK's native Back/Home behavior closes the entire dynamic folder instead.
 With a matching `coordinatorTaskId`, the published leading controls are
-coordinator then Back, so the runtime's prepended native Home control produces a
-first row of Home, coordinator, and Back. If the configured coordinator is not a
-current included task, Back remains first and all tasks use the normal ordering.
+coordinator then Up, so the runtime's prepended native Home control produces a
+first row of Home, coordinator, and Up. If the configured coordinator is not a
+current included task, Up remains first and all tasks use the normal ordering.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
@@ -137,8 +137,9 @@ Schema v8 presents the same normalized attention contract at task, project, and
 global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
 working, and idle conditions compose with fixed precedence; up to three are
 shown as color segments and ASCII badge cues, with explicit overflow. Every tile
-also carries a deterministic `C`, `P`, `T`, or `<` fallback glyph, so custom PNGs
-are optional. Labels and badges keep the states understandable without color.
+also carries the packaged Codex mark plus built-in terminal fallback, folder,
+document, Hive, and Up-arrow icons, so custom project PNGs are optional. Labels
+and badges keep the states understandable without color.
 See [the default visual system](docs/default-visual-system.md) for the complete
 legend and [the device checklist](docs/physical-device-validation.md) for the
 remaining hardware acceptance checks.
@@ -183,13 +184,13 @@ profile.
 Automated tests and packaged-sidecar checks cover the non-device behavior. The
 issue #4 package was also exercised on a physical MX Keypad: the assignable Codex
 entry, project and task navigation, exact-task deep link, live active/idle
-refresh, one-level Back behavior, and device Home exit all worked without
+refresh, one-level Up behavior, and device Home exit all worked without
 restarting Options+. This bounded smoke test is the hardware evidence; automated
 or simulated checks are not treated as substitutes for it.
 
 The maintainer confirmed the issue #6 multi-task physical demonstration through
 schema v6: exact task opening, native pagination, live completion/removal/addition,
 inert empty slots, project/task navigation, coordinator ordering, and the absence
-of synthetic page or project-overview Back tiles. Schema v8 attention rendering
+of synthetic page or project-overview Up tiles. Schema v8 attention rendering
 still requires the focused physical-device checklist linked above; automated
 validation is not reported as hardware acceptance.

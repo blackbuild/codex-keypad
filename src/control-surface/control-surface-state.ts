@@ -185,7 +185,7 @@ function taskTiles(
     : ordered;
   const back: ControlSurfaceTile = {
     id: 'nav.back',
-    label: 'Back',
+    label: 'Up',
     visual: navigationVisual(),
     action: { type: 'open-project-overview' },
   };

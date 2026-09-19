@@ -65,7 +65,7 @@ const ICON_GLYPHS: Readonly<Record<VisualIcon, string>> = {
   entry: 'C',
   project: 'P',
   task: 'T',
-  back: '<',
+  back: '^',
 };
 
 export function aggregateAttention(states: readonly AttentionState[]): AttentionSummary {

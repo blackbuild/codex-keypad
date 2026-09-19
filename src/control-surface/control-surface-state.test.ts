@@ -85,7 +85,7 @@ test('orders every configured project for native device pagination', () => {
   ]);
 });
 
-test('publishes an empty project overview without a redundant Back tile', () => {
+test('publishes an empty project overview without a redundant Up tile', () => {
   const state = buildProjectControlSurface([]);
 
   assert.equal(state.view.level, 'project-overview');
@@ -216,7 +216,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
   assert.equal(state.view.tiles[2]?.visual.badge, 'OK');
 });
 
-test('places the configured coordinator before Back and gives it the project icon', () => {
+test('places the configured coordinator before Up and gives it the project icon', () => {
   const selected: CodexProjectState = {
     ...project('codex-keypad', 'Codex Keypad', 1, '/icons/codex-keypad.png'),
     coordinatorTaskId: olderTask.id,
@@ -245,7 +245,7 @@ test('places the configured coordinator before Back and gives it the project ico
       status: 'completed',
       action: { type: 'open-codex-task', threadId: 'thread-older' },
     },
-    { id: 'nav.back', label: 'Back', action: { type: 'open-project-overview' } },
+    { id: 'nav.back', label: 'Up', action: { type: 'open-project-overview' } },
     {
       id: 'task:thread-123',
       label: 'Implement the liv… · Working',
@@ -254,7 +254,7 @@ test('places the configured coordinator before Back and gives it the project ico
     },
   ]);
   assert.equal(state.view.tiles[0]?.visual.glyph, 'T');
-  assert.equal(state.view.tiles[1]?.visual.glyph, '<');
+  assert.equal(state.view.tiles[1]?.visual.glyph, '^');
 });
 
 test('uses the first deterministic wildcard match when an exact coordinator is absent', () => {

@@ -23,11 +23,14 @@ The live adapter uses a C# dynamic-folder package. A fixed TypeScript sidecar ow
 the semantic navigation state machine and publishes its current view for the
 configured projects and bounded non-archived tasks in the selected project as
 versioned, normalized JSON. It also owns deterministic project/task order,
-slot reuse, exact-task validation, and canonical visual-token values. The C#
+slot reuse, exact-task validation, canonical visual-token values, and semantic
+icon roles. The C#
 adapter strictly validates the contract's versioned structure, bounds, tile
 roles, and semantic-action relationships without reconstructing TypeScript-owned
-visual policy. It exposes the complete ordered action list, renders the normalized
-presentation and configured project icons, and relays typed semantic action
+visual policy. It exposes the complete ordered action list, renders the packaged
+Codex entry mark, maps remaining semantic icon roles and the entry fallback to
+device-specific vector primitives, renders configured project icons and the
+normalized presentation, and relays typed semantic action
 requests back to TypeScript. The Logitech
 runtime creates overflow touch pages and uses the device's native page controls;
 the product does not add synthetic Previous or Next tiles.
@@ -42,20 +45,20 @@ delegated tasks that may share the same wrapper working directory. It accepts a
 raw ID or Codex thread deep link. A case-insensitive wildcard pattern provides a
 durable fallback across coordinator replacement: project patterns override the
 configuration-level default, and the first match in deterministic task order is
-selected. When present, the coordinator is pinned before the semantic Back tile
+selected. When present, the coordinator is pinned before the semantic Up tile
 and receives the project icon; all remaining tasks retain recency/identity
 ordering. This avoids guessing from shared working directories while allowing a
 stable policy independent of one task ID.
 The device Home behavior and the close effect are owned by the Logitech runtime.
-Accordingly, the project overview contains no redundant product Back tile; native
+Accordingly, the project overview contains no redundant product Up tile; native
 Back/Home exits to the surrounding Logitech profile. The selected-project task
-view retains one semantic Back tile because it returns to the project overview
+view retains one semantic Up tile because it returns to the project overview
 without closing the dynamic folder.
 The issue 4 one-project path completed its bounded physical-device smoke test.
 The superseded TypeScript startup-snapshot plugin was removed after that
 validation, leaving the live adapter as the single package path. The issue 5
 bounded physical-device demonstration covered simultaneous project tiles in
-configured order, project/task/Back navigation, live rename, reorder and removal,
+configured order, project/task/Up navigation, live rename, reorder and removal,
 and a worker count from a linked Codex worktree without restarting Options+.
 Custom project icons and multi-page project navigation remain automated-only
 evidence for issue 5.
@@ -85,7 +88,7 @@ Normal keypad profile
 The Level 0 entry tile is assignable to an ordinary, non-Codex-centric keypad
 profile. It opens one plugin-controlled dynamic workspace. Within that workspace,
 selecting a project replaces the project overview with the selected project's task
-view; Back returns to the project overview and the device's normal Home behavior
+view; Up returns to the project overview and the device's normal Home behavior
 exits the workspace.
 
 Project and coordinator are product terms. A user may label a coordinator as a

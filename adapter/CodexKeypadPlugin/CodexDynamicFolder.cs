@@ -32,6 +32,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         return this.WithState(state => state is null
             ? ControlSurfaceBitmapRenderer.RenderUnavailable(imageSize)
             : ControlSurfaceBitmapRenderer.Render(
+                PackagedCodexIconPath(this.Plugin?.AssemblyFilePath),
                 null,
                 state.Entry.Visual,
                 imageSize));
@@ -55,6 +56,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
                 ? null
                 : ControlSurfaceBitmapRenderer.Render(
                     tile.IconPath,
+                    tile.Role,
                     tile.Visual,
                     imageSize);
         }) ?? null!;
@@ -170,6 +172,18 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         };
         process.BeginErrorReadLine();
         return process;
+    }
+
+    private static String? PackagedCodexIconPath(String? pluginAssemblyFilePath)
+    {
+        var assemblyDirectory = Path.GetDirectoryName(pluginAssemblyFilePath);
+        return assemblyDirectory is null
+            ? null
+            : Path.GetFullPath(Path.Combine(
+                assemblyDirectory,
+                "..",
+                "metadata",
+                "Icon256x256.png"));
     }
 
     private static void DeleteTemporaryFile(String? path)

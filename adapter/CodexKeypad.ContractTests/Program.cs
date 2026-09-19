@@ -99,7 +99,7 @@ try
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
 
-    Run("accepts a project-icon coordinator before the task-view Back tile", () =>
+    Run("accepts a project-icon coordinator before the task-view Up tile", () =>
     {
         File.WriteAllText(fixturePath, CoordinatorTaskView());
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
@@ -114,11 +114,11 @@ try
             && state.View.Tiles[1].Action is OpenProjectOverviewAction);
     });
 
-    Run("rejects a redundant Back tile in the project overview", () =>
+    Run("rejects a redundant Up tile in the project overview", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview().Replace(
             "\"tiles\": [",
-            "\"tiles\": [\n      { \"id\": \"nav.back\", \"label\": \"Back\", \"action\": { \"type\": \"close-control-surface\" } },",
+            "\"tiles\": [\n      { \"id\": \"nav.back\", \"label\": \"Up\", \"action\": { \"type\": \"close-control-surface\" } },",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
     });
@@ -277,7 +277,7 @@ static String TaskView(String taskActionType, String threadId) => $$"""
     "level": "task-view",
     "title": "Codex Keypad",
     "tiles": [
-      { "id": "nav.back", "label": "Back", "visual": { "icon": "back", "glyph": "<", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
+      { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
       {
         "id": "task:{{threadId}}",
         "label": "Exact task · Working",
@@ -323,7 +323,7 @@ static String CoordinatorTaskView() => """
         "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
         "action": { "type": "open-codex-task", "threadId": "hive-thread" }
       },
-      { "id": "nav.back", "label": "Back", "visual": { "icon": "back", "glyph": "<", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
+      { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
       {
         "id": "task:worker-thread",
         "label": "Worker · Working",
@@ -344,7 +344,7 @@ static String ManyTaskView(Int32 taskCount)
         new
         {
             id = "nav.back",
-            label = "Back",
+            label = "Up",
             visual = BackVisual(),
             action = new { type = "open-project-overview" },
         },
@@ -394,7 +394,7 @@ static Object WorkingVisual(String icon, String glyph) => new
 static Object BackVisual() => new
 {
     icon = "back",
-    glyph = "<",
+    glyph = "^",
     tone = "navigation",
     backgroundColor = "#111827",
     foregroundColor = "#FFFFFF",

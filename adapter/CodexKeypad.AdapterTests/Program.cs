@@ -6,7 +6,16 @@ var fallback = Render(WorkingVisual(), null);
 Expect(fallback.Png.Length > 100);
 Expect(fallback.Pixels.Length == fallback.Width * fallback.Height * 2);
 Expect(ContainsColor(fallback, "#FFFFFF", 0, fallback.Width * 2 / 3, 5, fallback.Height / 2));
-Expect(!ContainsColor(fallback, "#FFFFFF", 0, fallback.Width, fallback.Height / 2, fallback.Height));
+var taskIconPixels = ColorStats(
+    fallback,
+    "#FFFFFF",
+    0,
+    fallback.Width,
+    fallback.Height / 2,
+    fallback.Height);
+Expect(taskIconPixels.Count > 20);
+Expect(taskIconPixels.Right - taskIconPixels.Left + 1 > 20);
+Expect(taskIconPixels.Bottom - taskIconPixels.Top + 1 > 20);
 
 var missingIcon = Render(WorkingVisual(), "/missing/codex-keypad-icon.png");
 Expect(fallback.Png.SequenceEqual(missingIcon.Png));
@@ -30,7 +39,9 @@ finally
 }
 
 var customIconPath = Path.Combine(AppContext.BaseDirectory, "Icon256x256.png");
-Expect(!fallback.Png.SequenceEqual(Render(WorkingVisual(), customIconPath).Png));
+var packagedCodexIcon = Render(IconVisual("entry", "C"), customIconPath);
+Expect(!fallback.Png.SequenceEqual(packagedCodexIcon.Png));
+Expect(!packagedCodexIcon.Png.SequenceEqual(Render(IconVisual("entry", "C"), null).Png));
 
 var concurrent = Render(new VisualPresentation(
     "task",
@@ -46,13 +57,6 @@ ExpectPixel(concurrent, concurrent.Width * 5 / 6, 1, "#60A5FA");
 Expect(ContainsColor(
     concurrent,
     "#FFFFFF",
-    0,
-    concurrent.Width / 4,
-    5,
-    concurrent.Height / 2));
-Expect(ContainsColor(
-    concurrent,
-    "#FFFFFF",
     concurrent.Width / 2,
     concurrent.Width,
     5,
@@ -64,13 +68,31 @@ Expect(ContainsColor(
     concurrent.Width,
     concurrent.Height / 2,
     concurrent.Height));
-Expect(!ContainsColor(
-    concurrent,
+
+var projectIcon = Render(IconVisual("project", "P"), null);
+var entryIcon = Render(IconVisual("entry", "C"), null);
+var hiveIcon = Render(WorkingVisual(), null, "coordinator");
+var upIcon = Render(new VisualPresentation(
+    "back",
+    "^",
+    "navigation",
+    "#111827",
+    "#FFFFFF",
+    [],
+    ""), null);
+Expect(!fallback.Png.SequenceEqual(projectIcon.Png));
+Expect(!fallback.Png.SequenceEqual(entryIcon.Png));
+Expect(!fallback.Png.SequenceEqual(hiveIcon.Png));
+Expect(!fallback.Png.SequenceEqual(upIcon.Png));
+var upIconPixels = ColorStats(
+    upIcon,
     "#FFFFFF",
     0,
-    concurrent.Width,
-    concurrent.Height / 2,
-    concurrent.Height));
+    upIcon.Width,
+    0,
+    upIcon.Height);
+Expect(upIconPixels.Right - upIconPixels.Left + 1 > 35);
+Expect(upIconPixels.Bottom - upIconPixels.Top + 1 > 45);
 
 var badgeOnly = Render(new VisualPresentation(
     "task",
@@ -110,10 +132,12 @@ Console.WriteLine("Adapter bitmap tests passed.");
 
 static (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) Render(
     VisualPresentation visual,
-    String? iconPath)
+    String? iconPath,
+    String? role = null)
 {
     using var image = ControlSurfaceBitmapRenderer.Render(
         iconPath,
+        role,
         visual,
         PluginImageSize.Width90Pixels);
     return Snapshot(image);
@@ -130,6 +154,15 @@ static (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) Snapshot(
 static VisualPresentation WorkingVisual() => new(
     "task",
     "T",
+    "working",
+    "#075985",
+    "#FFFFFF",
+    ["#38BDF8"],
+    ">");
+
+static VisualPresentation IconVisual(String icon, String glyph) => new(
+    icon,
+    glyph,
     "working",
     "#075985",
     "#FFFFFF",

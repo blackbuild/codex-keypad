@@ -63,20 +63,23 @@ non-idle or diagnostic condition is present.
 
 ## Icon vocabulary and fallbacks
 
-| Level | Baseline fallback glyph | Semantic action |
-|---|---:|---|
-| Global Codex entry | `C` | Open the project overview |
-| Project | `P` | Open that project's task view |
-| Task | `T` | Open that exact current task |
-| Back | `<` | Return to the project overview |
+| Level | Built-in icon | Semantic action |
+|---|---|---|
+| Global Codex entry | Packaged Codex mark; terminal/code-window fallback | Open the project overview |
+| Project | Folder | Open that project's task view |
+| Task | Document | Open that exact current task |
+| Coordinator task | Three-cell Hive | Open that exact coordinator task |
+| Up | Large upward arrow | Return to the project overview |
 
-A configured project PNG may replace the baseline imagery on its project tile
+A packaged Codex mark identifies the global entry. If that package asset is
+missing or unreadable, the entry falls back to the built-in terminal icon. A
+configured project PNG may replace the baseline imagery on its project tile
 and coordinator task tile. If the path is absent, unreadable, oversized, or not
-a decodable PNG, the normalized fallback glyph is still rendered. The native
+a decodable PNG, the matching built-in icon is still rendered. The native
 display label below the bitmap, badge, and segmented attention edge remain
 visible with either image path.
 
-Back uses the navigation background `#111827` with white text (17.74:1). It has
+Up uses the navigation background `#111827` with a white arrow (17.74:1). It has
 no attention summary or state segments. No visual field carries a command; the
 only accepted actions are the closed semantic navigation actions shown above.
 If no fresh validated contract exists at all, the device adapter cannot receive a
@@ -88,9 +91,10 @@ on the unavailable background. It never presents the last healthy image as fresh
 The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
 the full bitmap for baseline/custom imagery, reserves four pixels at the top for
 at most three state segments, and places a padded status badge below that strip.
-The SDK renders the display label separately below the bitmap. Task-title cues
+The device adapter draws the normalized icon role with simple vector primitives,
+so the defaults do not depend on optional font symbols or external assets. The
+SDK renders the display label separately below the bitmap. Task-title cues
 are bounded to 18 characters before their full normalized state suffix; project
-and global labels retain the contract's general bound. ASCII fallback glyphs
-avoid depending on optional font symbols. Actual cropping, native-label
+and global labels retain the contract's general bound. Actual cropping, native-label
 legibility, color separation, and brightness behavior still require the physical
 checks in [physical-device-validation.md](physical-device-validation.md).
