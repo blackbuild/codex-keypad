@@ -137,7 +137,7 @@ Schema v8 presents the same normalized attention contract at task, project, and
 global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
 working, and idle conditions compose with fixed precedence; up to three are
 shown as color segments and ASCII badge cues, with explicit overflow. Every tile
-also carries the packaged Codex mark plus built-in terminal fallback, folder,
+also carries the packaged OpenAI knot mark plus built-in terminal fallback, folder,
 document, Hive, and Up-arrow icons, so custom project PNGs are optional. Labels
 and badges keep the states understandable without color.
 See [the default visual system](docs/default-visual-system.md) for the complete

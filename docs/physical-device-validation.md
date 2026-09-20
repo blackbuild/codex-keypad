@@ -19,7 +19,7 @@ brightness, and pass/fail for each check; do not record private task content.
 4. **Bounded overflow:** expose at least four distinct states. Confirm only three
    segments/glyphs are drawn, the badge and label show the correct `+N`, and no
    text or segment is clipped beyond recognition.
-5. **Icons and fallbacks:** check the packaged Codex mark on the global entry and
+5. **Icons and fallbacks:** check the packaged OpenAI knot mark on the global entry and
    the terminal fallback when that asset is unavailable. With no custom project
    icon, check the folder, document, Hive, and large Up-arrow baselines; then
    check one valid project PNG and one missing or invalid PNG. An invalid image

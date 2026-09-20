@@ -42,6 +42,12 @@ var customIconPath = Path.Combine(AppContext.BaseDirectory, "Icon256x256.png");
 var packagedCodexIcon = Render(IconVisual("entry", "C"), customIconPath);
 Expect(!fallback.Png.SequenceEqual(packagedCodexIcon.Png));
 Expect(!packagedCodexIcon.Png.SequenceEqual(Render(IconVisual("entry", "C"), null).Png));
+Expect(ContainsNeutralDarkPixel(
+    packagedCodexIcon,
+    10,
+    packagedCodexIcon.Width - 10,
+    packagedCodexIcon.Height / 3,
+    packagedCodexIcon.Height - 8));
 
 var concurrent = Render(new VisualPresentation(
     "task",
@@ -236,6 +242,32 @@ static UInt16 ReadPixel(
 {
     var offset = (y * image.Width + x) * 2;
     return (UInt16)(image.Pixels[offset] | image.Pixels[offset + 1] << 8);
+}
+
+static Boolean ContainsNeutralDarkPixel(
+    (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
+    Int32 left,
+    Int32 right,
+    Int32 top,
+    Int32 bottom)
+{
+    for (var y = top; y < bottom; y += 1)
+    {
+        for (var x = left; x < right; x += 1)
+        {
+            var pixel = ReadPixel(image, x, y);
+            var red = ((pixel >> 11) & 0x1F) * 255 / 31;
+            var green = ((pixel >> 5) & 0x3F) * 255 / 63;
+            var blue = (pixel & 0x1F) * 255 / 31;
+            var darkest = Math.Min(red, Math.Min(green, blue));
+            var lightest = Math.Max(red, Math.Max(green, blue));
+            if (lightest < 100 && lightest - darkest < 35)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 static UInt16 Rgb565(String color)
