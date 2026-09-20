@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const packageDirectory = resolve(repositoryRoot, 'dist-adapter');
 const artifactDirectory = resolve(repositoryRoot, 'artifacts');
-const artifact = resolve(artifactDirectory, 'CodexKeypad_0_2_0.lplug4');
+const artifact = resolve(artifactDirectory, 'CodexKeypad_0_2_1.lplug4');
 
 await mkdir(artifactDirectory, { recursive: true });
 await rm(artifact, { force: true });
