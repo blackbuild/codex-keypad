@@ -45,9 +45,10 @@ delegated tasks that may share the same wrapper working directory. It accepts a
 raw ID or Codex thread deep link. A case-insensitive wildcard pattern provides a
 durable fallback across coordinator replacement: project patterns override the
 configuration-level default, and the first match in deterministic task order is
-selected. When present, the coordinator is omitted from the worker task view;
-all remaining tasks retain recency/identity ordering after the semantic Up tile.
-This avoids guessing from shared working directories while allowing a
+selected. When present, the coordinator is pinned before the semantic Up tile,
+uses the project display name as its native label, and receives the configured
+project icon or Hive fallback; all remaining tasks retain recency/identity
+ordering. This avoids guessing from shared working directories while allowing a
 stable policy independent of one task ID.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 Accordingly, the project overview contains no redundant product Up tile; native

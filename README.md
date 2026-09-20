@@ -84,7 +84,8 @@ Patterns are case-insensitive, match the complete task name, and use `*` for any
 text and `?` for one character. An exact matching ID wins; if that ID is absent,
 the first pattern match in deterministic recency/identity order becomes the
 coordinator. Multiple matches therefore need no conflict handling. The selected
-coordinator is omitted from the worker task view; the remaining tasks retain
+coordinator is pinned before Up, uses the project display name as its keypad
+label, and uses the project icon when configured; the remaining tasks retain
 deterministic recency ordering. An optional `icon` is an absolute path to a PNG
 of at most 1 MiB.
 Project tiles follow the configuration order; the Logitech runtime uses the
@@ -121,8 +122,9 @@ never used as the fallback label. The bitmap does not repeat the native display
 label. In the selected-project task view,
 the explicit Up tile performs the product-level task-to-project transition;
 the SDK's native Back/Home behavior closes the entire dynamic folder instead.
-When a configured coordinator is a current included task, it is omitted from the
-worker grid. Up remains first and all worker tasks use the normal ordering.
+When a configured coordinator is a current included task, it occupies the
+top-center slot between the runtime's Home control and Up. Its task title is not
+shown; its native label is the configured project display name.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks

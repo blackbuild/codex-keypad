@@ -22,7 +22,8 @@ brightness, and pass/fail for each check; do not record private task content.
    text or segment is clipped beyond recognition.
 5. **Icons and fallbacks:** check the packaged OpenAI knot mark on the global entry and
    the terminal fallback when that asset is unavailable. With no custom project
-   icon, check the connected-workspace, agent/worker, and large Up-arrow baselines; then
+   icon, check the connected-workspace, agent/worker, Hive coordinator, and large
+   Up-arrow baselines; confirm the coordinator label is the project display name; then
    check one valid project PNG and one missing or invalid PNG. An invalid image
    must fall back to the appropriate built-in icon, not to a blank tile.
 6. **Stale and unavailable:** present stale-only worker evidence, mixed current

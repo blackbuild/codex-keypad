@@ -114,8 +114,10 @@ export function buildProjectControlSurface(
   const tiles = level === 'task-view'
     ? taskTiles(
         selected!.tasks,
+        selected!.project.name,
         selected!.coordinatorTaskId,
         selected!.coordinatorTaskPattern,
+        selected!.project.icon?.path,
       )
     : overviewTiles(projects);
   const entryAttention = aggregateAttention(projects.flatMap(projectAttentionStates));
@@ -168,8 +170,10 @@ function projectTile(state: CodexProjectState): ControlSurfaceTile {
 
 function taskTiles(
   tasks: readonly CodexTask[],
+  projectName: string,
   coordinatorTaskId?: string,
   coordinatorTaskPattern?: string,
+  projectIconPath?: string,
 ): readonly ControlSurfaceTile[] {
   const ordered = [...tasks].sort((left, right) =>
     right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
@@ -188,7 +192,16 @@ function taskTiles(
     visual: navigationVisual(),
     action: { type: 'open-project-overview' },
   };
-  return [back, ...remaining.map((task) => taskTile(task))];
+  return [
+    ...(coordinator
+      ? [taskTile(coordinator, {
+          label: projectName,
+          role: 'coordinator',
+          ...(projectIconPath ? { iconPath: projectIconPath } : {}),
+        }), back]
+      : [back]),
+    ...remaining.map((task) => taskTile(task)),
+  ];
 }
 
 function wildcardMatches(value: string, pattern: string): boolean {
@@ -223,13 +236,22 @@ function wildcardMatches(value: string, pattern: string): boolean {
   return patternIndex === wildcard.length;
 }
 
-function taskTile(task: CodexTask): ControlSurfaceTile {
+function taskTile(
+  task: CodexTask,
+  override?: {
+    readonly label: string;
+    readonly role: 'coordinator';
+    readonly iconPath?: string;
+  },
+): ControlSurfaceTile {
   const status = taskStatusLabel(task.status);
   const identity = compactLabel(task.title, MAXIMUM_TASK_TITLE_CUE_LENGTH);
   const attention = aggregateAttention([taskAttentionState(task.status)]);
   return {
     id: `task:${task.id}`,
-    label: `${identity} · ${status}`,
+    label: override?.label ?? `${identity} · ${status}`,
+    ...(override?.iconPath ? { iconPath: override.iconPath } : {}),
+    ...(override ? { role: override.role } : {}),
     status: task.status,
     attention,
     visual: visualizeAttention(attention, 'task'),

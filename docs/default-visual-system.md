@@ -68,13 +68,14 @@ non-idle or diagnostic condition is present.
 | Global Codex entry | Packaged OpenAI knot mark; terminal/code-window fallback | Open the project overview |
 | Project | Connected workspace | Open that project's task view |
 | Task | Agent/worker | Open that exact current task |
+| Coordinator task | Project PNG or three-cell Hive; project-name label | Open that exact coordinator task |
 | Up | Large upward arrow | Return to the project overview |
 
 A packaged OpenAI knot mark identifies the global entry. If that package asset is
 missing or unreadable, the entry falls back to the built-in terminal icon. A
-configured project PNG may replace the baseline imagery on its project tile. If
-the path is absent, unreadable, oversized, or not a decodable PNG, the matching
-built-in icon is still rendered. The native
+configured project PNG may replace the baseline imagery on its project and
+coordinator tiles. If the path is absent, unreadable, oversized, or not a
+decodable PNG, the matching built-in icon is still rendered. The native
 display label below the bitmap, badge, and segmented attention edge remain
 visible with either image path.
 

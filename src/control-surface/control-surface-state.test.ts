@@ -220,7 +220,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
   assert.equal(state.view.tiles[2]?.visual.badge, 'OK');
 });
 
-test('omits the configured coordinator from the worker task view', () => {
+test('labels the configured coordinator with its project name', () => {
   const selected: CodexProjectState = {
     ...project('codex-keypad', 'Codex Keypad', 1, '/icons/codex-keypad.png'),
     coordinatorTaskId: olderTask.id,
@@ -233,12 +233,22 @@ test('omits the configured coordinator from the worker task view', () => {
   });
 
   assert.equal(state.schemaVersion, 8);
-  assert.deepEqual(state.view.tiles.map(({ id, label, status, action }) => ({
+  assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, role, status, action }) => ({
     id,
     label,
+    ...(iconPath ? { iconPath } : {}),
+    ...(role ? { role } : {}),
     ...(status ? { status } : {}),
     action,
   })), [
+    {
+      id: 'task:thread-older',
+      label: 'Codex Keypad',
+      iconPath: '/icons/codex-keypad.png',
+      role: 'coordinator',
+      status: 'completed',
+      action: { type: 'open-codex-task', threadId: 'thread-older' },
+    },
     { id: 'nav.back', label: 'Up', action: { type: 'open-project-overview' } },
     {
       id: 'task:thread-123',
@@ -247,7 +257,8 @@ test('omits the configured coordinator from the worker task view', () => {
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
   ]);
-  assert.equal(state.view.tiles[0]?.visual.glyph, '^');
+  assert.equal(state.view.tiles[0]?.visual.glyph, 'T');
+  assert.equal(state.view.tiles[1]?.visual.glyph, '^');
 });
 
 test('uses the first deterministic wildcard match when an exact coordinator is absent', () => {
@@ -265,10 +276,13 @@ test('uses the first deterministic wildcard match when an exact coordinator is a
   });
 
   assert.deepEqual(state.view.tiles.map(({ id }) => id), [
+    'task:newer-hive',
     'nav.back',
     'task:older-hive',
     'task:thread-123',
   ]);
+  assert.equal(state.view.tiles[0]?.label, 'Codex Keypad');
+  assert.equal(state.view.tiles[0]?.role, 'coordinator');
 });
 
 test('bounds task identity without dropping its normalized state', () => {
