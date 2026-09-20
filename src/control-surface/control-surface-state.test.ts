@@ -41,21 +41,22 @@ test('normalizes configured projects in stable order with icons and active-worke
   })), [
     {
       id: 'project:architecture',
-      label: 'Architecture · Working · 2 active',
+      label: 'Architecture',
       iconPath: '/icons/architecture.png',
       action: { type: 'open-task-view', projectId: 'architecture' },
     },
     {
       id: 'project:codex-keypad',
-      label: 'Codex Keypad · Working · 1 active',
+      label: 'Codex Keypad',
       action: { type: 'open-task-view', projectId: 'codex-keypad' },
     },
     {
       id: 'project:idle',
-      label: 'Idle Project · Idle · Idle',
+      label: 'Idle Project',
       action: { type: 'open-task-view', projectId: 'idle' },
     },
   ]);
+  assert.deepEqual(state.view.tiles.map(({ visual }) => visual.badge), ['2', '1', '0']);
   assert.equal(state.entry.label, 'Codex · Working x2 · 3 active');
 });
 
@@ -99,8 +100,10 @@ test('presents unavailable and bounded counts without claiming idle state', () =
   ]);
 
   assert.equal(state.entry.label, 'Codex · Unavailable +1 state · count unavailable');
-  assert.equal(state.view.tiles[0]?.label, 'Missing · Unavailable · Count unavailable');
-  assert.equal(state.view.tiles[1]?.label, 'Very Busy · Working · 100+ active');
+  assert.equal(state.view.tiles[0]?.label, 'Missing');
+  assert.equal(state.view.tiles[0]?.visual.badge, '?');
+  assert.equal(state.view.tiles[1]?.label, 'Very Busy');
+  assert.equal(state.view.tiles[1]?.visual.badge, '100+');
 });
 
 test('aggregates task attention across project and entry tiles with bounded composition', () => {
@@ -174,7 +177,8 @@ test('shows a valid lower-bound worker count with unavailable concurrent evidenc
     tasks: [task],
   }]);
 
-  assert.equal(state.view.tiles[0]?.label, 'Mixed · Unavailable +1 state · 1+ active');
+  assert.equal(state.view.tiles[0]?.label, 'Mixed');
+  assert.equal(state.view.tiles[0]?.visual.badge, '?1+');
   assert.deepEqual(state.view.tiles[0]?.attention?.indicators, [
     { state: 'unavailable', count: 1 },
     { state: 'working', count: 1 },
@@ -216,7 +220,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
   assert.equal(state.view.tiles[2]?.visual.badge, 'OK');
 });
 
-test('places the configured coordinator before Up and gives it the project icon', () => {
+test('omits the configured coordinator from the worker task view', () => {
   const selected: CodexProjectState = {
     ...project('codex-keypad', 'Codex Keypad', 1, '/icons/codex-keypad.png'),
     coordinatorTaskId: olderTask.id,
@@ -229,22 +233,12 @@ test('places the configured coordinator before Up and gives it the project icon'
   });
 
   assert.equal(state.schemaVersion, 8);
-  assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, role, status, action }) => ({
+  assert.deepEqual(state.view.tiles.map(({ id, label, status, action }) => ({
     id,
     label,
-    ...(iconPath ? { iconPath } : {}),
-    ...(role ? { role } : {}),
     ...(status ? { status } : {}),
     action,
   })), [
-    {
-      id: 'task:thread-older',
-      label: 'Review the adapte… · Completed',
-      iconPath: '/icons/codex-keypad.png',
-      role: 'coordinator',
-      status: 'completed',
-      action: { type: 'open-codex-task', threadId: 'thread-older' },
-    },
     { id: 'nav.back', label: 'Up', action: { type: 'open-project-overview' } },
     {
       id: 'task:thread-123',
@@ -253,8 +247,7 @@ test('places the configured coordinator before Up and gives it the project icon'
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
   ]);
-  assert.equal(state.view.tiles[0]?.visual.glyph, 'T');
-  assert.equal(state.view.tiles[1]?.visual.glyph, '^');
+  assert.equal(state.view.tiles[0]?.visual.glyph, '^');
 });
 
 test('uses the first deterministic wildcard match when an exact coordinator is absent', () => {
@@ -272,12 +265,10 @@ test('uses the first deterministic wildcard match when an exact coordinator is a
   });
 
   assert.deepEqual(state.view.tiles.map(({ id }) => id), [
-    'task:newer-hive',
     'nav.back',
     'task:older-hive',
     'task:thread-123',
   ]);
-  assert.equal(state.view.tiles[0]?.role, 'coordinator');
 });
 
 test('bounds task identity without dropping its normalized state', () => {

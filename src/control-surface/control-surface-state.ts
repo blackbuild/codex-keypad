@@ -116,7 +116,6 @@ export function buildProjectControlSurface(
         selected!.tasks,
         selected!.coordinatorTaskId,
         selected!.coordinatorTaskPattern,
-        selected!.project.icon?.path,
       )
     : overviewTiles(projects);
   const entryAttention = aggregateAttention(projects.flatMap(projectAttentionStates));
@@ -153,15 +152,16 @@ function overviewTiles(projects: readonly CodexProjectState[]): readonly Control
 
 function projectTile(state: CodexProjectState): ControlSurfaceTile {
   const attention = aggregateAttention(projectAttentionStates(state));
+  const visual = visualizeAttention(attention, 'project');
   return {
     id: `project:${state.project.id}`,
-    label: compactLabel(
-      `${state.project.name} · ${attentionSummaryLabel(attention)} · ${activeWorkerSummary(state.activeWorkerCount)}`,
-      80,
-    ),
+    label: state.project.name,
     ...(state.project.icon ? { iconPath: state.project.icon.path } : {}),
     attention,
-    visual: visualizeAttention(attention, 'project'),
+    visual: {
+      ...visual,
+      badge: projectWorkerBadge(state.activeWorkerCount, visual.badge),
+    },
     action: { type: 'open-task-view', projectId: state.project.id },
   };
 }
@@ -170,7 +170,6 @@ function taskTiles(
   tasks: readonly CodexTask[],
   coordinatorTaskId?: string,
   coordinatorTaskPattern?: string,
-  projectIconPath?: string,
 ): readonly ControlSurfaceTile[] {
   const ordered = [...tasks].sort((left, right) =>
     right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
@@ -189,10 +188,7 @@ function taskTiles(
     visual: navigationVisual(),
     action: { type: 'open-project-overview' },
   };
-  return [
-    ...(coordinator ? [taskTile(coordinator, true, projectIconPath), back] : [back]),
-    ...remaining.map((task) => taskTile(task)),
-  ];
+  return [back, ...remaining.map((task) => taskTile(task))];
 }
 
 function wildcardMatches(value: string, pattern: string): boolean {
@@ -227,19 +223,13 @@ function wildcardMatches(value: string, pattern: string): boolean {
   return patternIndex === wildcard.length;
 }
 
-function taskTile(
-  task: CodexTask,
-  coordinator = false,
-  projectIconPath?: string,
-): ControlSurfaceTile {
+function taskTile(task: CodexTask): ControlSurfaceTile {
   const status = taskStatusLabel(task.status);
   const identity = compactLabel(task.title, MAXIMUM_TASK_TITLE_CUE_LENGTH);
   const attention = aggregateAttention([taskAttentionState(task.status)]);
   return {
     id: `task:${task.id}`,
     label: `${identity} · ${status}`,
-    ...(projectIconPath ? { iconPath: projectIconPath } : {}),
-    ...(coordinator ? { role: 'coordinator' as const } : {}),
     status: task.status,
     attention,
     visual: visualizeAttention(attention, 'task'),
@@ -307,16 +297,20 @@ function aggregateActiveWorkerSummary(projects: readonly CodexProjectState[]): s
     : `${count}${truncated ? '+' : ''} active`;
 }
 
-function activeWorkerSummary(count: ActiveWorkerCount): string {
+function projectWorkerBadge(count: ActiveWorkerCount, attentionBadge: string): string {
   if (count.availability === 'stale') {
-    return 'Count stale';
+    return attentionBadge;
   }
   if (count.availability === 'unavailable') {
-    return 'Count unavailable';
+    return attentionBadge;
   }
-  return count.count === 0
-    ? 'Idle'
-    : `${count.count}${count.truncated ? '+' : ''} active`;
+  if (count.count === 0) {
+    return attentionBadge === 'OK' ? '0' : attentionBadge;
+  }
+  const countBadge = `${count.count}${count.truncated ? '+' : ''}`;
+  return attentionBadge.startsWith('>')
+    ? countBadge
+    : `${attentionBadge.slice(0, 1)}${countBadge}`;
 }
 
 function compactLabel(label: string, maximumLength: number): string {

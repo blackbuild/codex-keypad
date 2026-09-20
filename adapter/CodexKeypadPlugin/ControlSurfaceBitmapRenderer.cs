@@ -90,29 +90,24 @@ public static class ControlSurfaceBitmapRenderer
     private static void DrawProjectIcon(BitmapBuilder builder, BitmapColor color)
     {
         var stroke = Stroke(builder, 4);
-        Line(builder, 17, 51, 17, 80, color, stroke);
-        Line(builder, 17, 51, 37, 51, color, stroke);
-        Line(builder, 37, 51, 43, 45, color, stroke);
-        Line(builder, 43, 45, 57, 45, color, stroke);
-        Line(builder, 57, 45, 62, 51, color, stroke);
-        Line(builder, 62, 51, 73, 51, color, stroke);
-        Line(builder, 73, 51, 73, 80, color, stroke);
-        Line(builder, 73, 80, 17, 80, color, stroke);
+        Line(builder, 45, 48, 45, 63, color, stroke);
+        Line(builder, 45, 63, 27, 76, color, stroke);
+        Line(builder, 45, 63, 63, 76, color, stroke);
+        builder.FillCircle(X(builder, 45), Y(builder, 45), Scale(builder, 7), color);
+        builder.FillCircle(X(builder, 45), Y(builder, 63), Scale(builder, 7), color);
+        builder.FillCircle(X(builder, 25), Y(builder, 78), Scale(builder, 7), color);
+        builder.FillCircle(X(builder, 65), Y(builder, 78), Scale(builder, 7), color);
     }
 
     private static void DrawTaskIcon(BitmapBuilder builder, BitmapColor color)
     {
         var stroke = Stroke(builder, 3);
-        Line(builder, 27, 42, 55, 42, color, stroke);
-        Line(builder, 55, 42, 64, 51, color, stroke);
-        Line(builder, 64, 51, 64, 81, color, stroke);
-        Line(builder, 64, 81, 27, 81, color, stroke);
-        Line(builder, 27, 81, 27, 42, color, stroke);
-        Line(builder, 55, 42, 55, 51, color, stroke);
-        Line(builder, 55, 51, 64, 51, color, stroke);
-        Line(builder, 35, 61, 56, 61, color, stroke);
-        Line(builder, 35, 68, 56, 68, color, stroke);
-        Line(builder, 35, 75, 50, 75, color, stroke);
+        DrawRectangle(builder, 24, 49, 66, 78, color, stroke);
+        Line(builder, 45, 49, 45, 41, color, stroke);
+        builder.FillCircle(X(builder, 45), Y(builder, 39), Scale(builder, 4), color);
+        builder.FillCircle(X(builder, 35), Y(builder, 61), Scale(builder, 4), color);
+        builder.FillCircle(X(builder, 55), Y(builder, 61), Scale(builder, 4), color);
+        Line(builder, 36, 70, 54, 70, color, stroke);
     }
 
     private static void DrawHiveIcon(BitmapBuilder builder, BitmapColor color)

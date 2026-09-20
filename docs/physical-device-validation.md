@@ -7,12 +7,13 @@ brightness, and pass/fail for each check; do not record private task content.
 
 1. **Task states:** present one task tile for completed, working, waiting for
    input, waiting for approval, interrupted, failed, and unavailable source
-   states. Confirm the label, badge, background, segment, and document icon match
+   states. Confirm the label, badge, background, segment, and agent/worker icon match
    the legend and update without restarting Options+.
 2. **Project aggregation:** place at least two different task states in one
    project. Confirm the documented primary state wins, each of up to three
-   conditions has an ordered segment/badge cue, the label reports concurrent
-   states, and pressing the tile opens that project's task view.
+   conditions has an ordered segment/badge cue, the bitmap carries the bounded
+   worker count while the native label remains only the configured project name,
+   and pressing the tile opens that project's task view.
 3. **Global aggregation:** distribute at least three different conditions across
    two configured projects. Confirm the Codex entry composes them in the same
    order and opens the project overview.
@@ -21,7 +22,7 @@ brightness, and pass/fail for each check; do not record private task content.
    text or segment is clipped beyond recognition.
 5. **Icons and fallbacks:** check the packaged OpenAI knot mark on the global entry and
    the terminal fallback when that asset is unavailable. With no custom project
-   icon, check the folder, document, Hive, and large Up-arrow baselines; then
+   icon, check the connected-workspace, agent/worker, and large Up-arrow baselines; then
    check one valid project PNG and one missing or invalid PNG. An invalid image
    must fall back to the appropriate built-in icon, not to a blank tile.
 6. **Stale and unavailable:** present stale-only worker evidence, mixed current

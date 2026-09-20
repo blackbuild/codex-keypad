@@ -69,7 +69,7 @@ cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
 JSON
 ```
 
-Each project needs a unique stable `id`, a display `name`, and an absolute `root`
+Each project needs a unique stable `id`, a keypad display `name`, and an absolute `root`
 for the Codex project directory used as the task working directory. An optional
 `repositories` array names up to 16 repository working-tree roots contained in or
 otherwise associated with that Codex project. Do not point it at `.git`; the
@@ -83,10 +83,10 @@ default for all projects, while a project-level pattern overrides that default.
 Patterns are case-insensitive, match the complete task name, and use `*` for any
 text and `?` for one character. An exact matching ID wins; if that ID is absent,
 the first pattern match in deterministic recency/identity order becomes the
-coordinator. Multiple matches therefore need no conflict handling. When a
-coordinator is present, it is pinned before Up in the selected-project view and
-uses the project's icon; the remaining tasks retain deterministic recency
-ordering. An optional `icon` is an absolute path to a PNG of at most 1 MiB.
+coordinator. Multiple matches therefore need no conflict handling. The selected
+coordinator is omitted from the worker task view; the remaining tasks retain
+deterministic recency ordering. An optional `icon` is an absolute path to a PNG
+of at most 1 MiB.
 Project tiles follow the configuration order; the Logitech runtime uses the
 device's native page controls when they do not fit on one touch page.
 
@@ -98,8 +98,10 @@ The sidecar re-reads configuration and live Codex state on every refresh, so
 adding, removing, renaming, reordering, or changing an icon path does not require
 restarting Options+. A missing or invalid configuration makes the state expire
 to unavailable instead of retaining a misleading startup snapshot. A project
-whose Codex state cannot be read remains visible with `Count unavailable`; an
-unreadable icon falls back to the text tile. The issue 4 single-project
+whose Codex state cannot be read remains visible with a `?` badge; an unreadable
+icon falls back to the built-in workspace symbol. Project labels contain only
+the configured `name`; bounded worker counts and diagnostic cues stay inside the
+bitmap badge. The issue 4 single-project
 `{"projectRoot":"/absolute/path"}` form remains supported for upgrades.
 
 The selected-project view includes up to 256 non-archived top-level Codex tasks,
@@ -119,10 +121,8 @@ never used as the fallback label. The bitmap does not repeat the native display
 label. In the selected-project task view,
 the explicit Up tile performs the product-level task-to-project transition;
 the SDK's native Back/Home behavior closes the entire dynamic folder instead.
-With a matching `coordinatorTaskId`, the published leading controls are
-coordinator then Up, so the runtime's prepended native Home control produces a
-first row of Home, coordinator, and Up. If the configured coordinator is not a
-current included task, Up remains first and all tasks use the normal ordering.
+When a configured coordinator is a current included task, it is omitted from the
+worker grid. Up remains first and all worker tasks use the normal ordering.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
@@ -137,8 +137,8 @@ Schema v8 presents the same normalized attention contract at task, project, and
 global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
 working, and idle conditions compose with fixed precedence; up to three are
 shown as color segments and ASCII badge cues, with explicit overflow. Every tile
-also carries the packaged OpenAI knot mark plus built-in terminal fallback, folder,
-document, Hive, and Up-arrow icons, so custom project PNGs are optional. Labels
+also carries the packaged OpenAI knot mark plus built-in terminal fallback,
+connected-workspace, agent/worker, and Up-arrow icons, so custom project PNGs are optional. Labels
 and badges keep the states understandable without color.
 See [the default visual system](docs/default-visual-system.md) for the complete
 legend and [the device checklist](docs/physical-device-validation.md) for the
