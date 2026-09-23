@@ -140,7 +140,10 @@ global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
 working, and idle conditions compose with fixed precedence; up to three are
 shown as color segments and ASCII badge cues, with explicit overflow. Every tile
 also carries the packaged OpenAI knot mark plus built-in terminal fallback,
-connected-workspace, agent/worker, and Up-arrow icons, so custom project PNGs are optional. Labels
+connected-workspace, runtime-state worker, Hive, and Up-arrow icons, so custom
+project PNGs are optional. Worker icons are selected only from normalized Codex
+runtime state; workflow-specific PR, review, merge, and question states remain a
+separate future integration/configuration channel. Labels
 and badges keep the states understandable without color.
 See [the default visual system](docs/default-visual-system.md) for the complete
 legend and [the device checklist](docs/physical-device-validation.md) for the

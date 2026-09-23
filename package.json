@@ -1,6 +1,6 @@
 {
   "name": "codex-desktop",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Navigate live Codex Desktop projects and tasks from Logitech MX Keypad",
   "private": true,
   "type": "module",

@@ -32,6 +32,7 @@ public static class ControlSurfaceBitmapRenderer
                 builder,
                 role == "coordinator" ? "hive" : visual.Icon,
                 visual.Glyph,
+                visual.Tone,
                 foreground);
         }
 
@@ -50,6 +51,7 @@ public static class ControlSurfaceBitmapRenderer
         BitmapBuilder builder,
         String icon,
         String fallbackGlyph,
+        String tone,
         BitmapColor color)
     {
         switch (icon)
@@ -61,7 +63,7 @@ public static class ControlSurfaceBitmapRenderer
                 DrawProjectIcon(builder, color);
                 break;
             case "task":
-                DrawTaskIcon(builder, color);
+                DrawTaskStateIcon(builder, tone, color);
                 break;
             case "hive":
                 DrawHiveIcon(builder, color);
@@ -99,15 +101,60 @@ public static class ControlSurfaceBitmapRenderer
         builder.FillCircle(X(builder, 65), Y(builder, 78), Scale(builder, 7), color);
     }
 
-    private static void DrawTaskIcon(BitmapBuilder builder, BitmapColor color)
+    private static void DrawTaskStateIcon(
+        BitmapBuilder builder,
+        String state,
+        BitmapColor color)
     {
-        var stroke = Stroke(builder, 3);
-        DrawRectangle(builder, 24, 49, 66, 78, color, stroke);
-        Line(builder, 45, 49, 45, 41, color, stroke);
-        builder.FillCircle(X(builder, 45), Y(builder, 39), Scale(builder, 4), color);
-        builder.FillCircle(X(builder, 35), Y(builder, 61), Scale(builder, 4), color);
-        builder.FillCircle(X(builder, 55), Y(builder, 61), Scale(builder, 4), color);
-        Line(builder, 36, 70, 54, 70, color, stroke);
+        var stroke = Stroke(builder, 5);
+        switch (state)
+        {
+            case "working":
+                Line(builder, 25, 48, 43, 63, color, stroke);
+                Line(builder, 43, 63, 25, 78, color, stroke);
+                Line(builder, 47, 48, 65, 63, color, stroke);
+                Line(builder, 65, 63, 47, 78, color, stroke);
+                break;
+            case "idle":
+                Line(builder, 24, 64, 39, 78, color, stroke);
+                Line(builder, 39, 78, 68, 47, color, stroke);
+                break;
+            case "failed":
+                Line(builder, 27, 47, 64, 79, color, stroke);
+                Line(builder, 64, 47, 27, 79, color, stroke);
+                break;
+            case "interrupted":
+                Line(builder, 34, 48, 34, 78, color, Stroke(builder, 8));
+                Line(builder, 56, 48, 56, 78, color, Stroke(builder, 8));
+                break;
+            case "waiting-for-input":
+                DrawRectangle(builder, 21, 47, 69, 73, color, Stroke(builder, 3));
+                Line(builder, 35, 73, 29, 81, color, Stroke(builder, 3));
+                Line(builder, 29, 81, 47, 73, color, Stroke(builder, 3));
+                builder.DrawText(
+                    "?",
+                    (Int32)X(builder, 21),
+                    (Int32)Y(builder, 46),
+                    (Int32)Scale(builder, 48),
+                    (Int32)Scale(builder, 28),
+                    color,
+                    fontSize: (Int32)Scale(builder, 24));
+                break;
+            case "waiting-for-approval":
+                Line(builder, 27, 47, 63, 47, color, Stroke(builder, 3));
+                Line(builder, 27, 79, 63, 79, color, Stroke(builder, 3));
+                Line(builder, 27, 47, 63, 79, color, Stroke(builder, 3));
+                Line(builder, 63, 47, 27, 79, color, Stroke(builder, 3));
+                break;
+            case "stale":
+                DrawHexagon(builder, 45, 63, 20, color, Stroke(builder, 3));
+                Line(builder, 45, 63, 45, 51, color, Stroke(builder, 3));
+                Line(builder, 45, 63, 56, 69, color, Stroke(builder, 3));
+                break;
+            default:
+                builder.DrawText("?", color, fontSize: 40);
+                break;
+        }
     }
 
     private static void DrawHiveIcon(BitmapBuilder builder, BitmapColor color)

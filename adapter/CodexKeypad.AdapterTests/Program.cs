@@ -5,7 +5,7 @@ using Loupedeck.CodexKeypadPlugin;
 var fallback = Render(WorkingVisual(), null);
 Expect(fallback.Png.Length > 100);
 Expect(fallback.Pixels.Length == fallback.Width * fallback.Height * 2);
-Expect(ContainsColor(fallback, "#FFFFFF", 0, fallback.Width * 2 / 3, 5, fallback.Height / 2));
+Expect(ContainsColor(fallback, "#FFFFFF", 0, fallback.Width * 2 / 3, 35, 70));
 var taskIconPixels = ColorStats(
     fallback,
     "#FFFFFF",
@@ -78,6 +78,17 @@ Expect(ContainsColor(
 var projectIcon = Render(IconVisual("project", "P"), null);
 var entryIcon = Render(IconVisual("entry", "C"), null);
 var hiveIcon = Render(WorkingVisual(), null, "coordinator");
+var taskStateIcons = new[]
+{
+    "working",
+    "idle",
+    "waiting-for-input",
+    "waiting-for-approval",
+    "interrupted",
+    "failed",
+    "unavailable",
+    "stale",
+}.Select(state => Render(TaskStateVisual(state), null)).ToArray();
 var upIcon = Render(new VisualPresentation(
     "back",
     "^",
@@ -90,6 +101,13 @@ Expect(!fallback.Png.SequenceEqual(projectIcon.Png));
 Expect(!fallback.Png.SequenceEqual(entryIcon.Png));
 Expect(!fallback.Png.SequenceEqual(hiveIcon.Png));
 Expect(!fallback.Png.SequenceEqual(upIcon.Png));
+for (var left = 0; left < taskStateIcons.Length; left += 1)
+{
+    for (var right = left + 1; right < taskStateIcons.Length; right += 1)
+    {
+        Expect(!taskStateIcons[left].Png.SequenceEqual(taskStateIcons[right].Png));
+    }
+}
 var upIconPixels = ColorStats(
     upIcon,
     "#FFFFFF",
@@ -174,6 +192,15 @@ static VisualPresentation IconVisual(String icon, String glyph) => new(
     "#FFFFFF",
     ["#38BDF8"],
     ">");
+
+static VisualPresentation TaskStateVisual(String state) => new(
+    "task",
+    "T",
+    state,
+    "#075985",
+    "#FFFFFF",
+    [],
+    "");
 
 static void ExpectPixel(
     (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,

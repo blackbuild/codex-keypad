@@ -15,16 +15,16 @@ custom PNG is present. The contrast ratios below use the WCAG
 relative-luminance formula; they are design-time sRGB figures, not a substitute
 for checking the physical LCD.
 
-| Normalized state | Label cue | Badge | Background | Segment | White-text contrast |
-|---|---|---:|---:|---:|---:|
-| `idle` (including completed tasks) | Idle / Completed | `OK` | `#1F2937` | `#9CA3AF` | 14.68:1 |
-| `working` | Working | `>` | `#075985` | `#38BDF8` | 7.56:1 |
-| `waiting-for-input` | Waiting for input | `I` | `#1E3A8A` | `#60A5FA` | 10.36:1 |
-| `waiting-for-approval` | Waiting for approval | `A` | `#713F12` | `#FACC15` | 8.67:1 |
-| `interrupted` | Interrupted | `X` | `#4C1D95` | `#A78BFA` | 10.95:1 |
-| `failed` | Failed | `!` | `#7F1D1D` | `#F87171` | 10.02:1 |
-| `unavailable` | Unavailable / State unavailable | `?` | `#3F3F46` | `#D4D4D8` | 10.44:1 |
-| `stale` | Stale / Count stale | `~` | `#57534E` | `#FDBA74` | 7.63:1 |
+| Normalized state | Worker icon | Label cue | Badge | Background | Segment | White-text contrast |
+|---|---|---|---:|---:|---:|---:|
+| `idle` (including completed tasks) | Check | Idle / Completed | `OK` | `#1F2937` | `#9CA3AF` | 14.68:1 |
+| `working` | Double chevron | Working | `>` | `#075985` | `#38BDF8` | 7.56:1 |
+| `waiting-for-input` | Speech bubble | Waiting for input | `I` | `#1E3A8A` | `#60A5FA` | 10.36:1 |
+| `waiting-for-approval` | Hourglass | Waiting for approval | `A` | `#713F12` | `#FACC15` | 8.67:1 |
+| `interrupted` | Pause | Interrupted | `X` | `#4C1D95` | `#A78BFA` | 10.95:1 |
+| `failed` | Cross | Failed | `!` | `#7F1D1D` | `#F87171` | 10.02:1 |
+| `unavailable` | Question mark | Unavailable / State unavailable | `?` | `#3F3F46` | `#D4D4D8` | 10.44:1 |
+| `stale` | Clock | Stale / Count stale | `~` | `#57534E` | `#FDBA74` | 7.63:1 |
 
 An unrecognized persisted task status is normalized to `unavailable`; raw
 provider status text is never published. A source read failure is also
@@ -38,6 +38,11 @@ interrupted task states. Waiting-for-input and waiting-for-approval already have
 stable normalized and rendered tokens, but they appear only when a state source
 can supply those conditions; the SQLite adapter does not infer them from prompts,
 transcripts, or provider-private details.
+
+These are runtime/availability states, not workflow states. PR ready, merge
+ready, review requested, changes requested, and domain-specific question labels
+must come from a separate provider or validated configuration. They do not
+replace the worker's runtime-state icon.
 
 ## Composition and precedence
 
@@ -67,7 +72,7 @@ non-idle or diagnostic condition is present.
 |---|---|---|
 | Global Codex entry | Packaged OpenAI knot mark; terminal/code-window fallback | Open the project overview |
 | Project | Connected workspace | Open that project's task view |
-| Task | Agent/worker | Open that exact current task |
+| Task | Normalized runtime-state symbol | Open that exact current task |
 | Coordinator task | Project PNG or three-cell Hive; project-name label | Open that exact coordinator task |
 | Up | Large upward arrow | Return to the project overview |
 
