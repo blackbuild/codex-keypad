@@ -110,13 +110,14 @@ ordered by most-recent update and then stable task identity. The normalized view
 publishes that complete ordered list and lets the Logitech runtime create touch
 pages navigated by the device's native page controls; it does not add synthetic
 Previous or Next tiles. Completed tasks remain visible with their normalized
-state. A task with a present but unrecognized persisted status remains visible as
-`State unavailable`; the raw status is never published. Archived or deleted tasks
+state. A task with a present but unrecognized persisted status remains visible
+with the normalized unavailable visual; the raw status is never published.
+Archived or deleted tasks
 leave the view and newly created tasks appear.
 Vacated positions are reused by the next task in the same ordering, while
 unpopulated keypad positions have no action. Native keypad labels use an
-18-character compact cue from the Codex task name followed by its normalized
-state, or a bounded opaque task identifier when no name exists; the complete
+18-character compact cue from the Codex task name, or a bounded opaque task
+identifier when no name exists; the complete
 task ID still backs exact navigation, and raw prompt and transcript text are
 never used as the fallback label. The bitmap does not repeat the native display
 label. In the selected-project task view,

@@ -280,7 +280,7 @@ static String TaskView(String taskActionType, String threadId) => $$"""
       { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
       {
         "id": "task:{{threadId}}",
-        "label": "Exact task · Working",
+        "label": "Exact task",
         "status": "working",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
         "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
@@ -315,7 +315,7 @@ static String CoordinatorTaskView() => """
     "tiles": [
       {
         "id": "task:hive-thread",
-        "label": "Codex Keypad Hive · Working",
+        "label": "Codex Keypad",
         "iconPath": "/icons/codex-keypad.png",
         "role": "coordinator",
         "status": "working",
@@ -326,7 +326,7 @@ static String CoordinatorTaskView() => """
       { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
       {
         "id": "task:worker-thread",
-        "label": "Worker · Working",
+        "label": "Worker",
         "status": "working",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
         "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
@@ -351,7 +351,7 @@ static String ManyTaskView(Int32 taskCount)
     }.Concat(Enumerable.Range(1, taskCount).Select(index => (Object)new
     {
         id = $"task:thread-{index}",
-        label = $"Task {index} · Working",
+        label = $"Task {index}",
         status = "working",
         attention = WorkingAttention(),
         visual = WorkingVisual("task", "T"),

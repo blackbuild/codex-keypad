@@ -244,12 +244,11 @@ function taskTile(
     readonly iconPath?: string;
   },
 ): ControlSurfaceTile {
-  const status = taskStatusLabel(task.status);
   const identity = compactLabel(task.title, MAXIMUM_TASK_TITLE_CUE_LENGTH);
   const attention = aggregateAttention([taskAttentionState(task.status)]);
   return {
     id: `task:${task.id}`,
-    label: override?.label ?? `${identity} · ${status}`,
+    label: override?.label ?? identity,
     ...(override?.iconPath ? { iconPath: override.iconPath } : {}),
     ...(override ? { role: override.role } : {}),
     status: task.status,
@@ -282,18 +281,6 @@ function projectAttentionStates(state: CodexProjectState): readonly AttentionSta
       }
       return [...taskStates, ...sourceStates];
     }
-  }
-}
-
-function taskStatusLabel(status: CodexTaskStatus): string {
-  switch (status) {
-    case 'working': return 'Working';
-    case 'waiting-for-approval': return 'Waiting for approval';
-    case 'waiting-for-input': return 'Waiting for input';
-    case 'completed': return 'Completed';
-    case 'failed': return 'Failed';
-    case 'interrupted': return 'Interrupted';
-    case 'unavailable': return 'State unavailable';
   }
 }
 

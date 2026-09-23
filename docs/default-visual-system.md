@@ -98,8 +98,9 @@ the full bitmap for baseline/custom imagery, reserves four pixels at the top for
 at most three state segments, and places a padded status badge below that strip.
 The device adapter draws the normalized icon role with simple vector primitives,
 so the defaults do not depend on optional font symbols or external assets. The
-SDK renders the display label separately below the bitmap. Task-title cues
-are bounded to 18 characters before their full normalized state suffix. Project
+SDK renders the display label separately below the bitmap. Task labels contain
+only an 18-character compact task-title cue; runtime state is carried by the
+state-specific icon, badge, background, and top-edge segment. Project
 labels contain only their configured display name; worker counts (`0`, an exact
 count, or a bounded `N+`) and diagnostic cues are carried by the bitmap badge.
 Global labels retain the contract's general bound. Actual cropping, native-label

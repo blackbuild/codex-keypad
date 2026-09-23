@@ -7,7 +7,8 @@ brightness, and pass/fail for each check; do not record private task content.
 
 1. **Task states:** present one task tile for completed, working, waiting for
    input, waiting for approval, interrupted, failed, and unavailable source
-   states. Confirm the label, badge, background, segment, and state-specific worker icon match
+   states. Confirm the compact task-identity label remains free of appended status
+   text while the badge, background, segment, and state-specific worker icon match
    the legend and update without restarting Options+.
 2. **Project aggregation:** place at least two different task states in one
    project. Confirm the documented primary state wins, each of up to three

@@ -204,13 +204,13 @@ test('normalizes every selected-project task in deterministic recency order', ()
   })), [
     {
       id: 'task:thread-123',
-      label: 'Implement the liv… · Working',
+      label: 'Implement the liv…',
       status: 'working',
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
     {
       id: 'task:thread-older',
-      label: 'Review the adapte… · Completed',
+      label: 'Review the adapte…',
       status: 'completed',
       action: { type: 'open-codex-task', threadId: 'thread-older' },
     },
@@ -252,7 +252,7 @@ test('labels the configured coordinator with its project name', () => {
     { id: 'nav.back', label: 'Up', action: { type: 'open-project-overview' } },
     {
       id: 'task:thread-123',
-      label: 'Implement the liv… · Working',
+      label: 'Implement the liv…',
       status: 'working',
       action: { type: 'open-codex-task', threadId: 'thread-123' },
     },
@@ -295,7 +295,7 @@ test('bounds task identity without dropping its normalized state', () => {
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(17)}… · Working`);
+  assert.equal(state.view.tiles[1]?.label, `${'A'.repeat(17)}…`);
   assert.equal(state.view.tiles[1]?.action.type, 'open-codex-task');
   assert.equal(
     state.view.tiles[1]?.action.type === 'open-codex-task'
@@ -318,7 +318,7 @@ test('renders the bounded normalized unavailable state without exposing a raw st
   assert.equal(state.view.tiles[1]?.status, 'unavailable');
   assert.equal(
     state.view.tiles[1]?.label,
-    'Implement the liv… · State unavailable',
+    'Implement the liv…',
   );
 });
 
