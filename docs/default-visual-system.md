@@ -100,10 +100,11 @@ the last healthy image as fresh.
 
 ## Device constraints
 
-The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
-the full 80-pixel square for baseline/custom imagery and draws a two-pixel frame
-in the tile's background color around aggregate tiles. Worker blobs sit in dark side gutters inside that
-frame; compressed counts use larger dark-backed tabs. This gives the colored/icon
+The Logitech adapter receives compact bitmap dimensions from the SDK. The global
+entry uses an unframed neutral field with worker indicators directly on its edges.
+Project and coordinator tiles draw a two-pixel frame in the tile's background color.
+Worker blobs sit in dark side gutters inside that frame; compressed counts use
+larger dark-backed tabs. This gives the colored/icon
 field a narrower framed-panel appearance while separating indicators from busy
 custom artwork. A coordinator's right lane begins below its retained badge.
 The device adapter draws the normalized icon role with simple vector primitives,

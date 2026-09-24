@@ -58,6 +58,8 @@ var packagedCodexMarkPixels = ColorStats(
     packagedCodexIcon.Height - 2);
 Expect(packagedCodexMarkPixels.Count > 0);
 Expect(packagedCodexMarkPixels.Top >= 18);
+ExpectPixel(packagedCodexIcon, 2, 2, "#0B0D12");
+ExpectPixel(packagedCodexIcon, 5, 5, "#0B0D12");
 
 var concurrent = Render(new VisualPresentation(
     "project",

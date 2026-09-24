@@ -33,7 +33,7 @@ public static class ControlSurfaceBitmapRenderer
         var foreground = ParseColor(visual.ForegroundColor);
         var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
         var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
-        var hasWorkerRails = visual.Icon is "entry" or "project" || role == "coordinator";
+        var hasWorkerRailChrome = visual.Icon == "project" || role == "coordinator";
         builder.Clear(background);
 
         if (TryLoadIcon(iconPath, out var icon))
@@ -50,7 +50,7 @@ public static class ControlSurfaceBitmapRenderer
                 foreground);
         }
 
-        if (hasWorkerRails)
+        if (hasWorkerRailChrome)
         {
             DrawWorkerRailGutters(builder);
         }
@@ -64,9 +64,9 @@ public static class ControlSurfaceBitmapRenderer
                 badgeFontSize,
                 background,
                 foreground,
-                hasWorkerRails ? WorkerRailGutterWidth : 0);
+                hasWorkerRailChrome ? WorkerRailGutterWidth : 0);
         }
-        if (hasWorkerRails)
+        if (hasWorkerRailChrome)
         {
             DrawWorkerRailOutline(builder, background);
         }
