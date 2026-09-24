@@ -12,6 +12,7 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerGroupGap = 2;
     private const Int32 WorkerCountHeight = 10;
     private const Int32 WorkerCompressionThreshold = 4;
+    private const Int32 WorkerRailGutterWidth = 10;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
     public static BitmapImage Render(
@@ -25,6 +26,7 @@ public static class ControlSurfaceBitmapRenderer
         var foreground = ParseColor(visual.ForegroundColor);
         var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
         var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
+        var hasWorkerRailFrame = visual.Icon is "entry" or "project" || role == "coordinator";
         builder.Clear(background);
 
         if (TryLoadIcon(iconPath, out var icon))
@@ -41,7 +43,11 @@ public static class ControlSurfaceBitmapRenderer
                 foreground);
         }
 
-        DrawAttentionSegments(builder, visual.BorderColors);
+        if (hasWorkerRailFrame)
+        {
+            DrawWorkerRailGutters(builder);
+        }
+        DrawAttentionSegments(builder, visual.BorderColors, hasWorkerRailFrame);
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
         if (role == "coordinator")
         {
@@ -51,7 +57,8 @@ public static class ControlSurfaceBitmapRenderer
                 badgeWidth,
                 badgeFontSize,
                 background,
-                foreground);
+                foreground,
+                hasWorkerRailFrame ? WorkerRailGutterWidth : 0);
         }
         return builder.ToImage();
     }
@@ -295,12 +302,15 @@ public static class ControlSurfaceBitmapRenderer
 
     private static void DrawAttentionSegments(
         BitmapBuilder builder,
-        IReadOnlyList<String> colors)
+        IReadOnlyList<String> colors,
+        Boolean insetForWorkerRails)
     {
+        var inset = insetForWorkerRails ? (Int32)X(builder, WorkerRailGutterWidth) : 0;
+        var availableWidth = builder.Width - inset * 2;
         for (var index = 0; index < colors.Count; index += 1)
         {
-            var start = index * builder.Width / colors.Count;
-            var end = (index + 1) * builder.Width / colors.Count;
+            var start = inset + index * availableWidth / colors.Count;
+            var end = inset + (index + 1) * availableWidth / colors.Count;
             builder.FillRectangle(
                 start,
                 0,
@@ -308,6 +318,19 @@ public static class ControlSurfaceBitmapRenderer
                 AttentionSegmentHeight,
                 ParseColor(colors[index]));
         }
+    }
+
+    private static void DrawWorkerRailGutters(BitmapBuilder builder)
+    {
+        var gutterWidth = (Int32)X(builder, WorkerRailGutterWidth);
+        var gutterColor = BitmapColor.FromRgb(0x05070B);
+        builder.FillRectangle(0, 0, gutterWidth, builder.Height, gutterColor);
+        builder.FillRectangle(
+            builder.Width - gutterWidth,
+            0,
+            gutterWidth,
+            builder.Height,
+            gutterColor);
     }
 
     private static void DrawWorkerIndicatorRails(
@@ -424,7 +447,8 @@ public static class ControlSurfaceBitmapRenderer
         Int32 badgeWidth,
         Int32 fontSize,
         BitmapColor background,
-        BitmapColor foreground)
+        BitmapColor foreground,
+        Int32 rightInset)
     {
         if (badge.Length == 0)
         {
@@ -433,14 +457,14 @@ public static class ControlSurfaceBitmapRenderer
         var badgeTop = AttentionSegmentHeight + 4;
         var badgeHeight = fontSize + 10;
         builder.FillRectangle(
-            builder.Width - badgeWidth,
+            builder.Width - (Int32)X(builder, rightInset) - badgeWidth,
             badgeTop,
             badgeWidth,
             badgeHeight,
             background);
         builder.DrawText(
             badge,
-            builder.Width - badgeWidth,
+            builder.Width - (Int32)X(builder, rightInset) - badgeWidth,
             badgeTop + 1,
             badgeWidth,
             badgeHeight - 2,

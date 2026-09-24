@@ -101,9 +101,11 @@ the last healthy image as fresh.
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
 the full bitmap for baseline/custom imagery, reserves four pixels at the top for
-at most three state segments, and reserves narrow left and right lanes flush
-with the bitmap edges for worker groups. A coordinator's right lane begins below
-its retained status badge.
+at most three state segments. Because the SDK limits keypad action images to an
+80-pixel square, aggregate tiles reframe their colored/icon field between two
+dark edge gutters; worker groups occupy those gutters and therefore remain clear
+of full-size custom artwork. A coordinator's right lane begins below its retained
+status badge.
 The device adapter draws the normalized icon role with simple vector primitives,
 so the defaults do not depend on optional font symbols or external assets. The
 SDK renders the display label separately below the bitmap. Task labels contain

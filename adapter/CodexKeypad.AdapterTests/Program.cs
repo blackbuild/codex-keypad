@@ -50,7 +50,7 @@ Expect(ContainsNeutralDarkPixel(
     packagedCodexIcon.Height - 8));
 
 var concurrent = Render(new VisualPresentation(
-    "task",
+    "project",
     "T",
     "failed",
     "#7F1D1D",
@@ -66,6 +66,13 @@ ExpectPixel(concurrent, concurrent.Width / 6, 1, "#F87171");
 ExpectPixel(concurrent, concurrent.Width / 2, 1, "#FACC15");
 ExpectPixel(concurrent, concurrent.Width * 5 / 6, 1, "#60A5FA");
 Expect(ContainsColor(concurrent, "#F87171", 0, concurrent.Width / 5, 5, concurrent.Height - 5));
+Expect(ContainsColor(
+    concurrent,
+    "#05070B",
+    0,
+    concurrent.Width / 8,
+    5,
+    concurrent.Height - 5));
 Expect(ContainsApproximateColor(
     concurrent,
     "#FACC15",
