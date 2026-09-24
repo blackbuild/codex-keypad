@@ -32,7 +32,7 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 8);
+  assert.equal(state.schemaVersion, 9);
   assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, action }) => ({
     id,
     label,
@@ -56,8 +56,12 @@ test('normalizes configured projects in stable order with icons and active-worke
       action: { type: 'open-task-view', projectId: 'idle' },
     },
   ]);
-  assert.deepEqual(state.view.tiles.map(({ visual }) => visual.badge), ['2', '1', '0']);
-  assert.equal(state.entry.label, 'Codex · Working x2 · 3 active');
+  assert.deepEqual(state.view.tiles.map(({ visual }) => visual.workerIndicators), [
+    [{ state: 'working', count: 2, color: '#38BDF8', side: 'right' }],
+    [{ state: 'working', count: 1, color: '#38BDF8', side: 'right' }],
+    [],
+  ]);
+  assert.equal(state.entry.label, 'Codex');
 });
 
 test('orders every configured project for native device pagination', () => {
@@ -99,11 +103,13 @@ test('presents unavailable and bounded counts without claiming idle state', () =
     project('busy', 'Very Busy', '100+'),
   ]);
 
-  assert.equal(state.entry.label, 'Codex · Unavailable +1 state · count unavailable');
+  assert.equal(state.entry.label, 'Codex');
   assert.equal(state.view.tiles[0]?.label, 'Missing');
   assert.equal(state.view.tiles[0]?.visual.badge, '?');
   assert.equal(state.view.tiles[1]?.label, 'Very Busy');
-  assert.equal(state.view.tiles[1]?.visual.badge, '100+');
+  assert.deepEqual(state.view.tiles[1]?.visual.workerIndicators, [
+    { state: 'working', count: 100, color: '#38BDF8', side: 'right' },
+  ]);
 });
 
 test('aggregates task attention across project and entry tiles with bounded composition', () => {
@@ -122,7 +128,7 @@ test('aggregates task attention across project and entry tiles with bounded comp
     },
   ]);
 
-  assert.equal(state.schemaVersion, 8);
+  assert.equal(state.schemaVersion, 9);
   assert.deepEqual(state.entry.attention, {
     primary: 'failed',
     indicators: [
@@ -140,6 +146,12 @@ test('aggregates task attention across project and entry tiles with bounded comp
     foregroundColor: '#FFFFFF',
     borderColors: ['#F87171', '#FACC15', '#FDBA74'],
     badge: '!A~+1',
+    workerIndicators: [
+      { state: 'failed', count: 1, color: '#F87171', side: 'left' },
+      { state: 'waiting-for-approval', count: 1, color: '#FACC15', side: 'left' },
+      { state: 'stale', count: 1, color: '#FDBA74', side: 'left' },
+      { state: 'working', count: 1, color: '#38BDF8', side: 'right' },
+    ],
   });
   assert.deepEqual(state.view.tiles.map((tile) => ({
     id: tile.id,
@@ -178,7 +190,11 @@ test('shows a valid lower-bound worker count with unavailable concurrent evidenc
   }]);
 
   assert.equal(state.view.tiles[0]?.label, 'Mixed');
-  assert.equal(state.view.tiles[0]?.visual.badge, '?1+');
+  assert.equal(state.view.tiles[0]?.visual.badge, '?>');
+  assert.deepEqual(state.view.tiles[0]?.visual.workerIndicators, [
+    { state: 'unavailable', count: 1, color: '#D4D4D8', side: 'left' },
+    { state: 'working', count: 1, color: '#38BDF8', side: 'right' },
+  ]);
   assert.deepEqual(state.view.tiles[0]?.attention?.indicators, [
     { state: 'unavailable', count: 1 },
     { state: 'working', count: 1 },
@@ -195,7 +211,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 8);
+  assert.equal(state.schemaVersion, 9);
   assert.deepEqual(state.view.tiles.slice(1).map(({ id, label, status, action }) => ({
     id,
     label,
@@ -232,7 +248,7 @@ test('labels the configured coordinator with its project name', () => {
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 8);
+  assert.equal(state.schemaVersion, 9);
   assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, role, status, action }) => ({
     id,
     label,
@@ -258,6 +274,9 @@ test('labels the configured coordinator with its project name', () => {
     },
   ]);
   assert.equal(state.view.tiles[0]?.visual.glyph, 'T');
+  assert.deepEqual(state.view.tiles[0]?.visual.workerIndicators, [
+    { state: 'working', count: 1, color: '#38BDF8', side: 'right' },
+  ]);
   assert.equal(state.view.tiles[1]?.visual.glyph, '^');
 });
 

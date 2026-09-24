@@ -99,10 +99,10 @@ The sidecar re-reads configuration and live Codex state on every refresh, so
 adding, removing, renaming, reordering, or changing an icon path does not require
 restarting Options+. A missing or invalid configuration makes the state expire
 to unavailable instead of retaining a misleading startup snapshot. A project
-whose Codex state cannot be read remains visible with a `?` badge; an unreadable
+whose Codex state cannot be read remains visible with a diagnostic side cue; an unreadable
 icon falls back to the built-in workspace symbol. Project labels contain only
 the configured `name`; bounded worker counts and diagnostic cues stay inside the
-bitmap badge. The issue 4 single-project
+bitmap's side rails. The issue 4 single-project
 `{"projectRoot":"/absolute/path"}` form remains supported for upgrades.
 
 The selected-project view includes up to 256 non-archived top-level Codex tasks,
@@ -129,23 +129,25 @@ shown; its native label is the configured project display name.
 
 An active worker is an in-progress, top-level Codex Desktop task created or
 forked by an agent, or handed off to one. User/coordinator and automation tasks
-do not inflate the worker badge, and an unrecognized task status is not counted
+do not inflate the worker indicators, and an unrecognized task status is not counted
 as evidence of active work. A missing project root or implausibly future-dated
 worker evidence is shown as `Count unavailable` rather than `Idle`; exclusively
 stale worker evidence is shown separately as `Count stale`. When current workers
 are returned alongside stale or otherwise unusable worker state, the current
 workers remain visible as a lower bound such as `2+ active`.
 
-Schema v8 presents the same normalized attention contract at task, project, and
+Schema v9 presents the same normalized attention contract at task, project, and
 global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
 working, and idle conditions compose with fixed precedence; up to three are
-shown as color segments and ASCII badge cues, with explicit overflow. Every tile
+shown as color segments. Global, project, and coordinator tiles add split worker
+rails: attention-required states on the left and working/idle on the right.
+Groups of four or more, or groups that would not fit, collapse to colored counts. Every tile
 also carries the packaged OpenAI knot mark plus built-in terminal fallback,
 connected-workspace, runtime-state worker, Hive, and Up-arrow icons, so custom
 project PNGs are optional. Worker icons are selected only from normalized Codex
 runtime state; workflow-specific PR, review, merge, and question states remain a
 separate future integration/configuration channel. Labels
-and badges keep the states understandable without color.
+keeps state-specific shape cues so color is not the only signal.
 See [the default visual system](docs/default-visual-system.md) for the complete
 legend and [the device checklist](docs/physical-device-validation.md) for the
 remaining hardware acceptance checks.
@@ -183,7 +185,7 @@ Create the installable C# package with:
 npm run build:pack
 ```
 
-The result is `artifacts/CodexKeypad_0_2_0.lplug4`. Install it, find the Codex
+The result is `artifacts/CodexKeypad_0_2_5.lplug4`. Install it, find the Codex
 dynamic-folder action in Options+, and assign that action to a key in a normal
 profile.
 
@@ -197,6 +199,6 @@ or simulated checks are not treated as substitutes for it.
 The maintainer confirmed the issue #6 multi-task physical demonstration through
 schema v6: exact task opening, native pagination, live completion/removal/addition,
 inert empty slots, project/task navigation, coordinator ordering, and the absence
-of synthetic page or project-overview Up tiles. Schema v8 attention rendering
+of synthetic page or project-overview Up tiles. Schema v9 attention rendering
 still requires the focused physical-device checklist linked above; automated
 validation is not reported as hardware acceptance.

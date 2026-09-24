@@ -59,6 +59,7 @@ test('maps normalized attention to stable colors, glyphs, and bounded border seg
     foregroundColor: '#FFFFFF',
     borderColors: ['#F87171', '#FACC15', '#60A5FA'],
     badge: '!AI+2',
+    workerIndicators: [],
   });
 });
 
@@ -93,6 +94,7 @@ test('keeps every available task condition distinct in the visual legend', () =>
       foregroundColor: '#FFFFFF',
       borderColors: ['#FDBA74'],
       badge: '~',
+      workerIndicators: [],
     },
   );
 });

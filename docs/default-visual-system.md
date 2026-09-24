@@ -1,6 +1,6 @@
 # Default visual system
 
-Schema version 8 carries a complete normalized visual presentation from the
+Schema version 9 carries a complete normalized visual presentation from the
 TypeScript control-surface core to the Logitech adapter. The adapter draws that
 presentation; it does not infer attention, precedence, aggregation, icons, or
 colors. These defaults apply without an agent-authored layout.
@@ -8,14 +8,16 @@ colors. These defaults apply without an agent-authored layout.
 ## Attention legend
 
 Every attention-bearing tile has a native Logitech display label below its
-bitmap, an ASCII badge inside the bitmap, a primary background, and one top-edge
-segment per visible condition. The bitmap does not repeat the display label.
-White fallback glyphs and badges are drawn on the primary background even when a
-custom PNG is present. The contrast ratios below use the WCAG
+bitmap, a primary background, and one top-edge segment per visible condition.
+The bitmap does not repeat the display label. Global, project, and coordinator
+tiles additionally place status-sorted worker indicators down their sides:
+attention-required and diagnostic states on the left, working and idle states
+on the right. Only the coordinator retains its compact upper-right status badge.
+The contrast ratios below use the WCAG
 relative-luminance formula; they are design-time sRGB figures, not a substitute
 for checking the physical LCD.
 
-| Normalized state | Worker icon | Label cue | Badge | Background | Segment | White-text contrast |
+| Normalized state | Worker icon | Label cue | Coordinator badge | Background | Segment | White-text contrast |
 |---|---|---|---:|---:|---:|---:|
 | `idle` (including completed tasks) | Check | Idle / Completed | `OK` | `#1F2937` | `#9CA3AF` | 14.68:1 |
 | `working` | Double chevron | Working | `>` | `#075985` | `#38BDF8` | 7.56:1 |
@@ -59,12 +61,15 @@ are counted. Distinct states use this fixed precedence:
 7. working
 8. idle
 
-The first state supplies the background and leading label. At most three
-distinct conditions are visible as ordered top-edge segments and badge glyphs.
-Further distinct conditions are represented by a `+N` badge suffix and a
-`+N state(s)` label suffix. This keeps composition bounded while making omitted
-lower-priority conditions explicit. Confirmed idle is used only when no
-non-idle or diagnostic condition is present.
+The first state supplies the background. At most three distinct conditions are
+visible as ordered top-edge segments in the aggregate attention treatment. The
+separate worker rails retain all available normalized worker groups in
+precedence order. A configured coordinator is represented by the Hive itself and
+is not repeated as a rail indicator. Counts of one through three are individual eight-pixel blobs;
+a group of four or more is a colored number. When several groups would exceed a
+rail's height, the largest remaining blob groups collapse to colored numbers
+until the layout fits. Confirmed idle is used only when no non-idle or diagnostic
+condition is present.
 
 ## Icon vocabulary and fallbacks
 
@@ -81,28 +86,29 @@ missing or unreadable, the entry falls back to the built-in terminal icon. A
 configured project PNG may replace the baseline imagery on its project and
 coordinator tiles. If the path is absent, unreadable, oversized, or not a
 decodable PNG, the matching built-in icon is still rendered. The native
-display label below the bitmap, badge, and segmented attention edge remain
-visible with either image path.
+display label below the bitmap, worker rails, and segmented attention edge
+remain visible with either image path.
 
 Up uses the navigation background `#111827` with a white arrow (17.74:1). It has
 no attention summary or state segments. No visual field carries a command; the
 only accepted actions are the closed semantic navigation actions shown above.
 If no fresh validated contract exists at all, the device adapter cannot receive a
-core-owned presentation; its sole local safety fallback is `? Codex unavailable`
-on the unavailable background. It never presents the last healthy image as fresh.
+core-owned presentation; its sole local safety fallback is a `?` image on the
+unavailable background while the native label remains `Codex`. It never presents
+the last healthy image as fresh.
 
 ## Device constraints
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
 the full bitmap for baseline/custom imagery, reserves four pixels at the top for
-at most three state segments, and places a padded status badge below that strip.
+at most three state segments, and reserves narrow left and right lanes for
+worker groups. A coordinator's right lane begins below its retained status badge.
 The device adapter draws the normalized icon role with simple vector primitives,
 so the defaults do not depend on optional font symbols or external assets. The
 SDK renders the display label separately below the bitmap. Task labels contain
 only an 18-character compact task-title cue; runtime state is carried by the
-state-specific icon, badge, background, and top-edge segment. Project
-labels contain only their configured display name; worker counts (`0`, an exact
-count, or a bounded `N+`) and diagnostic cues are carried by the bitmap badge.
-Global labels retain the contract's general bound. Actual cropping, native-label
+large state-specific icon, background, and top-edge segment. Project labels
+contain only their configured display name; the global label is simply `Codex`.
+Worker counts and diagnostic cues are carried by the side rails. Actual cropping, native-label
 legibility, color separation, and brightness behavior still require the physical
 checks in [physical-device-validation.md](physical-device-validation.md).

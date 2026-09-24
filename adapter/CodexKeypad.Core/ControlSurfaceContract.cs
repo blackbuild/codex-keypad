@@ -38,6 +38,12 @@ public sealed record AttentionSummary(
 
 public sealed record AttentionIndicator(String State, Int32 Count);
 
+public sealed record WorkerIndicatorPresentation(
+    String State,
+    Int32 Count,
+    String Color,
+    String Side);
+
 public sealed record VisualPresentation(
     String Icon,
     String Glyph,
@@ -45,7 +51,8 @@ public sealed record VisualPresentation(
     String BackgroundColor,
     String ForegroundColor,
     IReadOnlyList<String> BorderColors,
-    String Badge);
+    String Badge,
+    IReadOnlyList<WorkerIndicatorPresentation> WorkerIndicators);
 
 public abstract record SemanticAction(
     [property: JsonProperty("type")] String Type);
@@ -88,6 +95,18 @@ public static partial class ControlSurfaceContract
         "interrupted",
         "unavailable",
     ];
+    private static readonly IReadOnlyDictionary<String, Int32> AttentionPrecedence =
+        new Dictionary<String, Int32>(StringComparer.Ordinal)
+        {
+            ["failed"] = 0,
+            ["waiting-for-approval"] = 1,
+            ["waiting-for-input"] = 2,
+            ["interrupted"] = 3,
+            ["unavailable"] = 4,
+            ["stale"] = 5,
+            ["working"] = 6,
+            ["idle"] = 7,
+        };
 
     public static Boolean TryRead(String path, out ControlSurfaceState? state)
     {
@@ -112,11 +131,11 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 8
+        if (wire.SchemaVersion != 9
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
-            || !IsLabel(wire.Entry.Label)
+            || wire.Entry.Label != "Codex"
             || !TryNormalizeAttention(wire.Entry.Attention, out var entryAttention)
             || !TryNormalizeVisual(wire.Entry.Visual, out var entryVisual)
             || entryVisual!.Icon != "entry"
@@ -259,6 +278,7 @@ public static partial class ControlSurfaceContract
                 Tone: "navigation",
                 BorderColors.Count: 0,
                 Badge: "",
+                WorkerIndicators.Count: 0,
             })
         {
             return false;
@@ -274,6 +294,7 @@ public static partial class ControlSurfaceContract
                     && tile.Visual.Icon == "task"
                     && tile.Visual.Tone == tile.Attention.Primary
                     && tile.Visual.BorderColors.Count == tile.Attention.Indicators.Count
+                    && (tile.Role == "coordinator" || tile.Visual.WorkerIndicators.Count == 0)
                     && (tile.Role == "coordinator" || tile.IconPath is null) => true,
             _ => false,
         });
@@ -333,7 +354,16 @@ public static partial class ControlSurfaceContract
             || !IsColor(wire.ForegroundColor)
             || wire.BorderColors.Count > 3
             || wire.BorderColors.Any(color => !IsColor(color))
-            || !IsBoundedCue(wire.Badge, 12, allowEmpty: true))
+            || !IsBoundedCue(wire.Badge, 12, allowEmpty: true)
+            || wire.WorkerIndicators.Count > 8
+            || wire.WorkerIndicators.Any(indicator =>
+                !AttentionStates.Contains(indicator.State)
+                || indicator.Count is < 1 or > 1_000_000
+                || !IsColor(indicator.Color)
+                || indicator.Side is not ("left" or "right"))
+            || wire.WorkerIndicators.Select(indicator => indicator.State)
+                .Distinct(StringComparer.Ordinal).Count() != wire.WorkerIndicators.Count
+            || !IsOrderedWorkerPresentation(wire.WorkerIndicators))
         {
             return false;
         }
@@ -345,7 +375,29 @@ public static partial class ControlSurfaceContract
             wire.BackgroundColor,
             wire.ForegroundColor,
             wire.BorderColors.ToArray(),
-            wire.Badge);
+            wire.Badge,
+            wire.WorkerIndicators.Select(indicator => new WorkerIndicatorPresentation(
+                indicator.State,
+                indicator.Count,
+                indicator.Color,
+                indicator.Side)).ToArray());
+        return true;
+    }
+
+    private static Boolean IsOrderedWorkerPresentation(
+        IReadOnlyList<WireWorkerIndicator> indicators)
+    {
+        var previous = -1;
+        foreach (var indicator in indicators)
+        {
+            var rank = AttentionPrecedence[indicator.State];
+            var expectedSide = indicator.State is "working" or "idle" ? "right" : "left";
+            if (rank <= previous || indicator.Side != expectedSide)
+            {
+                return false;
+            }
+            previous = rank;
+        }
         return true;
     }
 
@@ -494,6 +546,24 @@ public static partial class ControlSurfaceContract
 
         [JsonProperty("badge", Required = Required.Always)]
         public String Badge { get; init; } = String.Empty;
+
+        [JsonProperty("workerIndicators", Required = Required.Always)]
+        public IReadOnlyList<WireWorkerIndicator> WorkerIndicators { get; init; } = [];
+    }
+
+    private sealed class WireWorkerIndicator
+    {
+        [JsonProperty("state", Required = Required.Always)]
+        public String State { get; init; } = String.Empty;
+
+        [JsonProperty("count", Required = Required.Always)]
+        public Int32 Count { get; init; }
+
+        [JsonProperty("color", Required = Required.Always)]
+        public String Color { get; init; } = String.Empty;
+
+        [JsonProperty("side", Required = Required.Always)]
+        public String Side { get; init; } = String.Empty;
     }
 
     private sealed class WireAction

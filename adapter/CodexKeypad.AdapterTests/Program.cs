@@ -11,11 +11,11 @@ var taskIconPixels = ColorStats(
     "#FFFFFF",
     0,
     fallback.Width,
-    fallback.Height / 2,
+    0,
     fallback.Height);
 Expect(taskIconPixels.Count > 20);
 Expect(taskIconPixels.Right - taskIconPixels.Left + 1 > 20);
-Expect(taskIconPixels.Bottom - taskIconPixels.Top + 1 > 20);
+Expect(taskIconPixels.Bottom - taskIconPixels.Top + 1 > 35);
 
 var missingIcon = Render(WorkingVisual(), "/missing/codex-keypad-icon.png");
 Expect(fallback.Png.SequenceEqual(missingIcon.Png));
@@ -56,17 +56,30 @@ var concurrent = Render(new VisualPresentation(
     "#7F1D1D",
     "#FFFFFF",
     ["#F87171", "#FACC15", "#60A5FA"],
-    "!AI+2"), null);
+    "!AI+2",
+    [
+        new("failed", 2, "#F87171", "left"),
+        new("waiting-for-approval", 4, "#FACC15", "left"),
+        new("working", 3, "#38BDF8", "right"),
+    ]), null);
 ExpectPixel(concurrent, concurrent.Width / 6, 1, "#F87171");
 ExpectPixel(concurrent, concurrent.Width / 2, 1, "#FACC15");
 ExpectPixel(concurrent, concurrent.Width * 5 / 6, 1, "#60A5FA");
+Expect(ContainsColor(concurrent, "#F87171", 0, concurrent.Width / 5, 5, concurrent.Height - 5));
+Expect(ContainsApproximateColor(
+    concurrent,
+    "#FACC15",
+    0,
+    concurrent.Width / 5,
+    5,
+    concurrent.Height - 5));
 Expect(ContainsColor(
     concurrent,
-    "#FFFFFF",
-    concurrent.Width / 2,
+    "#38BDF8",
+    concurrent.Width * 4 / 5,
     concurrent.Width,
     5,
-    24));
+    concurrent.Height - 5));
 Expect(ContainsColor(
     concurrent,
     "#7F1D1D",
@@ -96,7 +109,8 @@ var upIcon = Render(new VisualPresentation(
     "#111827",
     "#FFFFFF",
     [],
-    ""), null);
+    "",
+    []), null);
 Expect(!fallback.Png.SequenceEqual(projectIcon.Png));
 Expect(!fallback.Png.SequenceEqual(entryIcon.Png));
 Expect(!fallback.Png.SequenceEqual(hiveIcon.Png));
@@ -125,7 +139,8 @@ var badgeOnly = Render(new VisualPresentation(
     "#7F1D1D",
     "#FFFFFF",
     ["#F87171", "#FACC15", "#60A5FA"],
-    "!AI+2"), null);
+    "!AI+2",
+    []), null, "coordinator");
 var badgePixels = ColorStats(
     badgeOnly,
     "#FFFFFF",
@@ -182,7 +197,8 @@ static VisualPresentation WorkingVisual() => new(
     "#075985",
     "#FFFFFF",
     ["#38BDF8"],
-    ">");
+    ">",
+    []);
 
 static VisualPresentation IconVisual(String icon, String glyph) => new(
     icon,
@@ -191,7 +207,8 @@ static VisualPresentation IconVisual(String icon, String glyph) => new(
     "#075985",
     "#FFFFFF",
     ["#38BDF8"],
-    ">");
+    ">",
+    []);
 
 static VisualPresentation TaskStateVisual(String state) => new(
     "task",
@@ -200,7 +217,8 @@ static VisualPresentation TaskStateVisual(String state) => new(
     "#075985",
     "#FFFFFF",
     [],
-    "");
+    "",
+    []);
 
 static void ExpectPixel(
     (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
@@ -229,6 +247,41 @@ static Boolean ContainsColor(
         }
     }
     return false;
+}
+
+static Boolean ContainsApproximateColor(
+    (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
+    String color,
+    Int32 left,
+    Int32 right,
+    Int32 top,
+    Int32 bottom)
+{
+    var expected = Rgb565(color);
+    for (var y = top; y < bottom; y += 1)
+    {
+        for (var x = left; x < right; x += 1)
+        {
+            if (ColorDistance(ReadPixel(image, x, y), expected) < 100)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static Int32 ColorDistance(UInt16 left, UInt16 right)
+{
+    var leftRed = ((left >> 11) & 0x1F) * 255 / 31;
+    var leftGreen = ((left >> 5) & 0x3F) * 255 / 63;
+    var leftBlue = (left & 0x1F) * 255 / 31;
+    var rightRed = ((right >> 11) & 0x1F) * 255 / 31;
+    var rightGreen = ((right >> 5) & 0x3F) * 255 / 63;
+    var rightBlue = (right & 0x1F) * 255 / 31;
+    return Math.Abs(leftRed - rightRed)
+        + Math.Abs(leftGreen - rightGreen)
+        + Math.Abs(leftBlue - rightBlue);
 }
 
 static (Int32 Count, Int32 Left, Int32 Right, Int32 Top, Int32 Bottom) ColorStats(

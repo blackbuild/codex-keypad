@@ -7,6 +7,11 @@ using Loupedeck;
 public static class ControlSurfaceBitmapRenderer
 {
     private const Int32 AttentionSegmentHeight = 4;
+    private const Int32 WorkerBlobDiameter = 8;
+    private const Int32 WorkerBlobGap = 2;
+    private const Int32 WorkerGroupGap = 2;
+    private const Int32 WorkerCountHeight = 10;
+    private const Int32 WorkerCompressionThreshold = 4;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
     public static BitmapImage Render(
@@ -37,13 +42,17 @@ public static class ControlSurfaceBitmapRenderer
         }
 
         DrawAttentionSegments(builder, visual.BorderColors);
-        DrawBadge(
-            builder,
-            visual.Badge,
-            badgeWidth,
-            badgeFontSize,
-            background,
-            foreground);
+        DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
+        if (role == "coordinator")
+        {
+            DrawBadge(
+                builder,
+                visual.Badge,
+                badgeWidth,
+                badgeFontSize,
+                background,
+                foreground);
+        }
         return builder.ToImage();
     }
 
@@ -80,25 +89,25 @@ public static class ControlSurfaceBitmapRenderer
     private static void DrawEntryIcon(BitmapBuilder builder, BitmapColor color)
     {
         var stroke = Stroke(builder, 3);
-        DrawRectangle(builder, 18, 44, 72, 80, color, stroke);
-        Line(builder, 18, 54, 72, 54, color, stroke);
-        builder.FillCircle(X(builder, 24), Y(builder, 49), Scale(builder, 2), color);
-        builder.FillCircle(X(builder, 31), Y(builder, 49), Scale(builder, 2), color);
-        Line(builder, 29, 61, 36, 67, color, stroke);
-        Line(builder, 36, 67, 29, 73, color, stroke);
-        Line(builder, 43, 73, 58, 73, color, stroke);
+        DrawRectangle(builder, 20, 18, 70, 76, color, stroke);
+        Line(builder, 20, 31, 70, 31, color, stroke);
+        builder.FillCircle(X(builder, 27), Y(builder, 25), Scale(builder, 2), color);
+        builder.FillCircle(X(builder, 34), Y(builder, 25), Scale(builder, 2), color);
+        Line(builder, 28, 43, 38, 51, color, stroke);
+        Line(builder, 38, 51, 28, 59, color, stroke);
+        Line(builder, 43, 62, 61, 62, color, stroke);
     }
 
     private static void DrawProjectIcon(BitmapBuilder builder, BitmapColor color)
     {
         var stroke = Stroke(builder, 4);
-        Line(builder, 45, 48, 45, 63, color, stroke);
-        Line(builder, 45, 63, 27, 76, color, stroke);
-        Line(builder, 45, 63, 63, 76, color, stroke);
-        builder.FillCircle(X(builder, 45), Y(builder, 45), Scale(builder, 7), color);
-        builder.FillCircle(X(builder, 45), Y(builder, 63), Scale(builder, 7), color);
-        builder.FillCircle(X(builder, 25), Y(builder, 78), Scale(builder, 7), color);
-        builder.FillCircle(X(builder, 65), Y(builder, 78), Scale(builder, 7), color);
+        Line(builder, 45, 27, 45, 50, color, stroke);
+        Line(builder, 45, 50, 26, 70, color, stroke);
+        Line(builder, 45, 50, 64, 70, color, stroke);
+        builder.FillCircle(X(builder, 45), Y(builder, 23), Scale(builder, 8), color);
+        builder.FillCircle(X(builder, 45), Y(builder, 50), Scale(builder, 8), color);
+        builder.FillCircle(X(builder, 24), Y(builder, 72), Scale(builder, 8), color);
+        builder.FillCircle(X(builder, 66), Y(builder, 72), Scale(builder, 8), color);
     }
 
     private static void DrawTaskStateIcon(
@@ -110,46 +119,46 @@ public static class ControlSurfaceBitmapRenderer
         switch (state)
         {
             case "working":
-                Line(builder, 25, 48, 43, 63, color, stroke);
-                Line(builder, 43, 63, 25, 78, color, stroke);
-                Line(builder, 47, 48, 65, 63, color, stroke);
-                Line(builder, 65, 63, 47, 78, color, stroke);
+                Line(builder, 22, 24, 42, 45, color, stroke);
+                Line(builder, 42, 45, 22, 66, color, stroke);
+                Line(builder, 48, 24, 68, 45, color, stroke);
+                Line(builder, 68, 45, 48, 66, color, stroke);
                 break;
             case "idle":
-                Line(builder, 24, 64, 39, 78, color, stroke);
-                Line(builder, 39, 78, 68, 47, color, stroke);
+                Line(builder, 20, 48, 38, 66, color, stroke);
+                Line(builder, 38, 66, 70, 25, color, stroke);
                 break;
             case "failed":
-                Line(builder, 27, 47, 64, 79, color, stroke);
-                Line(builder, 64, 47, 27, 79, color, stroke);
+                Line(builder, 23, 23, 67, 67, color, stroke);
+                Line(builder, 67, 23, 23, 67, color, stroke);
                 break;
             case "interrupted":
-                Line(builder, 34, 48, 34, 78, color, Stroke(builder, 8));
-                Line(builder, 56, 48, 56, 78, color, Stroke(builder, 8));
+                Line(builder, 33, 23, 33, 68, color, Stroke(builder, 9));
+                Line(builder, 57, 23, 57, 68, color, Stroke(builder, 9));
                 break;
             case "waiting-for-input":
-                DrawRectangle(builder, 21, 47, 69, 73, color, Stroke(builder, 3));
-                Line(builder, 35, 73, 29, 81, color, Stroke(builder, 3));
-                Line(builder, 29, 81, 47, 73, color, Stroke(builder, 3));
+                DrawRectangle(builder, 19, 22, 71, 59, color, Stroke(builder, 3));
+                Line(builder, 36, 59, 29, 70, color, Stroke(builder, 3));
+                Line(builder, 29, 70, 49, 59, color, Stroke(builder, 3));
                 builder.DrawText(
                     "?",
                     (Int32)X(builder, 21),
-                    (Int32)Y(builder, 46),
+                    (Int32)Y(builder, 22),
                     (Int32)Scale(builder, 48),
-                    (Int32)Scale(builder, 28),
+                    (Int32)Scale(builder, 37),
                     color,
-                    fontSize: (Int32)Scale(builder, 24));
+                    fontSize: (Int32)Scale(builder, 30));
                 break;
             case "waiting-for-approval":
-                Line(builder, 27, 47, 63, 47, color, Stroke(builder, 3));
-                Line(builder, 27, 79, 63, 79, color, Stroke(builder, 3));
-                Line(builder, 27, 47, 63, 79, color, Stroke(builder, 3));
-                Line(builder, 63, 47, 27, 79, color, Stroke(builder, 3));
+                Line(builder, 23, 22, 67, 22, color, Stroke(builder, 3));
+                Line(builder, 23, 70, 67, 70, color, Stroke(builder, 3));
+                Line(builder, 23, 22, 67, 70, color, Stroke(builder, 3));
+                Line(builder, 67, 22, 23, 70, color, Stroke(builder, 3));
                 break;
             case "stale":
-                DrawHexagon(builder, 45, 63, 20, color, Stroke(builder, 3));
-                Line(builder, 45, 63, 45, 51, color, Stroke(builder, 3));
-                Line(builder, 45, 63, 56, 69, color, Stroke(builder, 3));
+                DrawHexagon(builder, 45, 46, 25, color, Stroke(builder, 3));
+                Line(builder, 45, 46, 45, 30, color, Stroke(builder, 3));
+                Line(builder, 45, 46, 59, 54, color, Stroke(builder, 3));
                 break;
             default:
                 builder.DrawText("?", color, fontSize: 40);
@@ -160,9 +169,9 @@ public static class ControlSurfaceBitmapRenderer
     private static void DrawHiveIcon(BitmapBuilder builder, BitmapColor color)
     {
         var stroke = Stroke(builder, 3);
-        DrawHexagon(builder, 45, 49, 11, color, stroke);
-        DrawHexagon(builder, 34, 68, 11, color, stroke);
-        DrawHexagon(builder, 56, 68, 11, color, stroke);
+        DrawHexagon(builder, 45, 27, 14, color, stroke);
+        DrawHexagon(builder, 31, 51, 14, color, stroke);
+        DrawHexagon(builder, 59, 51, 14, color, stroke);
     }
 
     private static void DrawUpIcon(BitmapBuilder builder, BitmapColor color)
@@ -299,6 +308,107 @@ public static class ControlSurfaceBitmapRenderer
                 AttentionSegmentHeight,
                 ParseColor(colors[index]));
         }
+    }
+
+    private static void DrawWorkerIndicatorRails(
+        BitmapBuilder builder,
+        IReadOnlyList<WorkerIndicatorPresentation> indicators,
+        Boolean reserveHiveBadge)
+    {
+        DrawWorkerIndicatorRail(
+            builder,
+            indicators.Where(indicator => indicator.Side == "left").ToArray(),
+            side: "left",
+            top: 8);
+        DrawWorkerIndicatorRail(
+            builder,
+            indicators.Where(indicator => indicator.Side == "right").ToArray(),
+            side: "right",
+            top: reserveHiveBadge ? 32 : 8);
+    }
+
+    private static void DrawWorkerIndicatorRail(
+        BitmapBuilder builder,
+        IReadOnlyList<WorkerIndicatorPresentation> indicators,
+        String side,
+        Int32 top)
+    {
+        if (indicators.Count == 0)
+        {
+            return;
+        }
+
+        const Int32 bottom = 82;
+        var layouts = indicators
+            .Select(indicator => new WorkerIndicatorLayout(
+                indicator,
+                indicator.Count >= WorkerCompressionThreshold))
+            .ToList();
+        while (RailHeight(layouts) > bottom - top)
+        {
+            var candidate = layouts
+                .Where(layout => !layout.Compressed && layout.Indicator.Count > 1)
+                .OrderByDescending(layout => BlobGroupHeight(layout.Indicator.Count) - WorkerCountHeight)
+                .FirstOrDefault();
+            if (candidate is null)
+            {
+                break;
+            }
+            candidate.Compressed = true;
+        }
+
+        var y = top + Math.Max(0, (bottom - top - RailHeight(layouts)) / 2F);
+        foreach (var layout in layouts)
+        {
+            var color = ParseColor(layout.Indicator.Color);
+            if (layout.Compressed)
+            {
+                var left = side == "left" ? 0 : 74;
+                builder.DrawText(
+                    layout.Indicator.Count.ToString(),
+                    (Int32)X(builder, left),
+                    (Int32)Y(builder, y),
+                    (Int32)Scale(builder, 16),
+                    (Int32)Scale(builder, WorkerCountHeight),
+                    color,
+                    fontSize: (Int32)Scale(builder, 10));
+                y += WorkerCountHeight + WorkerGroupGap;
+                continue;
+            }
+
+            var centerX = side == "left" ? 8 : 82;
+            for (var index = 0; index < layout.Indicator.Count; index += 1)
+            {
+                builder.FillCircle(
+                    X(builder, centerX),
+                    Y(builder, y + WorkerBlobDiameter / 2F),
+                    Scale(builder, WorkerBlobDiameter / 2F),
+                    color);
+                y += WorkerBlobDiameter;
+                if (index + 1 < layout.Indicator.Count)
+                {
+                    y += WorkerBlobGap;
+                }
+            }
+            y += WorkerGroupGap;
+        }
+    }
+
+    private static Int32 RailHeight(IReadOnlyList<WorkerIndicatorLayout> layouts) =>
+        layouts.Sum(layout => layout.Compressed
+            ? WorkerCountHeight
+            : BlobGroupHeight(layout.Indicator.Count))
+        + Math.Max(0, layouts.Count - 1) * WorkerGroupGap;
+
+    private static Int32 BlobGroupHeight(Int32 count) =>
+        count * WorkerBlobDiameter + Math.Max(0, count - 1) * WorkerBlobGap;
+
+    private sealed class WorkerIndicatorLayout(
+        WorkerIndicatorPresentation indicator,
+        Boolean compressed)
+    {
+        public WorkerIndicatorPresentation Indicator { get; } = indicator;
+        public Boolean Compressed { get; set; } = compressed;
     }
 
     private static Int32 BadgeWidth(Int32 imageWidth, String badge, Int32 fontSize) =>

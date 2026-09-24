@@ -14,6 +14,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     private String? _statePath;
     private String? _actionPath;
     private ControlSurfaceState? _state;
+    private Boolean _awaitingOverview;
 
     public CodexDynamicFolder()
     {
@@ -25,7 +26,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         PluginDynamicFolderNavigation.None;
 
     public override String GetButtonDisplayName(PluginImageSize _) =>
-        this.WithState(state => state?.Entry.Label ?? "Codex · unavailable");
+        this.WithState(state => state?.Entry.Label ?? "Codex");
 
     public override BitmapImage GetButtonImage(PluginImageSize imageSize)
     {
@@ -39,19 +40,22 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     }
 
     public override IEnumerable<String> GetButtonPressActionNames(DeviceType _) =>
-        this.WithState(state => state?.View.Tiles
+        this.WithState(state => this._awaitingOverview ? [] : state?.View.Tiles
             .Select(tile => this.CreateCommandName(tile.Id))
             .ToArray() ?? []);
 
     public override String GetCommandDisplayName(String actionParameter, PluginImageSize _) =>
-        this.WithState(state => state?.View.Tiles
-            .SingleOrDefault(tile => tile.Id == actionParameter)?.Label
+        this.WithState(state => (this._awaitingOverview
+            ? null
+            : state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter)?.Label)
             ?? "Unavailable");
 
     public override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize) =>
         this.WithState(state =>
         {
-            var tile = state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter);
+            var tile = this._awaitingOverview
+                ? null
+                : state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter);
             return tile is null
                 ? null
                 : ControlSurfaceBitmapRenderer.Render(
@@ -64,7 +68,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     public override void RunCommand(String actionParameter)
     {
         var action = this.WithState(state => state?.View.Tiles
-            .SingleOrDefault(tile => tile.Id == actionParameter)?.Action);
+            .SingleOrDefault(tile => !this._awaitingOverview && tile.Id == actionParameter)?.Action);
         var actionPath = this._actionPath;
         if (action is not null && actionPath is not null)
         {
@@ -96,11 +100,22 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
 
     public override Boolean Activate()
     {
-        var reset = this.WithState(state => state?.Entry.Action);
-        if (reset is not null && this._actionPath is not null)
+        lock (this._sync)
         {
-            RelayAction(this._actionPath, reset);
+            this._awaitingOverview = this._state?.View.Level != "project-overview";
         }
+        this.ButtonActionNamesChanged();
+        this.ResetToOverview();
+        return true;
+    }
+
+    public override Boolean Deactivate()
+    {
+        lock (this._sync)
+        {
+            this._awaitingOverview = true;
+        }
+        this.ResetToOverview();
         return true;
     }
 
@@ -215,6 +230,15 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         }
     }
 
+    private void ResetToOverview()
+    {
+        var reset = this.WithState(state => state?.Entry.Action);
+        if (reset is not null && this._actionPath is not null)
+        {
+            RelayAction(this._actionPath, reset);
+        }
+    }
+
     private void RefreshState()
     {
         var nextState = this.ReadFreshState();
@@ -222,7 +246,13 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         var changed = false;
         lock (this._sync)
         {
-            if (this._state?.Revision != nextState?.Revision)
+            var overviewArrived = this._awaitingOverview
+                && nextState?.View.Level == "project-overview";
+            if (overviewArrived)
+            {
+                this._awaitingOverview = false;
+            }
+            if (this._state?.Revision != nextState?.Revision || overviewArrived)
             {
                 this._state = nextState;
                 changed = true;

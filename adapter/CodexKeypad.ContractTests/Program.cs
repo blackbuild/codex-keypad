@@ -31,8 +31,8 @@ try
     Run("rejects legacy or unbounded visual contracts", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview().Replace(
+            "\"schemaVersion\": 9",
             "\"schemaVersion\": 8",
-            "\"schemaVersion\": 7",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
 
@@ -60,6 +60,12 @@ try
         File.WriteAllText(fixturePath, AttentionProjectOverview().Replace(
             "\"icon\": \"entry\"",
             "\"icon\": \"task\"",
+            StringComparison.Ordinal));
+        Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
+
+        File.WriteAllText(fixturePath, AttentionProjectOverview().Replace(
+            "\"state\": \"failed\", \"count\": 2, \"color\": \"#F87171\", \"side\": \"left\"",
+            "\"state\": \"failed\", \"count\": 2, \"color\": \"#F87171\", \"side\": \"right\"",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
 
@@ -194,13 +200,13 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
-    "label": "Codex · 3 active",
+    "label": "Codex",
     "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 3 }], "additionalStates": 0 },
-    "visual": { "icon": "entry", "glyph": "C", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+    "visual": { "icon": "entry", "glyph": "C", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [{ "state": "working", "count": 3, "color": "#38BDF8", "side": "right" }] },
     "action": { "type": "open-project-overview" }
   },
   "view": {
@@ -209,17 +215,17 @@ static String ProjectOverview() => """
     "tiles": [
       {
         "id": "project:architecture",
-        "label": "Architecture · 2 active",
+        "label": "Architecture",
         "iconPath": "/icons/architecture.png",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 2 }], "additionalStates": 0 },
-        "visual": { "icon": "project", "glyph": "P", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+        "visual": { "icon": "project", "glyph": "P", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [{ "state": "working", "count": 2, "color": "#38BDF8", "side": "right" }] },
         "action": { "type": "open-task-view", "projectId": "architecture" }
       },
       {
         "id": "project:codex-keypad",
-        "label": "Codex Keypad · 1 active",
+        "label": "Codex Keypad",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
-        "visual": { "icon": "project", "glyph": "P", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+        "visual": { "icon": "project", "glyph": "P", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [{ "state": "working", "count": 1, "color": "#38BDF8", "side": "right" }] },
         "action": { "type": "open-task-view", "projectId": "codex-keypad" }
       }
     ]
@@ -229,11 +235,11 @@ static String ProjectOverview() => """
 
 static String AttentionProjectOverview() => """
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "revision": "attention-project-overview:456",
   "entry": {
     "id": "codex",
-    "label": "Codex · Failed +3 states · count stale",
+    "label": "Codex",
     "attention": {
       "primary": "failed",
       "indicators": [
@@ -250,7 +256,11 @@ static String AttentionProjectOverview() => """
       "backgroundColor": "#7F1D1D",
       "foregroundColor": "#FFFFFF",
       "borderColors": ["#F87171", "#FACC15", "#FDBA74"],
-      "badge": "!A~+1"
+      "badge": "!A~+1",
+      "workerIndicators": [
+        { "state": "failed", "count": 2, "color": "#F87171", "side": "left" },
+        { "state": "working", "count": 4, "color": "#38BDF8", "side": "right" }
+      ]
     },
     "action": { "type": "open-project-overview" }
   },
@@ -264,26 +274,26 @@ static String AttentionProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
-    "label": "Codex · 1 active",
+    "label": "Codex",
     "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
-    "visual": { "icon": "entry", "glyph": "C", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+    "visual": { "icon": "entry", "glyph": "C", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [{ "state": "working", "count": 1, "color": "#38BDF8", "side": "right" }] },
     "action": { "type": "open-project-overview" }
   },
   "view": {
     "level": "task-view",
     "title": "Codex Keypad",
     "tiles": [
-      { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
+      { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "", "workerIndicators": [] }, "action": { "type": "open-project-overview" } },
       {
         "id": "task:{{threadId}}",
         "label": "Exact task",
         "status": "working",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
-        "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+        "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [] },
         "action": { "type": "{{taskActionType}}", "threadId": "{{threadId}}" }
       }
     ]
@@ -296,17 +306,18 @@ static String UnavailableTaskView(String threadId) =>
         .Replace("\"working\"", "\"unavailable\"", StringComparison.Ordinal)
         .Replace("#075985", "#3F3F46", StringComparison.Ordinal)
         .Replace("#38BDF8", "#D4D4D8", StringComparison.Ordinal)
+        .Replace("\"side\": \"right\"", "\"side\": \"left\"", StringComparison.Ordinal)
         .Replace("\"badge\": \">\"", "\"badge\": \"?\"", StringComparison.Ordinal);
 
 static String CoordinatorTaskView() => """
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "revision": "task-view:hive-thread:456",
   "entry": {
     "id": "codex",
-    "label": "Codex · 1 active",
+    "label": "Codex",
     "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
-    "visual": { "icon": "entry", "glyph": "C", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+    "visual": { "icon": "entry", "glyph": "C", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [{ "state": "working", "count": 1, "color": "#38BDF8", "side": "right" }] },
     "action": { "type": "open-project-overview" }
   },
   "view": {
@@ -320,16 +331,16 @@ static String CoordinatorTaskView() => """
         "role": "coordinator",
         "status": "working",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
-        "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+        "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [{ "state": "working", "count": 1, "color": "#38BDF8", "side": "right" }] },
         "action": { "type": "open-codex-task", "threadId": "hive-thread" }
       },
-      { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "" }, "action": { "type": "open-project-overview" } },
+      { "id": "nav.back", "label": "Up", "visual": { "icon": "back", "glyph": "^", "tone": "navigation", "backgroundColor": "#111827", "foregroundColor": "#FFFFFF", "borderColors": [], "badge": "", "workerIndicators": [] }, "action": { "type": "open-project-overview" } },
       {
         "id": "task:worker-thread",
         "label": "Worker",
         "status": "working",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
-        "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">" },
+        "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [] },
         "action": { "type": "open-codex-task", "threadId": "worker-thread" }
       }
     ]
@@ -359,12 +370,12 @@ static String ManyTaskView(Int32 taskCount)
     }));
     return JsonSerializer.Serialize(new
     {
-        schemaVersion = 8,
+        schemaVersion = 9,
         revision = "many-tasks:456",
         entry = new
         {
             id = "codex",
-            label = "Codex · 10 active",
+            label = "Codex",
             attention = WorkingAttention(10),
             visual = WorkingVisual("entry", "C"),
             action = new { type = "open-project-overview" },
@@ -389,6 +400,7 @@ static Object WorkingVisual(String icon, String glyph) => new
     foregroundColor = "#FFFFFF",
     borderColors = new[] { "#38BDF8" },
     badge = ">",
+    workerIndicators = Array.Empty<Object>(),
 };
 
 static Object BackVisual() => new
@@ -400,4 +412,5 @@ static Object BackVisual() => new
     foregroundColor = "#FFFFFF",
     borderColors = Array.Empty<String>(),
     badge = "",
+    workerIndicators = Array.Empty<Object>(),
 };

@@ -8,19 +8,20 @@ brightness, and pass/fail for each check; do not record private task content.
 1. **Task states:** present one task tile for completed, working, waiting for
    input, waiting for approval, interrupted, failed, and unavailable source
    states. Confirm the compact task-identity label remains free of appended status
-   text while the badge, background, segment, and state-specific worker icon match
+   text while the background, segment, and large state-specific worker icon match
    the legend and update without restarting Options+.
 2. **Project aggregation:** place at least two different task states in one
    project. Confirm the documented primary state wins, each of up to three
-   conditions has an ordered segment/badge cue, the bitmap carries the bounded
+   conditions has ordered segments and split side rails, the bitmap carries the bounded
    worker count while the native label remains only the configured project name,
    and pressing the tile opens that project's task view.
 3. **Global aggregation:** distribute at least three different conditions across
    two configured projects. Confirm the Codex entry composes them in the same
    order and opens the project overview.
-4. **Bounded overflow:** expose at least four distinct states. Confirm only three
-   segments/glyphs are drawn, the badge and label show the correct `+N`, and no
-   text or segment is clipped beyond recognition.
+4. **Bounded overflow:** expose at least four distinct states and at least four
+   workers in one state. Confirm only three aggregate segments are drawn, worker
+   groups remain status-sorted, the dense group becomes a colored count, and no
+   text, blob, or segment is clipped beyond recognition.
 5. **Icons and fallbacks:** check the packaged OpenAI knot mark on the global entry and
    the terminal fallback when that asset is unavailable. With no custom project
    icon, check the connected-workspace, state-specific worker, Hive coordinator, and large
@@ -32,9 +33,9 @@ brightness, and pass/fail for each check; do not record private task content.
    status. Confirm `~`/Stale is distinct from `?`/Unavailable and neither looks
    idle or healthy.
 7. **Legibility:** at the normal operating brightness, read every native display
-   label and bitmap badge at arm's length, including a busy custom icon. Confirm
+   label and side rails at arm's length, including a busy custom icon. Confirm
    the label appears only once below the bitmap, compact task titles remain
-   recognizable, badges do not crowd the top strip, and the three segment colors
+   recognizable, the Hive badge does not crowd its right rail, and the three segment colors
    are distinguishable. Repeat at the lowest brightness the maintainer considers
    supported.
 8. **Navigation safety:** press every attention-bearing entry, project, and task
@@ -42,7 +43,7 @@ brightness, and pass/fail for each check; do not record private task content.
    current task; a removed task is inert and no executable command is accepted.
 9. **Adapter freshness fallback:** stop or invalidate the sidecar state and wait
    beyond the two-second freshness window. Confirm the global tile changes to the
-   explicit `? Codex unavailable` fallback rather than retaining healthy state.
+   explicit `?` image with the `Codex` native label rather than retaining healthy state.
 
 Hardware acceptance is complete only when the maintainer records all nine checks
 as passing on the physical device.

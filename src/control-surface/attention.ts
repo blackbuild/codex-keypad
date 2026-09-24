@@ -15,6 +15,11 @@ export interface AttentionIndicator {
   readonly count: number;
 }
 
+export interface WorkerIndicatorPresentation extends AttentionIndicator {
+  readonly color: string;
+  readonly side: 'left' | 'right';
+}
+
 export interface AttentionSummary {
   readonly primary: AttentionState;
   readonly indicators: readonly AttentionIndicator[];
@@ -31,6 +36,7 @@ export interface VisualPresentation {
   readonly foregroundColor: '#FFFFFF';
   readonly borderColors: readonly string[];
   readonly badge: string;
+  readonly workerIndicators: readonly WorkerIndicatorPresentation[];
 }
 
 const MAXIMUM_VISIBLE_ATTENTION_STATES = 3;
@@ -89,6 +95,24 @@ export function aggregateAttention(states: readonly AttentionState[]): Attention
   };
 }
 
+export function mergeAttentionIndicators(
+  indicators: readonly AttentionIndicator[],
+): readonly AttentionIndicator[] {
+  const counts = new Map<AttentionState, number>();
+  for (const { state, count } of indicators) {
+    counts.set(state, (counts.get(state) ?? 0) + count);
+  }
+  return ATTENTION_PRECEDENCE
+    .filter((state) => counts.has(state))
+    .map((state) => ({ state, count: counts.get(state)! }));
+}
+
+export function summarizeAttentionStates(
+  states: readonly AttentionState[],
+): readonly AttentionIndicator[] {
+  return mergeAttentionIndicators(states.map((state) => ({ state, count: 1 })));
+}
+
 export function taskAttentionState(status: CodexTaskStatus): AttentionState {
   return status === 'completed' ? 'idle' : status;
 }
@@ -103,6 +127,7 @@ export function attentionSummaryLabel(summary: AttentionSummary): string {
 export function visualizeAttention(
   summary: AttentionSummary,
   icon: Exclude<VisualIcon, 'back'>,
+  workerIndicators: readonly AttentionIndicator[] = [],
 ): VisualPresentation {
   const primary = VISUAL_TOKENS[summary.primary];
   const badge = summary.indicators
@@ -116,6 +141,12 @@ export function visualizeAttention(
     foregroundColor: '#FFFFFF',
     borderColors: summary.indicators.map(({ state }) => VISUAL_TOKENS[state].borderColor),
     badge: `${badge}${summary.additionalStates > 0 ? `+${summary.additionalStates}` : ''}`,
+    workerIndicators: workerIndicators.map(({ state, count }) => ({
+      state,
+      count,
+      color: VISUAL_TOKENS[state].borderColor,
+      side: state === 'working' || state === 'idle' ? 'right' : 'left',
+    })),
   };
 }
 
@@ -128,5 +159,6 @@ export function navigationVisual(): VisualPresentation {
     foregroundColor: '#FFFFFF',
     borderColors: [],
     badge: '',
+    workerIndicators: [],
   };
 }
