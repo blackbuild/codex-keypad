@@ -10,10 +10,14 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerBlobDiameter = 8;
     private const Int32 WorkerBlobGap = 2;
     private const Int32 WorkerGroupGap = 2;
-    private const Int32 WorkerCountHeight = 10;
+    private const Int32 WorkerCountWidth = 16;
+    private const Int32 WorkerCountHeight = 16;
+    private const Int32 WorkerCountFontSize = 15;
     private const Int32 WorkerCompressionThreshold = 4;
-    private const Int32 WorkerRailFrameThickness = 1;
-    private const UInt32 WorkerRailFrameColor = 0x05070B;
+    private const Int32 WorkerRailGutterWidth = 10;
+    private const Int32 WorkerRailOutlineThickness = 1;
+    private const UInt32 WorkerRailGutterColor = 0x05070B;
+    private const UInt32 WorkerRailOutlineColor = 0xFFFFFF;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
     public static BitmapImage Render(
@@ -27,7 +31,7 @@ public static class ControlSurfaceBitmapRenderer
         var foreground = ParseColor(visual.ForegroundColor);
         var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
         var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
-        var hasWorkerRailFrame = visual.Icon is "entry" or "project" || role == "coordinator";
+        var hasWorkerRails = visual.Icon is "entry" or "project" || role == "coordinator";
         builder.Clear(background);
 
         if (TryLoadIcon(iconPath, out var icon))
@@ -44,9 +48,9 @@ public static class ControlSurfaceBitmapRenderer
                 foreground);
         }
 
-        if (hasWorkerRailFrame)
+        if (hasWorkerRails)
         {
-            DrawWorkerRailFrame(builder);
+            DrawWorkerRailGutters(builder);
         }
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
         if (role == "coordinator")
@@ -58,7 +62,11 @@ public static class ControlSurfaceBitmapRenderer
                 badgeFontSize,
                 background,
                 foreground,
-                hasWorkerRailFrame ? WorkerRailFrameThickness : 0);
+                hasWorkerRails ? WorkerRailGutterWidth : 0);
+        }
+        if (hasWorkerRails)
+        {
+            DrawWorkerRailOutline(builder);
         }
         return builder.ToImage();
     }
@@ -300,21 +308,34 @@ public static class ControlSurfaceBitmapRenderer
         return stream.Read(actual) == actual.Length && actual.SequenceEqual(expected);
     }
 
-    private static void DrawWorkerRailFrame(BitmapBuilder builder)
+    private static void DrawWorkerRailGutters(BitmapBuilder builder)
     {
-        var color = BitmapColor.FromRgb(WorkerRailFrameColor);
-        builder.FillRectangle(0, 0, builder.Width, WorkerRailFrameThickness, color);
+        var gutterWidth = (Int32)X(builder, WorkerRailGutterWidth);
+        var color = BitmapColor.FromRgb(WorkerRailGutterColor);
+        builder.FillRectangle(0, 0, gutterWidth, builder.Height, color);
         builder.FillRectangle(
+            builder.Width - gutterWidth,
             0,
-            builder.Height - WorkerRailFrameThickness,
-            builder.Width,
-            WorkerRailFrameThickness,
+            gutterWidth,
+            builder.Height,
             color);
-        builder.FillRectangle(0, 0, WorkerRailFrameThickness, builder.Height, color);
+    }
+
+    private static void DrawWorkerRailOutline(BitmapBuilder builder)
+    {
+        var color = BitmapColor.FromRgb(WorkerRailOutlineColor);
+        builder.FillRectangle(0, 0, builder.Width, WorkerRailOutlineThickness, color);
         builder.FillRectangle(
-            builder.Width - WorkerRailFrameThickness,
             0,
-            WorkerRailFrameThickness,
+            builder.Height - WorkerRailOutlineThickness,
+            builder.Width,
+            WorkerRailOutlineThickness,
+            color);
+        builder.FillRectangle(0, 0, WorkerRailOutlineThickness, builder.Height, color);
+        builder.FillRectangle(
+            builder.Width - WorkerRailOutlineThickness,
+            0,
+            WorkerRailOutlineThickness,
             builder.Height,
             color);
     }
@@ -372,33 +393,28 @@ public static class ControlSurfaceBitmapRenderer
             var color = ParseColor(layout.Indicator.Color);
             if (layout.Compressed)
             {
-                var left = side == "left" ? 0 : 80;
+                var left = side == "left" ? 1 : 89 - WorkerCountWidth;
                 builder.FillRectangle(
                     (Int32)X(builder, left),
                     (Int32)Y(builder, y),
-                    (Int32)Scale(builder, 10),
+                    (Int32)Scale(builder, WorkerCountWidth),
                     (Int32)Scale(builder, WorkerCountHeight),
-                    BitmapColor.FromRgb(WorkerRailFrameColor));
+                    BitmapColor.FromRgb(WorkerRailGutterColor));
                 builder.DrawText(
                     layout.Indicator.Count.ToString(),
                     (Int32)X(builder, left),
                     (Int32)Y(builder, y),
-                    (Int32)Scale(builder, 10),
+                    (Int32)Scale(builder, WorkerCountWidth),
                     (Int32)Scale(builder, WorkerCountHeight),
                     color,
-                    fontSize: (Int32)Scale(builder, 10));
+                    fontSize: (Int32)Scale(builder, WorkerCountFontSize));
                 y += WorkerCountHeight + WorkerGroupGap;
                 continue;
             }
 
-            var centerX = side == "left" ? 2.5F : 87.5F;
+            var centerX = side == "left" ? 5F : 85F;
             for (var index = 0; index < layout.Indicator.Count; index += 1)
             {
-                builder.FillCircle(
-                    X(builder, centerX),
-                    Y(builder, y + WorkerBlobDiameter / 2F),
-                    Scale(builder, WorkerBlobDiameter / 2F + 1),
-                    BitmapColor.FromRgb(WorkerRailFrameColor));
                 builder.FillCircle(
                     X(builder, centerX),
                     Y(builder, y + WorkerBlobDiameter / 2F),

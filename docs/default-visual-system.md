@@ -99,11 +99,11 @@ the last healthy image as fresh.
 ## Device constraints
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
-the full 80-pixel square for baseline/custom imagery and draws a one-pixel dark
-frame around aggregate tiles. Outlined worker blobs are attached to the outer
-edges of that frame; compressed counts use small dark-backed tabs. This keeps
-the colored/icon field essentially full width while separating indicators from
-busy custom artwork. A coordinator's right lane begins below its retained badge.
+the full 80-pixel square for baseline/custom imagery and draws a one-pixel white
+frame around aggregate tiles. Worker blobs sit in dark side gutters inside that
+frame; compressed counts use larger dark-backed tabs. This gives the colored/icon
+field a narrower framed-panel appearance while separating indicators from busy
+custom artwork. A coordinator's right lane begins below its retained badge.
 The device adapter draws the normalized icon role with simple vector primitives,
 so the defaults do not depend on optional font symbols or external assets. The
 SDK renders the display label separately below the bitmap. Task labels contain

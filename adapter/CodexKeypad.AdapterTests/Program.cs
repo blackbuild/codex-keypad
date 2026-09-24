@@ -70,6 +70,10 @@ Expect(ContainsColor(
     concurrent.Width / 10,
     5,
     concurrent.Height - 5));
+ExpectPixel(concurrent, 0, 0, "#FFFFFF");
+ExpectPixel(concurrent, concurrent.Width - 1, 0, "#FFFFFF");
+ExpectPixel(concurrent, 0, concurrent.Height - 1, "#FFFFFF");
+ExpectPixel(concurrent, concurrent.Width - 1, concurrent.Height - 1, "#FFFFFF");
 Expect(ContainsApproximateColor(
     concurrent,
     "#FACC15",
@@ -77,6 +81,15 @@ Expect(ContainsApproximateColor(
     concurrent.Width / 5,
     5,
     concurrent.Height - 5));
+var compressedCountPixels = ApproximateColorStats(
+    concurrent,
+    "#FACC15",
+    0,
+    concurrent.Width / 4,
+    5,
+    concurrent.Height - 5);
+Expect(compressedCountPixels.Count > 0);
+Expect(compressedCountPixels.Bottom - compressedCountPixels.Top + 1 >= 9);
 Expect(ContainsColor(
     concurrent,
     "#38BDF8",
@@ -148,9 +161,9 @@ var badgeOnly = Render(new VisualPresentation(
 var badgePixels = ColorStats(
     badgeOnly,
     "#FFFFFF",
-    0,
-    badgeOnly.Width,
-    0,
+    2,
+    badgeOnly.Width - 2,
+    2,
     badgeOnly.Height / 2);
 Expect(badgePixels.Count > 0);
 Expect(badgePixels.Top >= 8);
@@ -286,6 +299,37 @@ static Int32 ColorDistance(UInt16 left, UInt16 right)
     return Math.Abs(leftRed - rightRed)
         + Math.Abs(leftGreen - rightGreen)
         + Math.Abs(leftBlue - rightBlue);
+}
+
+static (Int32 Count, Int32 Left, Int32 Right, Int32 Top, Int32 Bottom) ApproximateColorStats(
+    (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
+    String color,
+    Int32 left,
+    Int32 right,
+    Int32 top,
+    Int32 bottom)
+{
+    var expected = Rgb565(color);
+    var count = 0;
+    var firstX = right;
+    var lastX = left - 1;
+    var first = bottom;
+    var last = top - 1;
+    for (var y = top; y < bottom; y += 1)
+    {
+        for (var x = left; x < right; x += 1)
+        {
+            if (ColorDistance(ReadPixel(image, x, y), expected) < 100)
+            {
+                count += 1;
+                firstX = Math.Min(firstX, x);
+                lastX = Math.Max(lastX, x);
+                first = Math.Min(first, y);
+                last = Math.Max(last, y);
+            }
+        }
+    }
+    return (count, firstX, lastX, first, last);
 }
 
 static (Int32 Count, Int32 Left, Int32 Right, Int32 Top, Int32 Bottom) ColorStats(
