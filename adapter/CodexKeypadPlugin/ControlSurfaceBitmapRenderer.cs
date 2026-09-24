@@ -9,7 +9,7 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 BadgeTop = 8;
     private const Int32 WorkerBlobDiameter = 8;
     private const Int32 WorkerBlobGap = 2;
-    private const Int32 WorkerGroupGap = 2;
+    private const Int32 WorkerGroupGap = 6;
     private const Int32 WorkerCountWidth = 24;
     private const Int32 WorkerCountHeight = 24;
     private const Int32 WorkerCountFontSize = 24;

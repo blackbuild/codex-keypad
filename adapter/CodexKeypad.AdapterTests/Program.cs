@@ -111,6 +111,15 @@ var compressedCountPixels = ApproximateColorStats(
     concurrent.Height - 5);
 Expect(compressedCountPixels.Count > 0);
 Expect(compressedCountPixels.Bottom - compressedCountPixels.Top + 1 >= 9);
+var precedingBlobPixels = ApproximateColorStats(
+    concurrent,
+    "#F87171",
+    0,
+    concurrent.Width / 4,
+    5,
+    concurrent.Height - 5);
+Expect(precedingBlobPixels.Count > 0);
+Expect(compressedCountPixels.Top - precedingBlobPixels.Bottom >= 2);
 var rightCompressedCountPixels = ApproximateColorStats(
     concurrent,
     "#38BDF8",
