@@ -1,6 +1,6 @@
 type: plugin4
 name: CodexKeypad
-version: 0.2.5
+version: 0.2.6
 displayName: Codex Keypad
 description: Live three-level Codex navigation for Logitech MX Keypad
 pluginFileName: CodexKeypadPlugin.dll

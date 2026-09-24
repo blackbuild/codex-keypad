@@ -363,12 +363,12 @@ public static class ControlSurfaceBitmapRenderer
             var color = ParseColor(layout.Indicator.Color);
             if (layout.Compressed)
             {
-                var left = side == "left" ? 0 : 74;
+                var left = side == "left" ? 0 : 80;
                 builder.DrawText(
                     layout.Indicator.Count.ToString(),
                     (Int32)X(builder, left),
                     (Int32)Y(builder, y),
-                    (Int32)Scale(builder, 16),
+                    (Int32)Scale(builder, 10),
                     (Int32)Scale(builder, WorkerCountHeight),
                     color,
                     fontSize: (Int32)Scale(builder, 10));
@@ -376,7 +376,7 @@ public static class ControlSurfaceBitmapRenderer
                 continue;
             }
 
-            var centerX = side == "left" ? 8 : 82;
+            var centerX = side == "left" ? 4 : 86;
             for (var index = 0; index < layout.Indicator.Count; index += 1)
             {
                 builder.FillCircle(
