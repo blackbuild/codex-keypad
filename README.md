@@ -138,16 +138,16 @@ workers remain visible as a lower bound such as `2+ active`.
 
 Schema v9 presents the same normalized attention contract at task, project, and
 global-entry levels. Failed, approval, input, interrupted, unavailable, stale,
-working, and idle conditions compose with fixed precedence; up to three are
-shown as color segments. Global, project, and coordinator tiles add split worker
+working, and idle conditions compose with fixed precedence. Global, project,
+and coordinator tiles add split worker
 rails: attention-required states on the left and working/idle on the right.
 Groups of four or more, or groups that would not fit, collapse to colored counts. Every tile
 also carries the packaged OpenAI knot mark plus built-in terminal fallback,
 connected-workspace, runtime-state worker, Hive, and Up-arrow icons, so custom
 project PNGs are optional. Worker icons are selected only from normalized Codex
 runtime state; workflow-specific PR, review, merge, and question states remain a
-separate future integration/configuration channel. Labels
-keeps state-specific shape cues so color is not the only signal.
+separate future integration/configuration channel. State-specific shape cues
+ensure that color is not the only signal.
 See [the default visual system](docs/default-visual-system.md) for the complete
 legend and [the device checklist](docs/physical-device-validation.md) for the
 remaining hardware acceptance checks.
@@ -185,7 +185,7 @@ Create the installable C# package with:
 npm run build:pack
 ```
 
-The result is `artifacts/CodexKeypad_0_2_7.lplug4`. Install it, find the Codex
+The result is `artifacts/CodexKeypad_0_2_8.lplug4`. Install it, find the Codex
 dynamic-folder action in Options+, and assign that action to a key in a normal
 profile.
 

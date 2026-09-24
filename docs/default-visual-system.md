@@ -8,8 +8,8 @@ colors. These defaults apply without an agent-authored layout.
 ## Attention legend
 
 Every attention-bearing tile has a native Logitech display label below its
-bitmap, a primary background, and one top-edge segment per visible condition.
-The bitmap does not repeat the display label. Global, project, and coordinator
+bitmap and a primary background. The bitmap does not repeat the display label.
+Global, project, and coordinator
 tiles additionally place status-sorted worker indicators down their sides:
 attention-required and diagnostic states on the left, working and idle states
 on the right. Only the coordinator retains its compact upper-right status badge.
@@ -17,7 +17,7 @@ The contrast ratios below use the WCAG
 relative-luminance formula; they are design-time sRGB figures, not a substitute
 for checking the physical LCD.
 
-| Normalized state | Worker icon | Label cue | Coordinator badge | Background | Segment | White-text contrast |
+| Normalized state | Worker icon | Label cue | Coordinator badge | Background | Indicator | White-text contrast |
 |---|---|---|---:|---:|---:|---:|
 | `idle` (including completed tasks) | Check | Idle / Completed | `OK` | `#1F2937` | `#9CA3AF` | 14.68:1 |
 | `working` | Double chevron | Working | `>` | `#075985` | `#38BDF8` | 7.56:1 |
@@ -61,9 +61,8 @@ are counted. Distinct states use this fixed precedence:
 7. working
 8. idle
 
-The first state supplies the background. At most three distinct conditions are
-visible as ordered top-edge segments in the aggregate attention treatment. The
-separate worker rails retain all available normalized worker groups in
+The first state supplies the background. Worker rails retain all available
+normalized worker groups in
 precedence order. A configured coordinator is represented by the Hive itself and
 is not repeated as a rail indicator. Counts of one through three are individual eight-pixel blobs;
 a group of four or more is a colored number. When several groups would exceed a
@@ -86,11 +85,11 @@ missing or unreadable, the entry falls back to the built-in terminal icon. A
 configured project PNG may replace the baseline imagery on its project and
 coordinator tiles. If the path is absent, unreadable, oversized, or not a
 decodable PNG, the matching built-in icon is still rendered. The native
-display label below the bitmap, worker rails, and segmented attention edge
-remain visible with either image path.
+display label below the bitmap, one-pixel frame, and worker rails remain visible
+with either image path.
 
 Up uses the navigation background `#111827` with a white arrow (17.74:1). It has
-no attention summary or state segments. No visual field carries a command; the
+no attention summary or worker indicators. No visual field carries a command; the
 only accepted actions are the closed semantic navigation actions shown above.
 If no fresh validated contract exists at all, the device adapter cannot receive a
 core-owned presentation; its sole local safety fallback is a `?` image on the
@@ -100,17 +99,16 @@ the last healthy image as fresh.
 ## Device constraints
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
-the full bitmap for baseline/custom imagery, reserves four pixels at the top for
-at most three state segments. Because the SDK limits keypad action images to an
-80-pixel square, aggregate tiles reframe their colored/icon field between two
-dark edge gutters; worker groups occupy those gutters and therefore remain clear
-of full-size custom artwork. A coordinator's right lane begins below its retained
-status badge.
+the full 80-pixel square for baseline/custom imagery and draws a one-pixel dark
+frame around aggregate tiles. Outlined worker blobs are attached to the outer
+edges of that frame; compressed counts use small dark-backed tabs. This keeps
+the colored/icon field essentially full width while separating indicators from
+busy custom artwork. A coordinator's right lane begins below its retained badge.
 The device adapter draws the normalized icon role with simple vector primitives,
 so the defaults do not depend on optional font symbols or external assets. The
 SDK renders the display label separately below the bitmap. Task labels contain
 only an 18-character compact task-title cue; runtime state is carried by the
-large state-specific icon, background, and top-edge segment. Project labels
+large state-specific icon and background. Project labels
 contain only their configured display name; the global label is simply `Codex`.
 Worker counts and diagnostic cues are carried by the side rails. Actual cropping, native-label
 legibility, color separation, and brightness behavior still require the physical

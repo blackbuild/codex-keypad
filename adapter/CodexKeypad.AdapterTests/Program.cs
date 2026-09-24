@@ -62,15 +62,12 @@ var concurrent = Render(new VisualPresentation(
         new("waiting-for-approval", 4, "#FACC15", "left"),
         new("working", 3, "#38BDF8", "right"),
     ]), null);
-ExpectPixel(concurrent, concurrent.Width / 6, 1, "#F87171");
-ExpectPixel(concurrent, concurrent.Width / 2, 1, "#FACC15");
-ExpectPixel(concurrent, concurrent.Width * 5 / 6, 1, "#60A5FA");
 Expect(ContainsColor(concurrent, "#F87171", 0, concurrent.Width / 5, 5, concurrent.Height - 5));
 Expect(ContainsColor(
     concurrent,
     "#05070B",
     0,
-    concurrent.Width / 8,
+    concurrent.Width / 10,
     5,
     concurrent.Height - 5));
 Expect(ContainsApproximateColor(

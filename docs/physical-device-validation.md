@@ -8,20 +8,19 @@ brightness, and pass/fail for each check; do not record private task content.
 1. **Task states:** present one task tile for completed, working, waiting for
    input, waiting for approval, interrupted, failed, and unavailable source
    states. Confirm the compact task-identity label remains free of appended status
-   text while the background, segment, and large state-specific worker icon match
+   text while the background and large state-specific worker icon match
    the legend and update without restarting Options+.
 2. **Project aggregation:** place at least two different task states in one
-   project. Confirm the documented primary state wins, each of up to three
-   conditions has ordered segments and split side rails, the bitmap carries the bounded
+   project. Confirm the documented primary state wins, conditions have ordered
+   split side rails, the bitmap carries the bounded
    worker count while the native label remains only the configured project name,
    and pressing the tile opens that project's task view.
 3. **Global aggregation:** distribute at least three different conditions across
    two configured projects. Confirm the Codex entry composes them in the same
    order and opens the project overview.
 4. **Bounded overflow:** expose at least four distinct states and at least four
-   workers in one state. Confirm only three aggregate segments are drawn, worker
-   groups remain status-sorted, the dense group becomes a colored count, and no
-   text, blob, or segment is clipped beyond recognition.
+   workers in one state. Confirm worker groups remain status-sorted, the dense
+   group becomes a colored count, and no text or blob is clipped beyond recognition.
 5. **Icons and fallbacks:** check the packaged OpenAI knot mark on the global entry and
    the terminal fallback when that asset is unavailable. With no custom project
    icon, check the connected-workspace, state-specific worker, Hive coordinator, and large
@@ -35,7 +34,7 @@ brightness, and pass/fail for each check; do not record private task content.
 7. **Legibility:** at the normal operating brightness, read every native display
    label and side rails at arm's length, including a busy custom icon. Confirm
    the label appears only once below the bitmap, compact task titles remain
-   recognizable, the Hive badge does not crowd its right rail, and the three segment colors
+   recognizable, the Hive badge does not crowd its right rail, and indicator colors
    are distinguishable. Repeat at the lowest brightness the maintainer considers
    supported.
 8. **Navigation safety:** press every attention-bearing entry, project, and task

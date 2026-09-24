@@ -6,13 +6,14 @@ using Loupedeck;
 
 public static class ControlSurfaceBitmapRenderer
 {
-    private const Int32 AttentionSegmentHeight = 4;
+    private const Int32 BadgeTop = 8;
     private const Int32 WorkerBlobDiameter = 8;
     private const Int32 WorkerBlobGap = 2;
     private const Int32 WorkerGroupGap = 2;
     private const Int32 WorkerCountHeight = 10;
     private const Int32 WorkerCompressionThreshold = 4;
-    private const Int32 WorkerRailGutterWidth = 10;
+    private const Int32 WorkerRailFrameThickness = 1;
+    private const UInt32 WorkerRailFrameColor = 0x05070B;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
     public static BitmapImage Render(
@@ -45,9 +46,8 @@ public static class ControlSurfaceBitmapRenderer
 
         if (hasWorkerRailFrame)
         {
-            DrawWorkerRailGutters(builder);
+            DrawWorkerRailFrame(builder);
         }
-        DrawAttentionSegments(builder, visual.BorderColors, hasWorkerRailFrame);
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
         if (role == "coordinator")
         {
@@ -58,7 +58,7 @@ public static class ControlSurfaceBitmapRenderer
                 badgeFontSize,
                 background,
                 foreground,
-                hasWorkerRailFrame ? WorkerRailGutterWidth : 0);
+                hasWorkerRailFrame ? WorkerRailFrameThickness : 0);
         }
         return builder.ToImage();
     }
@@ -300,37 +300,23 @@ public static class ControlSurfaceBitmapRenderer
         return stream.Read(actual) == actual.Length && actual.SequenceEqual(expected);
     }
 
-    private static void DrawAttentionSegments(
-        BitmapBuilder builder,
-        IReadOnlyList<String> colors,
-        Boolean insetForWorkerRails)
+    private static void DrawWorkerRailFrame(BitmapBuilder builder)
     {
-        var inset = insetForWorkerRails ? (Int32)X(builder, WorkerRailGutterWidth) : 0;
-        var availableWidth = builder.Width - inset * 2;
-        for (var index = 0; index < colors.Count; index += 1)
-        {
-            var start = inset + index * availableWidth / colors.Count;
-            var end = inset + (index + 1) * availableWidth / colors.Count;
-            builder.FillRectangle(
-                start,
-                0,
-                Math.Max(1, end - start),
-                AttentionSegmentHeight,
-                ParseColor(colors[index]));
-        }
-    }
-
-    private static void DrawWorkerRailGutters(BitmapBuilder builder)
-    {
-        var gutterWidth = (Int32)X(builder, WorkerRailGutterWidth);
-        var gutterColor = BitmapColor.FromRgb(0x05070B);
-        builder.FillRectangle(0, 0, gutterWidth, builder.Height, gutterColor);
+        var color = BitmapColor.FromRgb(WorkerRailFrameColor);
+        builder.FillRectangle(0, 0, builder.Width, WorkerRailFrameThickness, color);
         builder.FillRectangle(
-            builder.Width - gutterWidth,
             0,
-            gutterWidth,
+            builder.Height - WorkerRailFrameThickness,
+            builder.Width,
+            WorkerRailFrameThickness,
+            color);
+        builder.FillRectangle(0, 0, WorkerRailFrameThickness, builder.Height, color);
+        builder.FillRectangle(
+            builder.Width - WorkerRailFrameThickness,
+            0,
+            WorkerRailFrameThickness,
             builder.Height,
-            gutterColor);
+            color);
     }
 
     private static void DrawWorkerIndicatorRails(
@@ -387,6 +373,12 @@ public static class ControlSurfaceBitmapRenderer
             if (layout.Compressed)
             {
                 var left = side == "left" ? 0 : 80;
+                builder.FillRectangle(
+                    (Int32)X(builder, left),
+                    (Int32)Y(builder, y),
+                    (Int32)Scale(builder, 10),
+                    (Int32)Scale(builder, WorkerCountHeight),
+                    BitmapColor.FromRgb(WorkerRailFrameColor));
                 builder.DrawText(
                     layout.Indicator.Count.ToString(),
                     (Int32)X(builder, left),
@@ -399,9 +391,14 @@ public static class ControlSurfaceBitmapRenderer
                 continue;
             }
 
-            var centerX = side == "left" ? 4 : 86;
+            var centerX = side == "left" ? 2.5F : 87.5F;
             for (var index = 0; index < layout.Indicator.Count; index += 1)
             {
+                builder.FillCircle(
+                    X(builder, centerX),
+                    Y(builder, y + WorkerBlobDiameter / 2F),
+                    Scale(builder, WorkerBlobDiameter / 2F + 1),
+                    BitmapColor.FromRgb(WorkerRailFrameColor));
                 builder.FillCircle(
                     X(builder, centerX),
                     Y(builder, y + WorkerBlobDiameter / 2F),
@@ -454,17 +451,17 @@ public static class ControlSurfaceBitmapRenderer
         {
             return;
         }
-        var badgeTop = AttentionSegmentHeight + 4;
+        var badgeTop = BadgeTop;
         var badgeHeight = fontSize + 10;
         builder.FillRectangle(
-            builder.Width - (Int32)X(builder, rightInset) - badgeWidth,
+            builder.Width - rightInset - badgeWidth,
             badgeTop,
             badgeWidth,
             badgeHeight,
             background);
         builder.DrawText(
             badge,
-            builder.Width - (Int32)X(builder, rightInset) - badgeWidth,
+            builder.Width - rightInset - badgeWidth,
             badgeTop + 1,
             badgeWidth,
             badgeHeight - 2,
