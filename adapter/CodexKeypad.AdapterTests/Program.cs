@@ -42,12 +42,19 @@ var customIconPath = Path.Combine(AppContext.BaseDirectory, "Icon256x256.png");
 var packagedCodexIcon = Render(IconVisual("entry", "C"), customIconPath);
 Expect(!fallback.Png.SequenceEqual(packagedCodexIcon.Png));
 Expect(!packagedCodexIcon.Png.SequenceEqual(Render(IconVisual("entry", "C"), null).Png));
-Expect(ContainsNeutralDarkPixel(
+Expect(ContainsColor(
+    packagedCodexIcon,
+    "#075985",
+    10,
+    packagedCodexIcon.Width - 10,
+    10,
+    packagedCodexIcon.Height - 10));
+Expect(!ContainsNeutralDarkPixel(
     packagedCodexIcon,
     10,
     packagedCodexIcon.Width - 10,
-    packagedCodexIcon.Height / 3,
-    packagedCodexIcon.Height - 8));
+    10,
+    packagedCodexIcon.Height - 10));
 
 var concurrent = Render(new VisualPresentation(
     "project",
@@ -70,10 +77,10 @@ Expect(ContainsColor(
     concurrent.Width / 10,
     5,
     concurrent.Height - 5));
-ExpectPixel(concurrent, 0, 0, "#FFFFFF");
-ExpectPixel(concurrent, concurrent.Width - 1, 0, "#FFFFFF");
-ExpectPixel(concurrent, 0, concurrent.Height - 1, "#FFFFFF");
-ExpectPixel(concurrent, concurrent.Width - 1, concurrent.Height - 1, "#FFFFFF");
+ExpectPixel(concurrent, 0, 0, "#7F1D1D");
+ExpectPixel(concurrent, concurrent.Width - 1, 0, "#7F1D1D");
+ExpectPixel(concurrent, 0, concurrent.Height - 1, "#7F1D1D");
+ExpectPixel(concurrent, concurrent.Width - 1, concurrent.Height - 1, "#7F1D1D");
 Expect(ContainsApproximateColor(
     concurrent,
     "#FACC15",

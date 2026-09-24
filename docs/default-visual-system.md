@@ -74,13 +74,14 @@ condition is present.
 
 | Level | Built-in icon | Semantic action |
 |---|---|---|
-| Global Codex entry | Packaged OpenAI knot mark; terminal/code-window fallback | Open the project overview |
+| Global Codex entry | Packaged transparent white OpenAI knot mark; terminal/code-window fallback | Open the project overview |
 | Project | Connected workspace | Open that project's task view |
 | Task | Normalized runtime-state symbol | Open that exact current task |
 | Coordinator task | Project PNG or three-cell Hive; project-name label | Open that exact coordinator task |
 | Up | Large upward arrow | Return to the project overview |
 
-A packaged OpenAI knot mark identifies the global entry. If that package asset is
+A packaged transparent white OpenAI knot mark identifies the global entry and lets
+the state background show through. If that package asset is
 missing or unreadable, the entry falls back to the built-in terminal icon. A
 configured project PNG may replace the baseline imagery on its project and
 coordinator tiles. If the path is absent, unreadable, oversized, or not a
@@ -99,8 +100,8 @@ the last healthy image as fresh.
 ## Device constraints
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
-the full 80-pixel square for baseline/custom imagery and draws a one-pixel white
-frame around aggregate tiles. Worker blobs sit in dark side gutters inside that
+the full 80-pixel square for baseline/custom imagery and draws a one-pixel frame
+in the tile's background color around aggregate tiles. Worker blobs sit in dark side gutters inside that
 frame; compressed counts use larger dark-backed tabs. This gives the colored/icon
 field a narrower framed-panel appearance while separating indicators from busy
 custom artwork. A coordinator's right lane begins below its retained badge.

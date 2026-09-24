@@ -17,7 +17,6 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerRailGutterWidth = 10;
     private const Int32 WorkerRailOutlineThickness = 1;
     private const UInt32 WorkerRailGutterColor = 0x05070B;
-    private const UInt32 WorkerRailOutlineColor = 0xFFFFFF;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
     public static BitmapImage Render(
@@ -66,7 +65,7 @@ public static class ControlSurfaceBitmapRenderer
         }
         if (hasWorkerRails)
         {
-            DrawWorkerRailOutline(builder);
+            DrawWorkerRailOutline(builder, background);
         }
         return builder.ToImage();
     }
@@ -321,9 +320,10 @@ public static class ControlSurfaceBitmapRenderer
             color);
     }
 
-    private static void DrawWorkerRailOutline(BitmapBuilder builder)
+    private static void DrawWorkerRailOutline(
+        BitmapBuilder builder,
+        BitmapColor color)
     {
-        var color = BitmapColor.FromRgb(WorkerRailOutlineColor);
         builder.FillRectangle(0, 0, builder.Width, WorkerRailOutlineThickness, color);
         builder.FillRectangle(
             0,

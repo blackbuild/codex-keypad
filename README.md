@@ -142,8 +142,8 @@ working, and idle conditions compose with fixed precedence. Global, project,
 and coordinator tiles add split worker
 rails: attention-required states on the left and working/idle on the right.
 Groups of four or more, or groups that would not fit, collapse to large colored counts. Aggregate
-tiles keep their dark side gutters inside a thin white outer frame. Every tile
-also carries the packaged OpenAI knot mark plus built-in terminal fallback,
+tiles keep their dark side gutters inside a thin background-colored outer frame. Every tile
+also carries the packaged transparent white OpenAI knot mark plus built-in terminal fallback,
 connected-workspace, runtime-state worker, Hive, and Up-arrow icons, so custom
 project PNGs are optional. Worker icons are selected only from normalized Codex
 runtime state; workflow-specific PR, review, merge, and question states remain a
@@ -186,7 +186,7 @@ Create the installable C# package with:
 npm run build:pack
 ```
 
-The result is `artifacts/CodexKeypad_0_2_9.lplug4`. Install it, find the Codex
+The result is `artifacts/CodexKeypad_0_2_10.lplug4`. Install it, find the Codex
 dynamic-folder action in Options+, and assign that action to a key in a normal
 profile.
 
