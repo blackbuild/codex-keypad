@@ -188,7 +188,7 @@ Create the installable C# package with:
 npm run build:pack
 ```
 
-The result is `artifacts/CodexKeypad_0_2_15.lplug4`. Install it, find the Codex
+The result is `artifacts/CodexKeypad_0_2_16.lplug4`. Install it, find the Codex
 dynamic-folder action in Options+, and assign that action to a key in a normal
 profile.
 

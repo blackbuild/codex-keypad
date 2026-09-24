@@ -10,14 +10,14 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerBlobDiameter = 8;
     private const Int32 WorkerBlobGap = 2;
     private const Int32 WorkerGroupGap = 2;
-    private const Int32 WorkerCountWidth = 16;
-    private const Int32 WorkerCountHeight = 16;
-    private const Int32 WorkerCountFontSize = 15;
+    private const Int32 WorkerCountWidth = 24;
+    private const Int32 WorkerCountHeight = 24;
+    private const Int32 WorkerCountFontSize = 24;
     private const Int32 WorkerCompressionThreshold = 4;
     private const Int32 WorkerRailGutterWidth = 10;
     private const Int32 WorkerRailOutlineThickness = 2;
-    private const Int32 ProjectStatusTabTopWidth = 38;
-    private const Int32 ProjectStatusTabBottomWidth = 48;
+    private const Int32 ProjectStatusTabTopWidth = 48;
+    private const Int32 ProjectStatusTabBottomWidth = 38;
     private const Int32 ProjectStatusTabHeight = 12;
     private const UInt32 NeutralAggregateBackgroundColor = 0x0B0D12;
     private const UInt32 WorkerRailGutterColor = 0x05070B;
@@ -338,17 +338,19 @@ public static class ControlSurfaceBitmapRenderer
     {
         var height = Math.Max(1, (Int32)Scale(builder, ProjectStatusTabHeight));
         var topWidth = Math.Max(1, (Int32)Scale(builder, ProjectStatusTabTopWidth));
-        var bottomWidth = Math.Max(topWidth, (Int32)Scale(builder, ProjectStatusTabBottomWidth));
+        var bottomWidth = Math.Max(1, (Int32)Scale(builder, ProjectStatusTabBottomWidth));
         for (var row = 0; row < height; row += 1)
         {
             var progress = height == 1 ? 1F : row / (height - 1F);
             var width = (Int32)MathF.Round(topWidth + (bottomWidth - topWidth) * progress);
-            builder.FillRectangle(
-                (builder.Width - width) / 2,
-                WorkerRailOutlineThickness + row,
-                width,
-                1,
-                color);
+            var y = WorkerRailOutlineThickness + row;
+            builder.DrawLine(
+                (builder.Width - width) / 2F,
+                y,
+                (builder.Width + width) / 2F,
+                y,
+                color,
+                2F);
         }
     }
 
@@ -425,7 +427,15 @@ public static class ControlSurfaceBitmapRenderer
             var color = ParseColor(layout.Indicator.Color);
             if (layout.Compressed)
             {
-                var left = side == "left" ? 1 : 89 - WorkerCountWidth;
+                var text = layout.Indicator.Count.ToString();
+                var countCenterX = side == "left" ? 5F : 85F;
+                var left = countCenterX - WorkerCountWidth / 2F;
+                var fontSize = text.Length switch
+                {
+                    1 => WorkerCountFontSize,
+                    2 => 20,
+                    _ => 16,
+                };
                 builder.FillRectangle(
                     (Int32)X(builder, left),
                     (Int32)Y(builder, y),
@@ -433,13 +443,13 @@ public static class ControlSurfaceBitmapRenderer
                     (Int32)Scale(builder, WorkerCountHeight),
                     BitmapColor.FromRgb(WorkerRailGutterColor));
                 builder.DrawText(
-                    layout.Indicator.Count.ToString(),
+                    text,
                     (Int32)X(builder, left),
                     (Int32)Y(builder, y),
                     (Int32)Scale(builder, WorkerCountWidth),
                     (Int32)Scale(builder, WorkerCountHeight),
                     color,
-                    fontSize: (Int32)Scale(builder, WorkerCountFontSize));
+                    fontSize: (Int32)Scale(builder, fontSize));
                 y += WorkerCountHeight + WorkerGroupGap;
                 continue;
             }

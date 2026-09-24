@@ -72,7 +72,7 @@ var concurrent = Render(new VisualPresentation(
     [
         new("failed", 2, "#F87171", "left"),
         new("waiting-for-approval", 4, "#FACC15", "left"),
-        new("working", 3, "#38BDF8", "right"),
+        new("working", 4, "#38BDF8", "right"),
     ]), null);
 Expect(ContainsColor(concurrent, "#F87171", 0, concurrent.Width / 5, 5, concurrent.Height - 5));
 Expect(ContainsColor(
@@ -111,6 +111,16 @@ var compressedCountPixels = ApproximateColorStats(
     concurrent.Height - 5);
 Expect(compressedCountPixels.Count > 0);
 Expect(compressedCountPixels.Bottom - compressedCountPixels.Top + 1 >= 9);
+var rightCompressedCountPixels = ApproximateColorStats(
+    concurrent,
+    "#38BDF8",
+    concurrent.Width * 3 / 4,
+    concurrent.Width,
+    5,
+    concurrent.Height - 5);
+Expect(rightCompressedCountPixels.Count > 0);
+Expect(rightCompressedCountPixels.Right >= concurrent.Width - 6);
+Expect(rightCompressedCountPixels.Bottom - rightCompressedCountPixels.Top + 1 >= 8);
 Expect(ContainsColor(
     concurrent,
     "#38BDF8",
@@ -157,10 +167,10 @@ Expect(ContainsColor(
     projectIcon.Width * 2 / 3,
     2,
     projectIcon.Height / 6));
-var projectTabTopWidth = CountColorInRow(projectIcon, "#075985", 2);
+var projectTabTopWidth = CountColorInRow(projectIcon, "#075985", 3);
 var projectTabBottomWidth = CountColorInRow(projectIcon, "#075985", 11);
 Expect(projectTabTopWidth >= 32);
-Expect(projectTabBottomWidth >= projectTabTopWidth + 7);
+Expect(projectTabTopWidth >= projectTabBottomWidth + 5);
 Expect(ContainsColor(
     projectIcon,
     "#0B0D12",
