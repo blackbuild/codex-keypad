@@ -16,8 +16,8 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerCompressionThreshold = 4;
     private const Int32 WorkerRailGutterWidth = 10;
     private const Int32 WorkerRailOutlineThickness = 2;
-    private const Int32 ProjectStatusTabWidth = 28;
-    private const Int32 ProjectStatusTabHeight = 8;
+    private const Int32 ProjectStatusTabWidth = 36;
+    private const Int32 ProjectStatusTabHeight = 11;
     private const UInt32 NeutralAggregateBackgroundColor = 0x0B0D12;
     private const UInt32 WorkerRailGutterColor = 0x05070B;
     private const Int64 MaximumIconBytes = 1024 * 1024;

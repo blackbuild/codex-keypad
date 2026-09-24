@@ -157,6 +157,8 @@ Expect(ContainsColor(
     projectIcon.Width * 2 / 3,
     2,
     projectIcon.Height / 6));
+ExpectPixel(projectIcon, 27, 4, "#075985");
+ExpectPixel(projectIcon, 45, 10, "#075985");
 Expect(ContainsColor(
     projectIcon,
     "#0B0D12",
