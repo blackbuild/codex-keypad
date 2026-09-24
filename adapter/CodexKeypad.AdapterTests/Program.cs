@@ -82,12 +82,19 @@ Expect(ContainsColor(
     concurrent.Width / 10,
     5,
     concurrent.Height - 5));
-ExpectPixel(concurrent, 0, 0, "#7F1D1D");
-ExpectPixel(concurrent, concurrent.Width - 1, 0, "#7F1D1D");
-ExpectPixel(concurrent, 0, concurrent.Height - 1, "#7F1D1D");
-ExpectPixel(concurrent, concurrent.Width - 1, concurrent.Height - 1, "#7F1D1D");
-ExpectPixel(concurrent, 1, 1, "#7F1D1D");
+ExpectPixel(concurrent, 0, 0, "#0B0D12");
+ExpectPixel(concurrent, concurrent.Width - 1, 0, "#0B0D12");
+ExpectPixel(concurrent, 0, concurrent.Height - 1, "#0B0D12");
+ExpectPixel(concurrent, concurrent.Width - 1, concurrent.Height - 1, "#0B0D12");
+ExpectPixel(concurrent, 1, 1, "#0B0D12");
 ExpectPixel(concurrent, 2, 2, "#05070B");
+Expect(ContainsColor(
+    concurrent,
+    "#7F1D1D",
+    concurrent.Width / 3,
+    concurrent.Width * 2 / 3,
+    2,
+    concurrent.Height / 6));
 Expect(ContainsApproximateColor(
     concurrent,
     "#FACC15",
@@ -113,7 +120,7 @@ Expect(ContainsColor(
     concurrent.Height - 5));
 Expect(ContainsColor(
     concurrent,
-    "#7F1D1D",
+    "#0B0D12",
     0,
     concurrent.Width,
     concurrent.Height / 2,
@@ -143,6 +150,20 @@ var upIcon = Render(new VisualPresentation(
     "",
     []), null);
 Expect(!fallback.Png.SequenceEqual(projectIcon.Png));
+Expect(ContainsColor(
+    projectIcon,
+    "#075985",
+    projectIcon.Width / 3,
+    projectIcon.Width * 2 / 3,
+    2,
+    projectIcon.Height / 6));
+Expect(ContainsColor(
+    projectIcon,
+    "#0B0D12",
+    projectIcon.Width / 4,
+    projectIcon.Width * 3 / 4,
+    projectIcon.Height / 2,
+    projectIcon.Height - 4));
 Expect(!fallback.Png.SequenceEqual(entryIcon.Png));
 Expect(!fallback.Png.SequenceEqual(hiveIcon.Png));
 Expect(!fallback.Png.SequenceEqual(upIcon.Png));

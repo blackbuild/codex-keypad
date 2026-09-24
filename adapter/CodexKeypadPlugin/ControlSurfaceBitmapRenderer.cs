@@ -16,7 +16,9 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerCompressionThreshold = 4;
     private const Int32 WorkerRailGutterWidth = 10;
     private const Int32 WorkerRailOutlineThickness = 2;
-    private const UInt32 EntryBackgroundColor = 0x0B0D12;
+    private const Int32 ProjectStatusTabWidth = 28;
+    private const Int32 ProjectStatusTabHeight = 8;
+    private const UInt32 NeutralAggregateBackgroundColor = 0x0B0D12;
     private const UInt32 WorkerRailGutterColor = 0x05070B;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
@@ -27,9 +29,11 @@ public static class ControlSurfaceBitmapRenderer
         PluginImageSize imageSize)
     {
         using var builder = new BitmapBuilder(imageSize);
-        var background = visual.Icon == "entry"
-            ? BitmapColor.FromRgb(EntryBackgroundColor)
-            : ParseColor(visual.BackgroundColor);
+        var statusBackground = ParseColor(visual.BackgroundColor);
+        var isProjectTile = visual.Icon == "project" && role != "coordinator";
+        var background = visual.Icon == "entry" || isProjectTile
+            ? BitmapColor.FromRgb(NeutralAggregateBackgroundColor)
+            : statusBackground;
         var foreground = ParseColor(visual.ForegroundColor);
         var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
         var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
@@ -53,6 +57,10 @@ public static class ControlSurfaceBitmapRenderer
         if (hasWorkerRailChrome)
         {
             DrawWorkerRailGutters(builder);
+        }
+        if (isProjectTile)
+        {
+            DrawProjectStatusTab(builder, statusBackground);
         }
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
         if (role == "coordinator")
@@ -320,6 +328,19 @@ public static class ControlSurfaceBitmapRenderer
             0,
             gutterWidth,
             builder.Height,
+            color);
+    }
+
+    private static void DrawProjectStatusTab(
+        BitmapBuilder builder,
+        BitmapColor color)
+    {
+        var left = (90 - ProjectStatusTabWidth) / 2;
+        builder.FillRectangle(
+            (Int32)X(builder, left),
+            WorkerRailOutlineThickness,
+            (Int32)Scale(builder, ProjectStatusTabWidth),
+            (Int32)Scale(builder, ProjectStatusTabHeight),
             color);
     }
 
