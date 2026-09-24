@@ -16,8 +16,9 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerCompressionThreshold = 4;
     private const Int32 WorkerRailGutterWidth = 10;
     private const Int32 WorkerRailOutlineThickness = 2;
-    private const Int32 ProjectStatusTabWidth = 36;
-    private const Int32 ProjectStatusTabHeight = 11;
+    private const Int32 ProjectStatusTabTopWidth = 38;
+    private const Int32 ProjectStatusTabBottomWidth = 48;
+    private const Int32 ProjectStatusTabHeight = 12;
     private const UInt32 NeutralAggregateBackgroundColor = 0x0B0D12;
     private const UInt32 WorkerRailGutterColor = 0x05070B;
     private const Int64 MaximumIconBytes = 1024 * 1024;
@@ -335,13 +336,20 @@ public static class ControlSurfaceBitmapRenderer
         BitmapBuilder builder,
         BitmapColor color)
     {
-        var left = (90 - ProjectStatusTabWidth) / 2;
-        builder.FillRectangle(
-            (Int32)X(builder, left),
-            WorkerRailOutlineThickness,
-            (Int32)Scale(builder, ProjectStatusTabWidth),
-            (Int32)Scale(builder, ProjectStatusTabHeight),
-            color);
+        var height = Math.Max(1, (Int32)Scale(builder, ProjectStatusTabHeight));
+        var topWidth = Math.Max(1, (Int32)Scale(builder, ProjectStatusTabTopWidth));
+        var bottomWidth = Math.Max(topWidth, (Int32)Scale(builder, ProjectStatusTabBottomWidth));
+        for (var row = 0; row < height; row += 1)
+        {
+            var progress = height == 1 ? 1F : row / (height - 1F);
+            var width = (Int32)MathF.Round(topWidth + (bottomWidth - topWidth) * progress);
+            builder.FillRectangle(
+                (builder.Width - width) / 2,
+                WorkerRailOutlineThickness + row,
+                width,
+                1,
+                color);
+        }
     }
 
     private static void DrawWorkerRailOutline(

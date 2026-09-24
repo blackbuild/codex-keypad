@@ -102,8 +102,8 @@ the last healthy image as fresh.
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. The global
 entry uses an unframed neutral field with worker indicators directly on its edges.
-Project tiles use neutral bodies with a centered top tab in their single primary
-status color. Coordinator tiles retain their colored backgrounds. Both draw a
+Project tiles use neutral bodies with a centered, outward-tapered top tab in their
+single primary status color. Coordinator tiles retain their colored backgrounds. Both draw a
 two-pixel frame around their dark side gutters. Worker blobs sit in those gutters; compressed counts use
 larger dark-backed tabs. This gives the colored/icon
 field a narrower framed-panel appearance while separating indicators from busy

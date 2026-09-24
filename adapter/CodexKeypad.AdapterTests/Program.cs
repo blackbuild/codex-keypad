@@ -157,8 +157,10 @@ Expect(ContainsColor(
     projectIcon.Width * 2 / 3,
     2,
     projectIcon.Height / 6));
-ExpectPixel(projectIcon, 27, 4, "#075985");
-ExpectPixel(projectIcon, 45, 10, "#075985");
+var projectTabTopWidth = CountColorInRow(projectIcon, "#075985", 2);
+var projectTabBottomWidth = CountColorInRow(projectIcon, "#075985", 11);
+Expect(projectTabTopWidth >= 32);
+Expect(projectTabBottomWidth >= projectTabTopWidth + 7);
 Expect(ContainsColor(
     projectIcon,
     "#0B0D12",
@@ -301,6 +303,23 @@ static Boolean ContainsColor(
         }
     }
     return false;
+}
+
+static Int32 CountColorInRow(
+    (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
+    String color,
+    Int32 y)
+{
+    var expected = Rgb565(color);
+    var count = 0;
+    for (var x = 0; x < image.Width; x += 1)
+    {
+        if (ReadPixel(image, x, y) == expected)
+        {
+            count += 1;
+        }
+    }
+    return count;
 }
 
 static Boolean ContainsApproximateColor(

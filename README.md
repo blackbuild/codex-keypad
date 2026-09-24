@@ -142,7 +142,7 @@ working, and idle conditions compose with fixed precedence. Global, project,
 and coordinator tiles add split worker
 rails: attention-required states on the left and working/idle on the right.
 Groups of four or more, or groups that would not fit, collapse to large colored counts. Project
-tiles use neutral bodies with a single primary-status tab at the top; their dark side gutters sit
+tiles use neutral bodies with a tapered single-primary-status tab at the top; their dark side gutters sit
 inside a two-pixel neutral frame. Coordinator tiles retain their colored background. The global
 entry is an unframed neutral field while its edge indicators retain their state colors. Every tile
 also carries the packaged transparent white OpenAI knot mark plus built-in terminal fallback,
@@ -188,7 +188,7 @@ Create the installable C# package with:
 npm run build:pack
 ```
 
-The result is `artifacts/CodexKeypad_0_2_14.lplug4`. Install it, find the Codex
+The result is `artifacts/CodexKeypad_0_2_15.lplug4`. Install it, find the Codex
 dynamic-folder action in Options+, and assign that action to a key in a normal
 profile.
 
