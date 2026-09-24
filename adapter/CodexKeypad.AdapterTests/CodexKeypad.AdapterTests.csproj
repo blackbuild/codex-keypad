@@ -24,8 +24,8 @@
       <HintPath>/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/SkiaSharp.HarfBuzz.dll</HintPath>
       <Private>true</Private>
     </Reference>
-    <None Include="../CodexKeypadPlugin/package/metadata/Icon256x256.png"
-          Link="Icon256x256.png"
+    <None Include="../CodexKeypadPlugin/package/metadata/CodexMark256x256.png"
+          Link="CodexMark256x256.png"
           CopyToOutputDirectory="PreserveNewest" />
     <None Include="/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/libSkiaSharp.dylib"
           Link="libSkiaSharp.dylib"

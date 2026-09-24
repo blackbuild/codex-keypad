@@ -80,8 +80,9 @@ condition is present.
 | Coordinator task | Project PNG or three-cell Hive; project-name label | Open that exact coordinator task |
 | Up | Large upward arrow | Return to the project overview |
 
-A packaged transparent white OpenAI knot mark identifies the global entry and lets
-the state background show through. If that package asset is
+A packaged transparent white OpenAI knot mark identifies the global entry. It is
+lowered slightly to clear the native Options+ folder handle and sits on a neutral
+dark background; root-level state remains visible in the worker indicators. If that package asset is
 missing or unreadable, the entry falls back to the built-in terminal icon. A
 configured project PNG may replace the baseline imagery on its project and
 coordinator tiles. If the path is absent, unreadable, oversized, or not a
@@ -100,7 +101,7 @@ the last healthy image as fresh.
 ## Device constraints
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. It uses
-the full 80-pixel square for baseline/custom imagery and draws a one-pixel frame
+the full 80-pixel square for baseline/custom imagery and draws a two-pixel frame
 in the tile's background color around aggregate tiles. Worker blobs sit in dark side gutters inside that
 frame; compressed counts use larger dark-backed tabs. This gives the colored/icon
 field a narrower framed-panel appearance while separating indicators from busy

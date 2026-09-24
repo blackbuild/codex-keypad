@@ -198,7 +198,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
                 assemblyDirectory,
                 "..",
                 "metadata",
-                "Icon256x256.png"));
+                "CodexMark256x256.png"));
     }
 
     private static void DeleteTemporaryFile(String? path)

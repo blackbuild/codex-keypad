@@ -38,23 +38,26 @@ finally
     File.Delete(oversizedIconPath);
 }
 
-var customIconPath = Path.Combine(AppContext.BaseDirectory, "Icon256x256.png");
+var customIconPath = Path.Combine(AppContext.BaseDirectory, "CodexMark256x256.png");
 var packagedCodexIcon = Render(IconVisual("entry", "C"), customIconPath);
 Expect(!fallback.Png.SequenceEqual(packagedCodexIcon.Png));
 Expect(!packagedCodexIcon.Png.SequenceEqual(Render(IconVisual("entry", "C"), null).Png));
 Expect(ContainsColor(
     packagedCodexIcon,
-    "#075985",
+    "#0B0D12",
     10,
     packagedCodexIcon.Width - 10,
     10,
     packagedCodexIcon.Height - 10));
-Expect(!ContainsNeutralDarkPixel(
+var packagedCodexMarkPixels = ColorStats(
     packagedCodexIcon,
+    "#FFFFFF",
     10,
     packagedCodexIcon.Width - 10,
-    10,
-    packagedCodexIcon.Height - 10));
+    2,
+    packagedCodexIcon.Height - 2);
+Expect(packagedCodexMarkPixels.Count > 0);
+Expect(packagedCodexMarkPixels.Top >= 18);
 
 var concurrent = Render(new VisualPresentation(
     "project",
@@ -81,6 +84,8 @@ ExpectPixel(concurrent, 0, 0, "#7F1D1D");
 ExpectPixel(concurrent, concurrent.Width - 1, 0, "#7F1D1D");
 ExpectPixel(concurrent, 0, concurrent.Height - 1, "#7F1D1D");
 ExpectPixel(concurrent, concurrent.Width - 1, concurrent.Height - 1, "#7F1D1D");
+ExpectPixel(concurrent, 1, 1, "#7F1D1D");
+ExpectPixel(concurrent, 2, 2, "#05070B");
 Expect(ContainsApproximateColor(
     concurrent,
     "#FACC15",
@@ -377,32 +382,6 @@ static UInt16 ReadPixel(
 {
     var offset = (y * image.Width + x) * 2;
     return (UInt16)(image.Pixels[offset] | image.Pixels[offset + 1] << 8);
-}
-
-static Boolean ContainsNeutralDarkPixel(
-    (Byte[] Png, Byte[] Pixels, Int32 Width, Int32 Height) image,
-    Int32 left,
-    Int32 right,
-    Int32 top,
-    Int32 bottom)
-{
-    for (var y = top; y < bottom; y += 1)
-    {
-        for (var x = left; x < right; x += 1)
-        {
-            var pixel = ReadPixel(image, x, y);
-            var red = ((pixel >> 11) & 0x1F) * 255 / 31;
-            var green = ((pixel >> 5) & 0x3F) * 255 / 63;
-            var blue = (pixel & 0x1F) * 255 / 31;
-            var darkest = Math.Min(red, Math.Min(green, blue));
-            var lightest = Math.Max(red, Math.Max(green, blue));
-            if (lightest < 100 && lightest - darkest < 35)
-            {
-                return true;
-            }
-        }
-    }
-    return false;
 }
 
 static UInt16 Rgb565(String color)

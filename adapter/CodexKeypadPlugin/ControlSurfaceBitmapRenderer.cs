@@ -15,7 +15,8 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerCountFontSize = 15;
     private const Int32 WorkerCompressionThreshold = 4;
     private const Int32 WorkerRailGutterWidth = 10;
-    private const Int32 WorkerRailOutlineThickness = 1;
+    private const Int32 WorkerRailOutlineThickness = 2;
+    private const UInt32 EntryBackgroundColor = 0x0B0D12;
     private const UInt32 WorkerRailGutterColor = 0x05070B;
     private const Int64 MaximumIconBytes = 1024 * 1024;
 
@@ -26,7 +27,9 @@ public static class ControlSurfaceBitmapRenderer
         PluginImageSize imageSize)
     {
         using var builder = new BitmapBuilder(imageSize);
-        var background = ParseColor(visual.BackgroundColor);
+        var background = visual.Icon == "entry"
+            ? BitmapColor.FromRgb(EntryBackgroundColor)
+            : ParseColor(visual.BackgroundColor);
         var foreground = ParseColor(visual.ForegroundColor);
         var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
         var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
@@ -103,13 +106,13 @@ public static class ControlSurfaceBitmapRenderer
     private static void DrawEntryIcon(BitmapBuilder builder, BitmapColor color)
     {
         var stroke = Stroke(builder, 3);
-        DrawRectangle(builder, 20, 18, 70, 76, color, stroke);
-        Line(builder, 20, 31, 70, 31, color, stroke);
-        builder.FillCircle(X(builder, 27), Y(builder, 25), Scale(builder, 2), color);
-        builder.FillCircle(X(builder, 34), Y(builder, 25), Scale(builder, 2), color);
-        Line(builder, 28, 43, 38, 51, color, stroke);
-        Line(builder, 38, 51, 28, 59, color, stroke);
-        Line(builder, 43, 62, 61, 62, color, stroke);
+        DrawRectangle(builder, 20, 24, 70, 82, color, stroke);
+        Line(builder, 20, 37, 70, 37, color, stroke);
+        builder.FillCircle(X(builder, 27), Y(builder, 31), Scale(builder, 2), color);
+        builder.FillCircle(X(builder, 34), Y(builder, 31), Scale(builder, 2), color);
+        Line(builder, 28, 49, 38, 57, color, stroke);
+        Line(builder, 38, 57, 28, 65, color, stroke);
+        Line(builder, 43, 68, 61, 68, color, stroke);
     }
 
     private static void DrawProjectIcon(BitmapBuilder builder, BitmapColor color)
