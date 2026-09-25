@@ -10,7 +10,7 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerBlobDiameter = 8;
     private const Int32 WorkerBlobGap = 2;
     private const Int32 WorkerGroupGap = 6;
-    private const Int32 WorkerCountWidth = 24;
+    private const Int32 WorkerCountWidth = 16;
     private const Int32 WorkerCountHeight = 24;
     private const Int32 WorkerCountFontSize = 24;
     private const Int32 WorkerCompressionThreshold = 4;
@@ -427,15 +427,10 @@ public static class ControlSurfaceBitmapRenderer
             var color = ParseColor(layout.Indicator.Color);
             if (layout.Compressed)
             {
-                var text = layout.Indicator.Count.ToString();
-                var countCenterX = side == "left" ? 5F : 85F;
-                var left = countCenterX - WorkerCountWidth / 2F;
-                var fontSize = text.Length switch
-                {
-                    1 => WorkerCountFontSize,
-                    2 => 20,
-                    _ => 16,
-                };
+                var text = layout.Indicator.Count >= 10
+                    ? "+"
+                    : layout.Indicator.Count.ToString();
+                var left = side == "left" ? 0F : 90F - WorkerCountWidth;
                 builder.FillRectangle(
                     (Int32)X(builder, left),
                     (Int32)Y(builder, y),
@@ -449,7 +444,7 @@ public static class ControlSurfaceBitmapRenderer
                     (Int32)Scale(builder, WorkerCountWidth),
                     (Int32)Scale(builder, WorkerCountHeight),
                     color,
-                    fontSize: (Int32)Scale(builder, fontSize));
+                    fontSize: (Int32)Scale(builder, WorkerCountFontSize));
                 y += WorkerCountHeight + WorkerGroupGap;
                 continue;
             }

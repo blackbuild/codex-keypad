@@ -145,6 +145,34 @@ Expect(ContainsColor(
     concurrent.Height / 2,
     concurrent.Height));
 
+var tenWorkers = Render(ProjectVisual([
+    new("working", 10, "#38BDF8", "left"),
+    new("failed", 10, "#F87171", "right"),
+]), null);
+var elevenWorkers = Render(ProjectVisual([
+    new("working", 11, "#38BDF8", "left"),
+    new("failed", 11, "#F87171", "right"),
+]), null);
+Expect(tenWorkers.Png.SequenceEqual(elevenWorkers.Png));
+var leftOverflowGlyph = ApproximateColorStats(
+    tenWorkers,
+    "#38BDF8",
+    0,
+    tenWorkers.Width / 4,
+    5,
+    tenWorkers.Height - 5);
+Expect(leftOverflowGlyph.Count > 0);
+Expect(leftOverflowGlyph.Left > 0);
+var rightOverflowGlyph = ApproximateColorStats(
+    tenWorkers,
+    "#F87171",
+    tenWorkers.Width * 3 / 4,
+    tenWorkers.Width,
+    5,
+    tenWorkers.Height - 5);
+Expect(rightOverflowGlyph.Count > 0);
+Expect(rightOverflowGlyph.Right < tenWorkers.Width - 1);
+
 var projectIcon = Render(IconVisual("project", "P"), null);
 var entryIcon = Render(IconVisual("entry", "C"), null);
 var hiveIcon = Render(WorkingVisual(), null, "coordinator");
@@ -284,6 +312,17 @@ static VisualPresentation IconVisual(String icon, String glyph) => new(
     ["#38BDF8"],
     ">",
     []);
+
+static VisualPresentation ProjectVisual(
+    IReadOnlyList<WorkerIndicatorPresentation> indicators) => new(
+    "project",
+    "P",
+    "working",
+    "#075985",
+    "#FFFFFF",
+    ["#38BDF8"],
+    ">",
+    indicators);
 
 static VisualPresentation TaskStateVisual(String state) => new(
     "task",
