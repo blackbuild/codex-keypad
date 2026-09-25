@@ -15,9 +15,9 @@ Action<String, String, Boolean> captureInvalidation = (action, parameter, allPar
 typeof(CodexDynamicFolder)
     .GetMethod("InvalidateDynamicFolderRoot", BindingFlags.Static | BindingFlags.NonPublic)!
     .Invoke(null, ["CodexDynamicFolder", captureInvalidation]);
-Expect(invalidatedAction == "CodexDynamicFolder");
-Expect(invalidatedParameter is null);
-Expect(affectsAllParameters);
+Expect(invalidatedAction == "#DynamicFolder");
+Expect(invalidatedParameter == "CodexDynamicFolder");
+Expect(!affectsAllParameters);
 
 var fallback = Render(WorkingVisual(), null);
 Expect(fallback.Png.Length > 100);

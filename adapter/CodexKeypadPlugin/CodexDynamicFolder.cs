@@ -6,6 +6,7 @@ using Loupedeck;
 
 public sealed class CodexDynamicFolder : PluginDynamicFolder
 {
+    private const String DynamicFolderActionName = "#DynamicFolder";
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan StateFreshness = TimeSpan.FromSeconds(2);
     private readonly Object _sync = new();
@@ -274,9 +275,9 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     {
         if (this.Plugin is not null)
         {
-            // The root button is registered under the dynamic folder name. Inner
-            // tiles use CommandName, so targeting that name leaves the assigned
-            // root cached until a profile switch.
+            // The profile binds every dynamic-folder root through the SDK's
+            // #DynamicFolder action and uses Name as that action's parameter.
+            // CommandName belongs only to the inner tiles.
             InvalidateDynamicFolderRoot(
                 this.Name,
                 this.Plugin.OnActionImageChanged);
@@ -286,7 +287,7 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     private static void InvalidateDynamicFolderRoot(
         String folderName,
         Action<String, String, Boolean> invalidate) =>
-        invalidate(folderName, null!, true);
+        invalidate(DynamicFolderActionName, folderName, false);
 
     private ControlSurfaceState? ReadFreshState()
     {

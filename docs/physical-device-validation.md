@@ -51,7 +51,7 @@ real Codex database or claiming physical coverage from a synthetic renderer test
 Hardware acceptance is complete only when the maintainer records all nine checks
 as passing on the physical device.
 
-## Validation record: 0.2.18–0.2.20
+## Validation record: 0.2.18–0.2.21
 
 Test started on 2026-09-25.
 
@@ -59,7 +59,8 @@ Test started on 2026-09-25.
 |---|---|
 | Initial package | `CodexKeypad_0_2_18.lplug4` (`9a8b470bef81fa5bb473f7b4a8478ef747d3cc6d1954ec10760df9ec01945b10`) |
 | Intermediate package | `CodexKeypad_0_2_19.lplug4` (`d465abb37d527166fd96d67673605933094f23282cd6560fedd07465cb774a13`) |
-| Final package | `CodexKeypad_0_2_20.lplug4` (`dd559d1e814232e805cfe008de2b8e409b33a07db9bcca3ead6649d4a84a04c2`) |
+| Intermediate package | `CodexKeypad_0_2_20.lplug4` (`dd559d1e814232e805cfe008de2b8e409b33a07db9bcca3ead6649d4a84a04c2`) |
+| Final package | `CodexKeypad_0_2_21.lplug4` (`6df8e9cbad8eb9ff877de01d5cf14d339f65f392dac398d1230eecdc7b3c9177`) |
 | Logi Options+ | 2.7.970334 |
 | Firmware | 166.0.17 |
 | Normal display brightness | 50% |
@@ -68,8 +69,8 @@ Test started on 2026-09-25.
 |---:|---|---|
 | 1. Task states | Pass for available states | Working → completed updated live without restarting Options+; double-chevron/checkmark icons, backgrounds, single native title, and removal of redundant status text/icon confirmed. Interrupted showed the purple background and large pause symbol after stopping a running task. The read-only history audit found failed states only on archived tasks. Waiting-for-input and waiting-for-approval are not emitted by the current SQLite source. Failed, waiting, and normalized-unavailable task imagery remains covered by SDK-backed bitmap and contract tests; no production database was modified to fabricate physical coverage. |
 | 2. Project aggregation | Pass | With working and completed workers in one project, the configured project label, neutral body, connected-workspace icon, blue tapered primary-state tab, ordered right-side worker indicators, coordinator exclusion, and navigation to the correct task view were confirmed. |
-| 3. Global aggregation | Fix pending physical retest | On 0.2.18, the top-level Codex key retained an older image until a profile switch. Version 0.2.19's plugin-wide invalidation refreshed one working transition, but a subsequent three-to-four-worker transition remained stale, so the fix was not reliable. SDK inspection showed that the root is registered under the dynamic-folder `Name`, while inner tiles use `CommandName`. Version 0.2.20 targets the folder name directly and requires physical retest. |
-| 4. Bounded overflow | Blocked by root refresh retest | The live contract reported four working workers and eight idle workers, but the 0.2.19 root remained on three working blobs. Digit and `+` overflow checks resume after the 0.2.20 root refresh retest. |
+| 3. Global aggregation | Fix pending physical retest | On 0.2.18, the top-level Codex key retained an older image until a profile switch. Version 0.2.19's plugin-wide invalidation refreshed one transition but was unreliable. Version 0.2.20 targeted the folder implementation name, but the initial `?` remained until entering and leaving the folder. The persisted profile proves that the assigned root uses action `#DynamicFolder` with the folder `Name` as its parameter. Version 0.2.21 invalidates that exact action identity and requires physical retest. |
+| 4. Bounded overflow | Blocked by root refresh retest | The live contract reported four working workers and eight idle workers, but the 0.2.19 root remained on three working blobs. Digit and `+` overflow checks resume after the 0.2.21 root refresh retest. |
 | 5. Icons and fallbacks | Pending | |
 | 6. Stale and unavailable | Pending | |
 | 7. Legibility | Pending | 50% normal brightness recorded; lowest supported brightness still pending. |
