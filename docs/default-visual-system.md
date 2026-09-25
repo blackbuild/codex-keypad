@@ -65,10 +65,10 @@ The first state supplies the background. Worker rails retain all available
 normalized worker groups in
 precedence order. A configured coordinator is represented by the Hive itself and
 is not repeated as a rail indicator. Counts of one through three are individual eight-pixel blobs;
-a group of four or more is a colored number. When several groups would exceed a
-rail's height, the largest remaining blob groups collapse to colored numbers
-until the layout fits. Confirmed idle is used only when no non-idle or diagnostic
-condition is present.
+groups of four through nine use a colored digit, and groups of ten or more use a
+colored `+`. When several groups would exceed a rail's height, the largest remaining
+blob groups collapse to the same bounded digit-or-`+` treatment until the layout
+fits. Confirmed idle is used only when no non-idle or diagnostic condition is present.
 
 ## Icon vocabulary and fallbacks
 
@@ -105,7 +105,7 @@ entry uses an unframed neutral field with worker indicators directly on its edge
 Project tiles use neutral bodies with a centered, top-wide tab that tapers inward toward the body in their
 single primary status color. Coordinator tiles retain their colored backgrounds. Both draw a
 two-pixel frame around their dark side gutters. Worker blobs sit in those gutters; compressed counts use
-larger dark-backed tabs. This gives the colored/icon
+large, single-character, dark-backed indicators that remain inside the bitmap edges. This gives the colored/icon
 field a narrower framed-panel appearance while separating indicators from busy
 custom artwork. A coordinator's right lane begins below its retained badge.
 The device adapter draws the normalized icon role with simple vector primitives,

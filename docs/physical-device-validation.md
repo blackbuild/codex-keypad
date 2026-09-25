@@ -19,8 +19,9 @@ brightness, and pass/fail for each check; do not record private task content.
    two configured projects. Confirm the Codex entry composes them in the same
    order and opens the project overview.
 4. **Bounded overflow:** expose at least four distinct states and at least four
-   workers in one state. Confirm worker groups remain status-sorted, the dense
-   group becomes a colored count, and no text or blob is clipped beyond recognition.
+   workers in one state. Confirm worker groups remain status-sorted, counts of four
+   through nine become a colored digit, counts of ten or more become a colored `+`,
+   and no digit, `+`, or blob is clipped beyond recognition.
 5. **Icons and fallbacks:** check the packaged OpenAI knot mark on the global entry and
    the terminal fallback when that asset is unavailable. With no custom project
    icon, check the connected-workspace, state-specific worker, Hive coordinator, and large
