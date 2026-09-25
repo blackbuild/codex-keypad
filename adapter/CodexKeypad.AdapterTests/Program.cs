@@ -13,9 +13,9 @@ Action<String, String, Boolean> captureInvalidation = (action, parameter, allPar
     affectsAllParameters = allParameters;
 };
 typeof(CodexDynamicFolder)
-    .GetMethod("InvalidateRootImageAtPluginScope", BindingFlags.Static | BindingFlags.NonPublic)!
-    .Invoke(null, [captureInvalidation]);
-Expect(invalidatedAction is null);
+    .GetMethod("InvalidateDynamicFolderRoot", BindingFlags.Static | BindingFlags.NonPublic)!
+    .Invoke(null, ["CodexDynamicFolder", captureInvalidation]);
+Expect(invalidatedAction == "CodexDynamicFolder");
 Expect(invalidatedParameter is null);
 Expect(affectsAllParameters);
 

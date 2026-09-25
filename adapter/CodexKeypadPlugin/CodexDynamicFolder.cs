@@ -274,16 +274,19 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
     {
         if (this.Plugin is not null)
         {
-            // Dynamic-folder root buttons are cached at plugin scope rather than
-            // under the generated command name. Invalidate every parameter so
-            // Options+ calls GetButtonImage again while the profile stays active.
-            InvalidateRootImageAtPluginScope(this.Plugin.OnActionImageChanged);
+            // The root button is registered under the dynamic folder name. Inner
+            // tiles use CommandName, so targeting that name leaves the assigned
+            // root cached until a profile switch.
+            InvalidateDynamicFolderRoot(
+                this.Name,
+                this.Plugin.OnActionImageChanged);
         }
     }
 
-    private static void InvalidateRootImageAtPluginScope(
+    private static void InvalidateDynamicFolderRoot(
+        String folderName,
         Action<String, String, Boolean> invalidate) =>
-        invalidate(null!, null!, true);
+        invalidate(folderName, null!, true);
 
     private ControlSurfaceState? ReadFreshState()
     {
