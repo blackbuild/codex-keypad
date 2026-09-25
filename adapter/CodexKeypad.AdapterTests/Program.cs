@@ -119,15 +119,16 @@ Expect(ContainsApproximateColor(
     concurrent.Width / 5,
     5,
     concurrent.Height - 5));
-var compressedCountPixels = ApproximateColorStats(
+var compressedCapsulePixels = ApproximateColorStats(
     concurrent,
     "#FACC15",
     0,
     concurrent.Width / 4,
     5,
     concurrent.Height - 5);
-Expect(compressedCountPixels.Count > 0);
-Expect(compressedCountPixels.Bottom - compressedCountPixels.Top + 1 >= 9);
+Expect(compressedCapsulePixels.Count > 0);
+Expect(compressedCapsulePixels.Right - compressedCapsulePixels.Left + 1 >= 5);
+Expect(compressedCapsulePixels.Bottom - compressedCapsulePixels.Top + 1 >= 18);
 var precedingBlobPixels = ApproximateColorStats(
     concurrent,
     "#F87171",
@@ -136,17 +137,17 @@ var precedingBlobPixels = ApproximateColorStats(
     5,
     concurrent.Height - 5);
 Expect(precedingBlobPixels.Count > 0);
-Expect(compressedCountPixels.Top - precedingBlobPixels.Bottom >= 2);
-var rightCompressedCountPixels = ApproximateColorStats(
+Expect(compressedCapsulePixels.Top - precedingBlobPixels.Bottom >= 2);
+var rightCompressedCapsulePixels = ApproximateColorStats(
     concurrent,
     "#38BDF8",
     concurrent.Width * 3 / 4,
     concurrent.Width,
     5,
     concurrent.Height - 5);
-Expect(rightCompressedCountPixels.Count > 0);
-Expect(rightCompressedCountPixels.Right >= concurrent.Width - 6);
-Expect(rightCompressedCountPixels.Bottom - rightCompressedCountPixels.Top + 1 >= 8);
+Expect(rightCompressedCapsulePixels.Count > 0);
+Expect(rightCompressedCapsulePixels.Right >= concurrent.Width - 6);
+Expect(rightCompressedCapsulePixels.Bottom - rightCompressedCapsulePixels.Top + 1 >= 18);
 Expect(ContainsColor(
     concurrent,
     "#38BDF8",
@@ -171,28 +172,74 @@ var elevenWorkers = Render(ProjectVisual([
     new("failed", 11, "#F87171", "right"),
 ]), null);
 Expect(tenWorkers.Png.SequenceEqual(elevenWorkers.Png));
-var leftOverflowGlyph = ApproximateColorStats(
+var leftOverflowCapsule = ApproximateColorStats(
     tenWorkers,
     "#38BDF8",
     0,
     tenWorkers.Width / 4,
     5,
     tenWorkers.Height - 5);
-Expect(leftOverflowGlyph.Count > 0);
-Expect(leftOverflowGlyph.Left > 0);
-var rightOverflowGlyph = ApproximateColorStats(
+Expect(leftOverflowCapsule.Count > 0);
+Expect(leftOverflowCapsule.Left > 0);
+Expect(leftOverflowCapsule.Right - leftOverflowCapsule.Left + 1 >= 5);
+Expect(leftOverflowCapsule.Bottom - leftOverflowCapsule.Top + 1 >= 18);
+var rightOverflowCapsule = ApproximateColorStats(
     tenWorkers,
     "#F87171",
     tenWorkers.Width * 3 / 4,
     tenWorkers.Width,
     5,
     tenWorkers.Height - 5);
-Expect(rightOverflowGlyph.Count > 0);
-Expect(rightOverflowGlyph.Right < tenWorkers.Width - 1);
+Expect(rightOverflowCapsule.Count > 0);
+Expect(rightOverflowCapsule.Right <= tenWorkers.Width - 1);
+Expect(rightOverflowCapsule.Right - rightOverflowCapsule.Left + 1 >= 5);
+Expect(rightOverflowCapsule.Bottom - rightOverflowCapsule.Top + 1 >= 18);
+
+var separatedCommonStates = Render(ProjectVisual([
+    new("working", 2, "#38BDF8", "right"),
+    new("idle", 2, "#C2C7D0", "right"),
+]), null);
+var workingRailPixels = ApproximateColorStats(
+    separatedCommonStates,
+    "#38BDF8",
+    separatedCommonStates.Width * 3 / 4,
+    separatedCommonStates.Width,
+    2,
+    separatedCommonStates.Height - 2);
+var idleRailPixels = ApproximateColorStats(
+    separatedCommonStates,
+    "#C2C7D0",
+    separatedCommonStates.Width * 3 / 4,
+    separatedCommonStates.Width,
+    2,
+    separatedCommonStates.Height - 2);
+Expect(workingRailPixels.Count > 0);
+Expect(idleRailPixels.Count > 0);
+Expect(workingRailPixels.Top <= 9);
+Expect(idleRailPixels.Bottom >= separatedCommonStates.Height - 9);
+Expect(idleRailPixels.Top - workingRailPixels.Bottom >= 20);
 
 var projectIcon = Render(IconVisual("project", "P"), null);
+var idleProjectIcon = Render(new VisualPresentation(
+    "project",
+    "P",
+    "idle",
+    "#1F2937",
+    "#FFFFFF",
+    ["#C2C7D0"],
+    "OK",
+    []), null);
 var entryIcon = Render(IconVisual("entry", "C"), null);
 var hiveIcon = Render(WorkingVisual(), null, "coordinator");
+var unbadgedHiveIcon = Render(new VisualPresentation(
+    "task",
+    "T",
+    "working",
+    "#075985",
+    "#FFFFFF",
+    ["#38BDF8"],
+    "",
+    []), null, "coordinator");
 var taskStateIcons = new[]
 {
     "working",
@@ -226,12 +273,38 @@ var projectTabBottomWidth = CountColorInRow(projectIcon, "#075985", 11);
 Expect(projectTabTopWidth >= 32);
 Expect(projectTabTopWidth >= projectTabBottomWidth + 5);
 Expect(ContainsColor(
+    idleProjectIcon,
+    "#C2C7D0",
+    idleProjectIcon.Width / 3,
+    idleProjectIcon.Width * 2 / 3,
+    2,
+    idleProjectIcon.Height / 6));
+Expect(ContainsColor(
     projectIcon,
     "#0B0D12",
     projectIcon.Width / 4,
     projectIcon.Width * 3 / 4,
     projectIcon.Height / 2,
     projectIcon.Height - 4));
+var projectHivePixels = ColorStats(
+    projectIcon,
+    "#FFFFFF",
+    10,
+    projectIcon.Width - 10,
+    10,
+    projectIcon.Height - 10);
+var coordinatorHivePixels = ColorStats(
+    unbadgedHiveIcon,
+    "#FFFFFF",
+    10,
+    unbadgedHiveIcon.Width - 10,
+    10,
+    unbadgedHiveIcon.Height - 10);
+Expect(projectHivePixels.Count == coordinatorHivePixels.Count);
+Expect(projectHivePixels.Left == coordinatorHivePixels.Left);
+Expect(projectHivePixels.Right == coordinatorHivePixels.Right);
+Expect(projectHivePixels.Top == coordinatorHivePixels.Top);
+Expect(projectHivePixels.Bottom == coordinatorHivePixels.Bottom);
 Expect(!fallback.Png.SequenceEqual(entryIcon.Png));
 Expect(!fallback.Png.SequenceEqual(hiveIcon.Png));
 Expect(!fallback.Png.SequenceEqual(upIcon.Png));

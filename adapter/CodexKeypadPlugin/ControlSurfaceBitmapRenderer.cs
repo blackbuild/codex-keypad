@@ -10,9 +10,7 @@ public static class ControlSurfaceBitmapRenderer
     private const Int32 WorkerBlobDiameter = 8;
     private const Int32 WorkerBlobGap = 2;
     private const Int32 WorkerGroupGap = 6;
-    private const Int32 WorkerCountWidth = 16;
-    private const Int32 WorkerCountHeight = 24;
-    private const Int32 WorkerCountFontSize = 24;
+    private const Int32 WorkerCapsuleHeight = 22;
     private const Int32 WorkerCompressionThreshold = 4;
     private const Int32 WorkerRailGutterWidth = 10;
     private const Int32 WorkerRailOutlineThickness = 2;
@@ -61,7 +59,10 @@ public static class ControlSurfaceBitmapRenderer
         }
         if (isProjectTile)
         {
-            DrawProjectStatusTab(builder, statusBackground);
+            var tabColor = visual.Tone == "idle" && visual.BorderColors.Count > 0
+                ? ParseColor(visual.BorderColors[0])
+                : statusBackground;
+            DrawProjectStatusTab(builder, tabColor);
         }
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
         if (role == "coordinator")
@@ -95,7 +96,7 @@ public static class ControlSurfaceBitmapRenderer
                 DrawEntryIcon(builder, color);
                 break;
             case "project":
-                DrawProjectIcon(builder, color);
+                DrawHiveIcon(builder, color);
                 break;
             case "task":
                 DrawTaskStateIcon(builder, tone, color);
@@ -122,18 +123,6 @@ public static class ControlSurfaceBitmapRenderer
         Line(builder, 28, 49, 38, 57, color, stroke);
         Line(builder, 38, 57, 28, 65, color, stroke);
         Line(builder, 43, 68, 61, 68, color, stroke);
-    }
-
-    private static void DrawProjectIcon(BitmapBuilder builder, BitmapColor color)
-    {
-        var stroke = Stroke(builder, 4);
-        Line(builder, 45, 27, 45, 50, color, stroke);
-        Line(builder, 45, 50, 26, 70, color, stroke);
-        Line(builder, 45, 50, 64, 70, color, stroke);
-        builder.FillCircle(X(builder, 45), Y(builder, 23), Scale(builder, 8), color);
-        builder.FillCircle(X(builder, 45), Y(builder, 50), Scale(builder, 8), color);
-        builder.FillCircle(X(builder, 24), Y(builder, 72), Scale(builder, 8), color);
-        builder.FillCircle(X(builder, 66), Y(builder, 72), Scale(builder, 8), color);
     }
 
     private static void DrawTaskStateIcon(
@@ -412,7 +401,7 @@ public static class ControlSurfaceBitmapRenderer
         {
             var candidate = layouts
                 .Where(layout => !layout.Compressed && layout.Indicator.Count > 1)
-                .OrderByDescending(layout => BlobGroupHeight(layout.Indicator.Count) - WorkerCountHeight)
+                .OrderByDescending(layout => BlobGroupHeight(layout.Indicator.Count) - WorkerCapsuleHeight)
                 .FirstOrDefault();
             if (candidate is null)
             {
@@ -421,57 +410,81 @@ public static class ControlSurfaceBitmapRenderer
             candidate.Compressed = true;
         }
 
+        if (side == "right"
+            && layouts.All(layout => layout.Indicator.State is "working" or "idle"))
+        {
+            foreach (var layout in layouts)
+            {
+                var anchoredY = layout.Indicator.State == "working"
+                    ? top
+                    : bottom - IndicatorHeight(layout);
+                DrawWorkerIndicatorGroup(builder, layout, side, anchoredY);
+            }
+            return;
+        }
+
         var y = top + Math.Max(0, (bottom - top - RailHeight(layouts)) / 2F);
         foreach (var layout in layouts)
         {
-            var color = ParseColor(layout.Indicator.Color);
-            if (layout.Compressed)
-            {
-                var text = layout.Indicator.Count >= 10
-                    ? "+"
-                    : layout.Indicator.Count.ToString();
-                var left = side == "left" ? 0F : 90F - WorkerCountWidth;
-                builder.FillRectangle(
-                    (Int32)X(builder, left),
-                    (Int32)Y(builder, y),
-                    (Int32)Scale(builder, WorkerCountWidth),
-                    (Int32)Scale(builder, WorkerCountHeight),
-                    BitmapColor.FromRgb(WorkerRailGutterColor));
-                builder.DrawText(
-                    text,
-                    (Int32)X(builder, left),
-                    (Int32)Y(builder, y),
-                    (Int32)Scale(builder, WorkerCountWidth),
-                    (Int32)Scale(builder, WorkerCountHeight),
-                    color,
-                    fontSize: (Int32)Scale(builder, WorkerCountFontSize));
-                y += WorkerCountHeight + WorkerGroupGap;
-                continue;
-            }
+            DrawWorkerIndicatorGroup(builder, layout, side, y);
+            y += IndicatorHeight(layout) + WorkerGroupGap;
+        }
+    }
 
-            var centerX = side == "left" ? 5F : 85F;
-            for (var index = 0; index < layout.Indicator.Count; index += 1)
+    private static void DrawWorkerIndicatorGroup(
+        BitmapBuilder builder,
+        WorkerIndicatorLayout layout,
+        String side,
+        Single top)
+    {
+        var color = ParseColor(layout.Indicator.Color);
+        var centerX = side == "left" ? 5F : 85F;
+        if (layout.Compressed)
+        {
+            var radius = WorkerBlobDiameter / 2F;
+            builder.FillRectangle(
+                (Int32)X(builder, centerX - radius),
+                (Int32)Y(builder, top + radius),
+                (Int32)Scale(builder, WorkerBlobDiameter),
+                (Int32)Scale(builder, WorkerCapsuleHeight - WorkerBlobDiameter),
+                color);
+            builder.FillCircle(
+                X(builder, centerX),
+                Y(builder, top + radius),
+                Scale(builder, radius),
+                color);
+            builder.FillCircle(
+                X(builder, centerX),
+                Y(builder, top + WorkerCapsuleHeight - radius),
+                Scale(builder, radius),
+                color);
+            return;
+        }
+
+        var y = top;
+        for (var index = 0; index < layout.Indicator.Count; index += 1)
+        {
+            builder.FillCircle(
+                X(builder, centerX),
+                Y(builder, y + WorkerBlobDiameter / 2F),
+                Scale(builder, WorkerBlobDiameter / 2F),
+                color);
+            y += WorkerBlobDiameter;
+            if (index + 1 < layout.Indicator.Count)
             {
-                builder.FillCircle(
-                    X(builder, centerX),
-                    Y(builder, y + WorkerBlobDiameter / 2F),
-                    Scale(builder, WorkerBlobDiameter / 2F),
-                    color);
-                y += WorkerBlobDiameter;
-                if (index + 1 < layout.Indicator.Count)
-                {
-                    y += WorkerBlobGap;
-                }
+                y += WorkerBlobGap;
             }
-            y += WorkerGroupGap;
         }
     }
 
     private static Int32 RailHeight(IReadOnlyList<WorkerIndicatorLayout> layouts) =>
-        layouts.Sum(layout => layout.Compressed
-            ? WorkerCountHeight
-            : BlobGroupHeight(layout.Indicator.Count))
+        layouts.Sum(IndicatorHeight)
         + Math.Max(0, layouts.Count - 1) * WorkerGroupGap;
+
+    private static Int32 IndicatorHeight(WorkerIndicatorLayout layout) =>
+        layout.Compressed
+            ? WorkerCapsuleHeight
+            : BlobGroupHeight(layout.Indicator.Count);
 
     private static Int32 BlobGroupHeight(Int32 count) =>
         count * WorkerBlobDiameter + Math.Max(0, count - 1) * WorkerBlobGap;

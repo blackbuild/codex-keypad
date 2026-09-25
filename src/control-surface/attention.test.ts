@@ -66,6 +66,14 @@ test('maps normalized attention to stable colors, glyphs, and bounded border seg
 test('maps completed task state to idle without losing unavailable task state', () => {
   assert.equal(taskAttentionState('completed'), 'idle');
   assert.equal(taskAttentionState('unavailable'), 'unavailable');
+  assert.deepEqual(
+    visualizeAttention(
+      aggregateAttention(['idle']),
+      'project',
+      [{ state: 'idle', count: 4 }],
+    ).workerIndicators,
+    [{ state: 'idle', count: 4, color: '#C2C7D0', side: 'right' }],
+  );
 });
 
 test('keeps every available task condition distinct in the visual legend', () => {

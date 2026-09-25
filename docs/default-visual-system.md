@@ -12,14 +12,17 @@ bitmap and a primary background. The bitmap does not repeat the display label.
 Global, project, and coordinator
 tiles additionally place status-sorted worker indicators down their sides:
 attention-required and diagnostic states on the left, working and idle states
-on the right. Only the coordinator retains its compact upper-right status badge.
+on the right. Working groups anchor toward the top of the right rail while idle
+groups anchor toward its bottom, so the common states remain spatially distinct
+when brightness makes their colors harder to separate. Only the coordinator
+retains its compact upper-right status badge.
 The contrast ratios below use the WCAG
 relative-luminance formula; they are design-time sRGB figures, not a substitute
 for checking the physical LCD.
 
 | Normalized state | Worker icon | Label cue | Coordinator badge | Background | Indicator | White-text contrast |
 |---|---|---|---:|---:|---:|---:|
-| `idle` (including completed tasks) | Check | Idle / Completed | `OK` | `#1F2937` | `#9CA3AF` | 14.68:1 |
+| `idle` (including completed tasks) | Check | Idle / Completed | `OK` | `#1F2937` | `#C2C7D0` | 14.68:1 |
 | `working` | Double chevron | Working | `>` | `#075985` | `#38BDF8` | 7.56:1 |
 | `waiting-for-input` | Speech bubble | Waiting for input | `I` | `#1E3A8A` | `#60A5FA` | 10.36:1 |
 | `waiting-for-approval` | Hourglass | Waiting for approval | `A` | `#713F12` | `#FACC15` | 8.67:1 |
@@ -65,17 +68,19 @@ The first state supplies the background. Worker rails retain all available
 normalized worker groups in
 precedence order. A configured coordinator is represented by the Hive itself and
 is not repeated as a rail indicator. Counts of one through three are individual eight-pixel blobs;
-groups of four through nine use a colored digit, and groups of ten or more use a
-colored `+`. When several groups would exceed a rail's height, the largest remaining
-blob groups collapse to the same bounded digit-or-`+` treatment until the layout
-fits. Confirmed idle is used only when no non-idle or diagnostic condition is present.
+groups of four or more use a solid vertical capsule in the state's color. The capsule
+deliberately communicates "many" instead of an exact count, because numeric glyphs
+are not reliably legible at this display size. When several groups would exceed a
+rail's height, the largest remaining blob groups collapse to the same bounded capsule
+treatment until the layout fits. Confirmed idle is used only when no non-idle or
+diagnostic condition is present.
 
 ## Icon vocabulary and fallbacks
 
 | Level | Built-in icon | Semantic action |
 |---|---|---|
-| Global Codex entry | Packaged transparent white OpenAI knot mark; terminal/code-window fallback | Open the project overview |
-| Project | Connected workspace | Open that project's task view |
+| Global Codex entry | Packaged transparent white OpenAI knot mark; terminal/code-window fallback | Enter the native folder at its retained internal level |
+| Project | Three-cell Hive | Open that project's task view |
 | Task | Normalized runtime-state symbol | Open that exact current task |
 | Coordinator task | Project PNG or three-cell Hive; project-name label | Open that exact coordinator task |
 | Up | Large upward arrow | Return to the project overview |
@@ -102,10 +107,12 @@ the last healthy image as fresh.
 
 The Logitech adapter receives compact bitmap dimensions from the SDK. The global
 entry uses an unframed neutral field with worker indicators directly on its edges.
-Project tiles use neutral bodies with a centered, top-wide tab that tapers inward toward the body in their
-single primary status color. Coordinator tiles retain their colored backgrounds. Both draw a
-two-pixel frame around their dark side gutters. Worker blobs sit in those gutters; compressed counts use
-large, single-character, dark-backed indicators that remain inside the bitmap edges. This gives the colored/icon
+Project tiles use neutral bodies with the same three-cell Hive symbol as their
+coordinator tile and a centered, top-wide tab that tapers inward toward the body
+in their single primary status color. The idle tab uses the brighter idle indicator
+accent instead of the darker completed-task background. Coordinator tiles retain their colored backgrounds. Both draw a
+two-pixel frame around their dark side gutters. Worker blobs and compressed solid
+capsules sit in those gutters and remain inside the bitmap edges. This gives the colored/icon
 field a narrower framed-panel appearance while separating indicators from busy
 custom artwork. A coordinator's right lane begins below its retained badge.
 The device adapter draws the normalized icon role with simple vector primitives,

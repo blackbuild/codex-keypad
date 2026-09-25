@@ -57,7 +57,7 @@ const VISUAL_TOKENS: Readonly<Record<AttentionState, {
   readonly borderColor: string;
   readonly badge: string;
 }>> = {
-  idle: { label: 'Idle', backgroundColor: '#1F2937', borderColor: '#9CA3AF', badge: 'OK' },
+  idle: { label: 'Idle', backgroundColor: '#1F2937', borderColor: '#C2C7D0', badge: 'OK' },
   working: { label: 'Working', backgroundColor: '#075985', borderColor: '#38BDF8', badge: '>' },
   'waiting-for-input': { label: 'Waiting for input', backgroundColor: '#1E3A8A', borderColor: '#60A5FA', badge: 'I' },
   'waiting-for-approval': { label: 'Waiting for approval', backgroundColor: '#713F12', borderColor: '#FACC15', badge: 'A' },
