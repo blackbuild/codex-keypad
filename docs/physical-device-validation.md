@@ -4,6 +4,9 @@ Issue 7 requires a bounded MX Keypad demonstration after installing the packaged
 plugin. Automated builds and simulated state are prerequisites, not hardware
 acceptance. Record the package checksum, Options+ version, device/firmware, LCD
 brightness, and pass/fail for each check; do not record private task content.
+If a state cannot be produced safely and reliably by the current live source,
+record that limitation and the available automated coverage instead of editing the
+real Codex database or claiming physical coverage from a synthetic renderer test.
 
 1. **Task states:** present one task tile for completed, working, waiting for
    input, waiting for approval, interrupted, failed, and unavailable source
@@ -47,3 +50,27 @@ brightness, and pass/fail for each check; do not record private task content.
 
 Hardware acceptance is complete only when the maintainer records all nine checks
 as passing on the physical device.
+
+## Validation record: 0.2.18–0.2.19
+
+Test started on 2026-09-25.
+
+| Context | Value |
+|---|---|
+| Initial package | `CodexKeypad_0_2_18.lplug4` (`9a8b470bef81fa5bb473f7b4a8478ef747d3cc6d1954ec10760df9ec01945b10`) |
+| Final package | `CodexKeypad_0_2_19.lplug4` (`d465abb37d527166fd96d67673605933094f23282cd6560fedd07465cb774a13`) |
+| Logi Options+ | 2.7.970334 |
+| Firmware | 166.0.17 |
+| Normal display brightness | 50% |
+
+| Check | Result | Notes |
+|---:|---|---|
+| 1. Task states | Pass for available states | Working → completed updated live without restarting Options+; double-chevron/checkmark icons, backgrounds, single native title, and removal of redundant status text/icon confirmed. Interrupted showed the purple background and large pause symbol after stopping a running task. The read-only history audit found failed states only on archived tasks. Waiting-for-input and waiting-for-approval are not emitted by the current SQLite source. Failed, waiting, and normalized-unavailable task imagery remains covered by SDK-backed bitmap and contract tests; no production database was modified to fabricate physical coverage. |
+| 2. Project aggregation | Pass | With working and completed workers in one project, the configured project label, neutral body, connected-workspace icon, blue tapered primary-state tab, ordered right-side worker indicators, coordinator exclusion, and navigation to the correct task view were confirmed. |
+| 3. Global aggregation | Fix pending physical retest | On 0.2.18, the live schema-v9 contract correctly contained one interrupted worker on the left plus working and idle groups on the right, and the project/Hive view rendered the interrupted state. The top-level Codex key remained on its older three-working/eight-idle image until a profile switch, confirming stale root-image invalidation rather than a reducer or renderer failure. Version 0.2.19 changes root updates to plugin-wide image invalidation and requires physical retest. |
+| 4. Bounded overflow | Pending | |
+| 5. Icons and fallbacks | Pending | |
+| 6. Stale and unavailable | Pending | |
+| 7. Legibility | Pending | 50% normal brightness recorded; lowest supported brightness still pending. |
+| 8. Navigation safety | Pending | |
+| 9. Adapter freshness fallback | Pending | |

@@ -1,6 +1,23 @@
 using CodexKeypad.Core;
 using Loupedeck;
 using Loupedeck.CodexKeypadPlugin;
+using System.Reflection;
+
+String? invalidatedAction = "not called";
+String? invalidatedParameter = "not called";
+var affectsAllParameters = false;
+Action<String, String, Boolean> captureInvalidation = (action, parameter, allParameters) =>
+{
+    invalidatedAction = action;
+    invalidatedParameter = parameter;
+    affectsAllParameters = allParameters;
+};
+typeof(CodexDynamicFolder)
+    .GetMethod("InvalidateRootImageAtPluginScope", BindingFlags.Static | BindingFlags.NonPublic)!
+    .Invoke(null, [captureInvalidation]);
+Expect(invalidatedAction is null);
+Expect(invalidatedParameter is null);
+Expect(affectsAllParameters);
 
 var fallback = Render(WorkingVisual(), null);
 Expect(fallback.Png.Length > 100);
