@@ -4,6 +4,7 @@ import type { CodexTaskSource } from '../codex/codex-task-source.ts';
 import type { CodexProjectConfiguration } from './project-configuration.ts';
 import {
   exactActiveWorkerCount,
+  staleActiveWorkerCount,
   truncatedActiveWorkerCount,
   unavailableActiveWorkerCount,
   type CodexProjectIdentity,
@@ -71,23 +72,34 @@ export function readProjectStates(
       const observedAt = now();
       const currentWorkers = workers.filter((task) => task.updatedAt >= observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS
         && task.updatedAt <= observedAt + MAXIMUM_FUTURE_CLOCK_SKEW_MS);
+      const staleWorkers = workers.filter((task) =>
+        task.updatedAt < observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS);
+      const futureWorkers = workers.filter((task) =>
+        task.updatedAt > observedAt + MAXIMUM_FUTURE_CLOCK_SKEW_MS);
       const hasUnusableEvidence = currentWorkers.length !== workers.length;
       if (currentWorkers.length === 0 && hasUnusableEvidence) {
         return {
           project,
           ...coordinator,
           ...coordinatorPattern,
-          activeWorkerCount: unavailableActiveWorkerCount,
+          activeWorkerCount: staleWorkers.length > 0 && futureWorkers.length === 0
+            ? staleActiveWorkerCount
+            : unavailableActiveWorkerCount,
           tasks,
         };
       }
+      const activeWorkerCount = hasUnusableEvidence || workers.length > MAXIMUM_EXACT_ACTIVE_WORKERS
+        ? truncatedActiveWorkerCount(currentWorkers.length)
+        : exactActiveWorkerCount(currentWorkers.length);
       return {
         project,
         ...coordinator,
         ...coordinatorPattern,
-        activeWorkerCount: hasUnusableEvidence || workers.length > MAXIMUM_EXACT_ACTIVE_WORKERS
-          ? truncatedActiveWorkerCount(currentWorkers.length)
-          : exactActiveWorkerCount(currentWorkers.length),
+        activeWorkerCount: {
+          ...activeWorkerCount,
+          ...(staleWorkers.length > 0 ? { staleEvidence: true as const } : {}),
+          ...(futureWorkers.length > 0 ? { unavailableEvidence: true as const } : {}),
+        },
         tasks,
       };
     } catch {

@@ -6,16 +6,16 @@ using Loupedeck;
 
 public sealed class CodexDynamicFolder : PluginDynamicFolder
 {
+    private const String DynamicFolderActionName = "#DynamicFolder";
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan StateFreshness = TimeSpan.FromSeconds(2);
-    private const Int64 MaximumIconBytes = 1024 * 1024;
-
     private readonly Object _sync = new();
     private Timer? _refreshTimer;
     private Process? _sidecar;
     private String? _statePath;
     private String? _actionPath;
     private ControlSurfaceState? _state;
+    private Boolean _awaitingOverview;
 
     public CodexDynamicFolder()
     {
@@ -27,34 +27,49 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         PluginDynamicFolderNavigation.None;
 
     public override String GetButtonDisplayName(PluginImageSize _) =>
-        this.WithState(state => state?.Entry.Label ?? "Codex · unavailable");
+        this.WithState(state => state?.Entry.Label ?? "Codex");
 
     public override BitmapImage GetButtonImage(PluginImageSize imageSize)
     {
-        using var builder = new BitmapBuilder(imageSize);
-        builder.DrawText(this.GetButtonDisplayName(imageSize), fontSize: 18);
-        return builder.ToImage();
+        return this.WithState(state => state is null
+            ? ControlSurfaceBitmapRenderer.RenderUnavailable(imageSize)
+            : ControlSurfaceBitmapRenderer.Render(
+                PackagedCodexIconPath(this.Plugin?.AssemblyFilePath),
+                null,
+                state.Entry.Visual,
+                imageSize));
     }
 
     public override IEnumerable<String> GetButtonPressActionNames(DeviceType _) =>
-        this.WithState(state => state?.View.Tiles
+        this.WithState(state => this._awaitingOverview ? [] : state?.View.Tiles
             .Select(tile => this.CreateCommandName(tile.Id))
             .ToArray() ?? []);
 
     public override String GetCommandDisplayName(String actionParameter, PluginImageSize _) =>
-        this.WithState(state => state?.View.Tiles
-            .SingleOrDefault(tile => tile.Id == actionParameter)?.Label
+        this.WithState(state => (this._awaitingOverview
+            ? null
+            : state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter)?.Label)
             ?? "Unavailable");
 
     public override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize) =>
-        this.WithState(state => CreateTileImage(
-            state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter),
-            imageSize)) ?? null!;
+        this.WithState(state =>
+        {
+            var tile = this._awaitingOverview
+                ? null
+                : state?.View.Tiles.SingleOrDefault(tile => tile.Id == actionParameter);
+            return tile is null
+                ? null
+                : ControlSurfaceBitmapRenderer.Render(
+                    tile.IconPath,
+                    tile.Role,
+                    tile.Visual,
+                    imageSize);
+        }) ?? null!;
 
     public override void RunCommand(String actionParameter)
     {
         var action = this.WithState(state => state?.View.Tiles
-            .SingleOrDefault(tile => tile.Id == actionParameter)?.Action);
+            .SingleOrDefault(tile => !this._awaitingOverview && tile.Id == actionParameter)?.Action);
         var actionPath = this._actionPath;
         if (action is not null && actionPath is not null)
         {
@@ -86,11 +101,22 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
 
     public override Boolean Activate()
     {
-        var reset = this.WithState(state => state?.Entry.Action);
-        if (reset is not null && this._actionPath is not null)
+        lock (this._sync)
         {
-            RelayAction(this._actionPath, reset);
+            this._awaitingOverview = this._state?.View.Level != "project-overview";
         }
+        this.ButtonActionNamesChanged();
+        this.ResetToOverview();
+        return true;
+    }
+
+    public override Boolean Deactivate()
+    {
+        lock (this._sync)
+        {
+            this._awaitingOverview = true;
+        }
+        this.ResetToOverview();
         return true;
     }
 
@@ -164,6 +190,18 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         return process;
     }
 
+    private static String? PackagedCodexIconPath(String? pluginAssemblyFilePath)
+    {
+        var assemblyDirectory = Path.GetDirectoryName(pluginAssemblyFilePath);
+        return assemblyDirectory is null
+            ? null
+            : Path.GetFullPath(Path.Combine(
+                assemblyDirectory,
+                "..",
+                "metadata",
+                "CodexMark256x256.png"));
+    }
+
     private static void DeleteTemporaryFile(String? path)
     {
         if (path is null)
@@ -193,27 +231,12 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         }
     }
 
-    private static BitmapImage? CreateTileImage(ControlSurfaceTile? tile, PluginImageSize imageSize)
+    private void ResetToOverview()
     {
-        try
+        var reset = this.WithState(state => state?.Entry.Action);
+        if (reset is not null && this._actionPath is not null)
         {
-            if (tile?.IconPath is null
-                || !File.Exists(tile.IconPath)
-                || new FileInfo(tile.IconPath).Length > MaximumIconBytes
-                || !BitmapImage.TryCreateFromFile(tile.IconPath, out var icon))
-            {
-                return null;
-            }
-
-            using var builder = new BitmapBuilder(imageSize);
-            builder.SetBackgroundImage(icon);
-            builder.DrawText(tile.Label);
-            return builder.ToImage();
-        }
-        catch (Exception error)
-        {
-            Trace.TraceWarning($"Unable to render a Codex Keypad project icon: {error}");
-            return null;
+            RelayAction(this._actionPath, reset);
         }
     }
 
@@ -224,7 +247,13 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
         var changed = false;
         lock (this._sync)
         {
-            if (this._state?.Revision != nextState?.Revision)
+            var overviewArrived = this._awaitingOverview
+                && nextState?.View.Level == "project-overview";
+            if (overviewArrived)
+            {
+                this._awaitingOverview = false;
+            }
+            if (this._state?.Revision != nextState?.Revision || overviewArrived)
             {
                 this._state = nextState;
                 changed = true;
@@ -238,12 +267,27 @@ public sealed class CodexDynamicFolder : PluginDynamicFolder
             {
                 this.CommandImageChanged(tile.Id);
             }
-            if (this.Plugin is not null)
-            {
-                this.Plugin.OnActionImageChanged(this.CommandName, String.Empty, true);
-            }
+            this.InvalidateRootImage();
         }
     }
+
+    private void InvalidateRootImage()
+    {
+        if (this.Plugin is not null)
+        {
+            // The profile binds every dynamic-folder root through the SDK's
+            // #DynamicFolder action and uses Name as that action's parameter.
+            // CommandName belongs only to the inner tiles.
+            InvalidateDynamicFolderRoot(
+                this.Name,
+                this.Plugin.OnActionImageChanged);
+        }
+    }
+
+    private static void InvalidateDynamicFolderRoot(
+        String folderName,
+        Action<String, String, Boolean> invalidate) =>
+        invalidate(DynamicFolderActionName, folderName, false);
 
     private ControlSurfaceState? ReadFreshState()
     {

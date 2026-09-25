@@ -1,6 +1,20 @@
 import { createHash } from 'node:crypto';
 
 import type { CodexTask, CodexTaskStatus } from '../codex/codex-task-source.ts';
+import {
+  aggregateAttention,
+  mergeAttentionIndicators,
+  navigationVisual,
+  summarizeAttentionStates,
+  taskAttentionState,
+  visualizeAttention,
+  type AttentionIndicator,
+  type AttentionState,
+  type AttentionSummary,
+  type VisualPresentation,
+} from './attention.ts';
+
+const MAXIMUM_TASK_TITLE_CUE_LENGTH = 18;
 
 export interface CodexProjectIdentity {
   readonly id: string;
@@ -20,8 +34,15 @@ export interface CodexProjectState {
 }
 
 export type ActiveWorkerCount =
-  | { readonly availability: 'available'; readonly count: number; readonly truncated: boolean }
-  | { readonly availability: 'unavailable' };
+  | {
+      readonly availability: 'available';
+      readonly count: number;
+      readonly truncated: boolean;
+      readonly staleEvidence?: true;
+      readonly unavailableEvidence?: true;
+    }
+  | { readonly availability: 'unavailable' }
+  | { readonly availability: 'stale' };
 
 export function exactActiveWorkerCount(count: number): ActiveWorkerCount {
   return availableActiveWorkerCount(count, false);
@@ -32,6 +53,7 @@ export function truncatedActiveWorkerCount(minimum: number): ActiveWorkerCount {
 }
 
 export const unavailableActiveWorkerCount: ActiveWorkerCount = { availability: 'unavailable' };
+export const staleActiveWorkerCount: ActiveWorkerCount = { availability: 'stale' };
 
 function availableActiveWorkerCount(count: number, truncated: boolean): ActiveWorkerCount {
   if (!Number.isSafeInteger(count) || count < 0) {
@@ -53,15 +75,19 @@ export interface ControlSurfaceTile {
   readonly iconPath?: string;
   readonly status?: CodexTaskStatus;
   readonly role?: 'coordinator';
+  readonly attention?: AttentionSummary;
+  readonly visual: VisualPresentation;
   readonly action: SemanticAction;
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 7;
+  readonly schemaVersion: 9;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
     readonly label: string;
+    readonly attention: AttentionSummary;
+    readonly visual: VisualPresentation;
     readonly action: { readonly type: 'open-project-overview' };
   };
   readonly view: {
@@ -90,14 +116,22 @@ export function buildProjectControlSurface(
   const tiles = level === 'task-view'
     ? taskTiles(
         selected!.tasks,
+        selected!.project.name,
         selected!.coordinatorTaskId,
         selected!.coordinatorTaskPattern,
         selected!.project.icon?.path,
+        projectWorkerIndicators(selected!),
       )
     : overviewTiles(projects);
+  const entryAttention = aggregateAttention(projects.flatMap(projectAttentionStates));
+  const entryWorkerIndicators = mergeAttentionIndicators(
+    projects.flatMap(projectWorkerIndicators),
+  );
   const entry = {
     id: 'codex' as const,
-    label: `Codex · ${aggregateActiveWorkerSummary(projects)}`,
+    label: 'Codex',
+    attention: entryAttention,
+    visual: visualizeAttention(entryAttention, 'entry', entryWorkerIndicators),
     action: { type: 'open-project-overview' as const },
   };
   const view = {
@@ -107,7 +141,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 7,
+    schemaVersion: 9,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -122,22 +156,25 @@ function overviewTiles(projects: readonly CodexProjectState[]): readonly Control
 }
 
 function projectTile(state: CodexProjectState): ControlSurfaceTile {
+  const attention = aggregateAttention(projectAttentionStates(state));
+  const visual = visualizeAttention(attention, 'project', projectWorkerIndicators(state));
   return {
     id: `project:${state.project.id}`,
-    label: compactLabel(
-      `${state.project.name} · ${activeWorkerSummary(state.activeWorkerCount)}`,
-      80,
-    ),
+    label: state.project.name,
     ...(state.project.icon ? { iconPath: state.project.icon.path } : {}),
+    attention,
+    visual,
     action: { type: 'open-task-view', projectId: state.project.id },
   };
 }
 
 function taskTiles(
   tasks: readonly CodexTask[],
+  projectName: string,
   coordinatorTaskId?: string,
   coordinatorTaskPattern?: string,
   projectIconPath?: string,
+  workerIndicators: readonly AttentionIndicator[] = [],
 ): readonly ControlSurfaceTile[] {
   const ordered = [...tasks].sort((left, right) =>
     right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
@@ -152,11 +189,19 @@ function taskTiles(
     : ordered;
   const back: ControlSurfaceTile = {
     id: 'nav.back',
-    label: 'Back',
+    label: 'Up',
+    visual: navigationVisual(),
     action: { type: 'open-project-overview' },
   };
   return [
-    ...(coordinator ? [taskTile(coordinator, true, projectIconPath), back] : [back]),
+    ...(coordinator
+      ? [taskTile(coordinator, {
+          label: projectName,
+          role: 'coordinator',
+          workerIndicators,
+          ...(projectIconPath ? { iconPath: projectIconPath } : {}),
+        }), back]
+      : [back]),
     ...remaining.map((task) => taskTile(task)),
   ];
 }
@@ -195,17 +240,23 @@ function wildcardMatches(value: string, pattern: string): boolean {
 
 function taskTile(
   task: CodexTask,
-  coordinator = false,
-  projectIconPath?: string,
+  override?: {
+    readonly label: string;
+    readonly role: 'coordinator';
+    readonly iconPath?: string;
+    readonly workerIndicators: readonly AttentionIndicator[];
+  },
 ): ControlSurfaceTile {
-  const status = taskStatusLabel(task.status);
-  const identity = compactLabel(task.title, 80 - status.length - 3);
+  const identity = compactLabel(task.title, MAXIMUM_TASK_TITLE_CUE_LENGTH);
+  const attention = aggregateAttention([taskAttentionState(task.status)]);
   return {
     id: `task:${task.id}`,
-    label: `${identity} · ${status}`,
-    ...(projectIconPath ? { iconPath: projectIconPath } : {}),
-    ...(coordinator ? { role: 'coordinator' as const } : {}),
+    label: override?.label ?? identity,
+    ...(override?.iconPath ? { iconPath: override.iconPath } : {}),
+    ...(override ? { role: override.role } : {}),
     status: task.status,
+    attention,
+    visual: visualizeAttention(attention, 'task', override?.workerIndicators),
     action: {
       type: 'open-codex-task',
       threadId: task.id,
@@ -213,44 +264,67 @@ function taskTile(
   };
 }
 
-function taskStatusLabel(status: CodexTaskStatus): string {
-  switch (status) {
-    case 'working': return 'Working';
-    case 'waiting-for-approval': return 'Waiting for approval';
-    case 'waiting-for-input': return 'Waiting for input';
-    case 'completed': return 'Completed';
-    case 'failed': return 'Failed';
-    case 'interrupted': return 'Interrupted';
-    case 'unavailable': return 'State unavailable';
+function projectAttentionStates(state: CodexProjectState): readonly AttentionState[] {
+  const taskStates = state.tasks.map(({ status }) => taskAttentionState(status));
+  switch (state.activeWorkerCount.availability) {
+    case 'unavailable':
+      return [...taskStates, 'unavailable'];
+    case 'stale':
+      return [...taskStates, 'stale'];
+    case 'available': {
+      const sourceStates: AttentionState[] = [];
+      if (state.activeWorkerCount.unavailableEvidence) {
+        sourceStates.push('unavailable');
+      }
+      if (state.activeWorkerCount.staleEvidence) {
+        sourceStates.push('stale');
+      }
+      if (state.activeWorkerCount.count > 0 && !taskStates.includes('working')) {
+        sourceStates.push('working');
+      }
+      return [...taskStates, ...sourceStates];
+    }
   }
+}
+
+function projectWorkerIndicators(state: CodexProjectState): readonly AttentionIndicator[] {
+  const ordered = [...state.tasks].sort((left, right) =>
+    right.updatedAt - left.updatedAt || compareDescending(left.id, right.id));
+  const coordinator = (state.coordinatorTaskId
+    ? ordered.find((task) => task.id === state.coordinatorTaskId)
+    : undefined)
+    ?? (state.coordinatorTaskPattern
+      ? ordered.find((task) => wildcardMatches(task.title, state.coordinatorTaskPattern!))
+      : undefined);
+  const workerTasks = coordinator
+    ? ordered.filter((task) => task.id !== coordinator.id)
+    : ordered;
+  const observed = summarizeAttentionStates(
+    workerTasks.map(({ status }) => taskAttentionState(status)),
+  );
+  const fallbackWorking = observed.length === 0
+    && state.activeWorkerCount.availability === 'available'
+    && state.activeWorkerCount.count > 0
+    ? [{ state: 'working' as const, count: state.activeWorkerCount.count }]
+    : [];
+  return mergeAttentionIndicators([
+    ...observed,
+    ...fallbackWorking,
+    ...(state.activeWorkerCount.availability === 'unavailable'
+      || state.activeWorkerCount.availability === 'available'
+        && state.activeWorkerCount.unavailableEvidence
+      ? [{ state: 'unavailable' as const, count: 1 }]
+      : []),
+    ...(state.activeWorkerCount.availability === 'stale'
+      || state.activeWorkerCount.availability === 'available'
+        && state.activeWorkerCount.staleEvidence
+      ? [{ state: 'stale' as const, count: 1 }]
+      : []),
+  ]);
 }
 
 function compareDescending(left: string, right: string): number {
   return left < right ? 1 : left > right ? -1 : 0;
-}
-
-function aggregateActiveWorkerSummary(projects: readonly CodexProjectState[]): string {
-  let count = 0;
-  let truncated = false;
-  for (const project of projects) {
-    if (project.activeWorkerCount.availability === 'unavailable') {
-      return 'count unavailable';
-    }
-    count += project.activeWorkerCount.count;
-    truncated ||= project.activeWorkerCount.truncated;
-  }
-  return count === 0
-    ? 'idle'
-    : `${count}${truncated ? '+' : ''} active`;
-}
-
-function activeWorkerSummary(count: ActiveWorkerCount): string {
-  if (count.availability === 'unavailable') {
-    return 'Count unavailable';
-  }
-  return count.count === 0
-    ? 'Idle'
-    : `${count.count}${count.truncated ? '+' : ''} active`;
 }
 
 function compactLabel(label: string, maximumLength: number): string {
