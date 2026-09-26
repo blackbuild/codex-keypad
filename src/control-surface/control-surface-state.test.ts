@@ -32,7 +32,7 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 10);
   assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, action }) => ({
     id,
     label,
@@ -128,7 +128,7 @@ test('aggregates task attention across project and entry tiles with bounded comp
     },
   ]);
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 10);
   assert.deepEqual(state.entry.attention, {
     primary: 'failed',
     indicators: [
@@ -201,6 +201,37 @@ test('shows a valid lower-bound worker count with unavailable concurrent evidenc
   ]);
 });
 
+test('aggregates fresh review attention to project and global entry without provider metadata', () => {
+  const state = buildProjectControlSurface([{
+    ...project('reviewed-project', 'Reviewed project', 0),
+    reviewAttention: { availability: 'available', waitingForReviewCount: 2, observedAt: 1000 },
+  }]);
+  assert.deepEqual(state.view.tiles[0]?.attention?.indicators, [
+    { state: 'waiting-for-review', count: 1 },
+  ]);
+  assert.equal(state.view.tiles[0]?.visual.badge, 'R');
+  assert.equal(state.entry.attention.primary, 'waiting-for-review');
+  assert.equal(state.entry.visual.badge, 'R');
+  assert.equal(JSON.stringify(state).includes('observedAt'), false);
+  assert.equal(JSON.stringify(state).includes('waitingForReviewCount'), false);
+  assert.equal(JSON.stringify(state).includes('reviewRepository'), false);
+  assert.equal(JSON.stringify(state).includes('blackbuild/codex-keypad'), false);
+});
+
+test('never confirms review attention from unavailable or stale provider evidence', () => {
+  for (const reviewAttention of [
+    { availability: 'unavailable' as const },
+    { availability: 'stale' as const },
+  ]) {
+    const state = buildProjectControlSurface([{
+      ...project('reviewed-project', 'Reviewed project', 0),
+      reviewAttention,
+    }]);
+    assert.notEqual(state.view.tiles[0]?.attention?.primary, 'waiting-for-review');
+    assert.notEqual(state.entry.attention.primary, 'waiting-for-review');
+  }
+});
+
 test('normalizes every selected-project task in deterministic recency order', () => {
   const selected = {
     ...project('codex-keypad', 'Codex Keypad', 1),
@@ -211,7 +242,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 10);
   assert.deepEqual(state.view.tiles.slice(1).map(({ id, label, status, action }) => ({
     id,
     label,
@@ -248,7 +279,7 @@ test('labels the configured coordinator with its project name', () => {
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 10);
   assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, role, status, action }) => ({
     id,
     label,

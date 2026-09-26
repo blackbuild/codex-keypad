@@ -246,11 +246,23 @@ var taskStateIcons = new[]
     "idle",
     "waiting-for-input",
     "waiting-for-approval",
+    "waiting-for-review",
     "interrupted",
     "failed",
     "unavailable",
     "stale",
 }.Select(state => Render(TaskStateVisual(state), null)).ToArray();
+var reviewProjectCue = Render(new VisualPresentation(
+    "project",
+    "P",
+    "waiting-for-review",
+    "#134E4A",
+    "#FFFFFF",
+    ["#5EEAD4"],
+    "R",
+    [new("waiting-for-review", 1, "#5EEAD4", "left")]), null);
+Expect(ContainsApproximateColor(reviewProjectCue, "#134E4A", 20, 70, 0, reviewProjectCue.Height / 4));
+Expect(ContainsApproximateColor(reviewProjectCue, "#115E59", reviewProjectCue.Width - 22, 88, 0, 25));
 var upIcon = Render(new VisualPresentation(
     "back",
     "^",

@@ -42,6 +42,20 @@ test('uses idle only when no non-idle condition is present', () => {
   });
 });
 
+test('places confirmed review attention between approval and input', () => {
+  assert.deepEqual(aggregateAttention([
+    'working', 'waiting-for-input', 'waiting-for-review', 'waiting-for-approval', 'failed',
+  ]), {
+    primary: 'failed',
+    indicators: [
+      { state: 'failed', count: 1 },
+      { state: 'waiting-for-approval', count: 1 },
+      { state: 'waiting-for-review', count: 1 },
+    ],
+    additionalStates: 2,
+  });
+});
+
 test('maps normalized attention to stable colors, glyphs, and bounded border segments', () => {
   const summary = aggregateAttention([
     'working',
@@ -103,6 +117,14 @@ test('keeps every available task condition distinct in the visual legend', () =>
       borderColors: ['#FDBA74'],
       badge: '~',
       workerIndicators: [],
+    },
+  );
+  assert.deepEqual(
+    visualizeAttention(aggregateAttention(['waiting-for-review']), 'project'),
+    {
+      icon: 'project', glyph: 'P', tone: 'waiting-for-review',
+      backgroundColor: '#134E4A', foregroundColor: '#FFFFFF',
+      borderColors: ['#5EEAD4'], badge: 'R', workerIndicators: [],
     },
   );
 });

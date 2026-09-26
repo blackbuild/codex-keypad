@@ -5,6 +5,7 @@ export type AttentionState =
   | 'working'
   | 'waiting-for-input'
   | 'waiting-for-approval'
+  | 'waiting-for-review'
   | 'interrupted'
   | 'failed'
   | 'unavailable'
@@ -43,6 +44,7 @@ const MAXIMUM_VISIBLE_ATTENTION_STATES = 3;
 const ATTENTION_PRECEDENCE: readonly AttentionState[] = [
   'failed',
   'waiting-for-approval',
+  'waiting-for-review',
   'waiting-for-input',
   'interrupted',
   'unavailable',
@@ -61,6 +63,7 @@ const VISUAL_TOKENS: Readonly<Record<AttentionState, {
   working: { label: 'Working', backgroundColor: '#075985', borderColor: '#38BDF8', badge: '>' },
   'waiting-for-input': { label: 'Waiting for input', backgroundColor: '#1E3A8A', borderColor: '#60A5FA', badge: 'I' },
   'waiting-for-approval': { label: 'Waiting for approval', backgroundColor: '#713F12', borderColor: '#FACC15', badge: 'A' },
+  'waiting-for-review': { label: 'Waiting for review', backgroundColor: '#134E4A', borderColor: '#5EEAD4', badge: 'R' },
   interrupted: { label: 'Interrupted', backgroundColor: '#4C1D95', borderColor: '#A78BFA', badge: 'X' },
   failed: { label: 'Failed', backgroundColor: '#7F1D1D', borderColor: '#F87171', badge: '!' },
   unavailable: { label: 'Unavailable', backgroundColor: '#3F3F46', borderColor: '#D4D4D8', badge: '?' },

@@ -72,7 +72,7 @@ product action. Tasks are opened by the existing
 shell-free, validated Codex deep-link adapter. Unknown action types and unknown
 JSON members are rejected. Task labels use normalized task names or an opaque
 identifier fallback, never raw prompt or transcript content. Attention
-aggregation uses the schema-v8 defaults below; agent-customized layouts remain a
+aggregation uses the schema-v10 defaults below; agent-customized layouts remain a
 later roadmap slice.
 
 ## Target navigation model
@@ -133,7 +133,7 @@ Codex / review providers / validated handoff
 Task state aggregates to project state, and project state aggregates to the global
 entry tile. Concurrent attention must use deterministic visual composition rather
 than silently discarding conditions. Unknown or stale state must not be rendered as
-confirmed healthy state. The schema-v8 default tokens, precedence, bounded
+confirmed healthy state. The schema-v10 default tokens, precedence, bounded
 composition, fallback icons, and contrast behavior are specified in
 [default-visual-system.md](default-visual-system.md).
 

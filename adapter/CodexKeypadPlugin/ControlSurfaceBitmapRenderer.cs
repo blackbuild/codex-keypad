@@ -64,6 +64,11 @@ public static class ControlSurfaceBitmapRenderer
                 : statusBackground;
             DrawProjectStatusTab(builder, tabColor);
         }
+        if ((visual.Icon is "entry" or "project")
+            && visual.WorkerIndicators.Any(indicator => indicator.State == "waiting-for-review"))
+        {
+            DrawReviewMark(builder);
+        }
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
         if (role == "coordinator")
         {
@@ -170,6 +175,17 @@ public static class ControlSurfaceBitmapRenderer
                 Line(builder, 23, 22, 67, 70, color, Stroke(builder, 3));
                 Line(builder, 67, 22, 23, 70, color, Stroke(builder, 3));
                 break;
+            case "waiting-for-review":
+                Line(builder, 18, 45, 31, 32, color, Stroke(builder, 4));
+                Line(builder, 31, 32, 45, 27, color, Stroke(builder, 4));
+                Line(builder, 45, 27, 59, 32, color, Stroke(builder, 4));
+                Line(builder, 59, 32, 72, 45, color, Stroke(builder, 4));
+                Line(builder, 72, 45, 59, 58, color, Stroke(builder, 4));
+                Line(builder, 59, 58, 45, 63, color, Stroke(builder, 4));
+                Line(builder, 45, 63, 31, 58, color, Stroke(builder, 4));
+                Line(builder, 31, 58, 18, 45, color, Stroke(builder, 4));
+                builder.FillCircle(X(builder, 45), Y(builder, 45), Scale(builder, 7), color);
+                break;
             case "stale":
                 DrawHexagon(builder, 45, 46, 25, color, Stroke(builder, 3));
                 Line(builder, 45, 46, 45, 30, color, Stroke(builder, 3));
@@ -179,6 +195,20 @@ public static class ControlSurfaceBitmapRenderer
                 builder.DrawText("?", color, fontSize: 40);
                 break;
         }
+    }
+
+    private static void DrawReviewMark(BitmapBuilder builder)
+    {
+        var background = BitmapColor.FromRgb(0x115E59);
+        builder.FillRectangle(builder.Width - 20, 4, 16, 16, background);
+        builder.DrawText(
+            "R",
+            builder.Width - 20,
+            4,
+            16,
+            16,
+            BitmapColor.White,
+            fontSize: Math.Max(10, builder.Width / 8));
     }
 
     private static void DrawHiveIcon(BitmapBuilder builder, BitmapColor color)
