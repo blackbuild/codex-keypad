@@ -79,6 +79,7 @@ public static partial class ControlSurfaceContract
         "working",
         "waiting-for-input",
         "waiting-for-approval",
+        "waiting-for-review",
         "interrupted",
         "failed",
         "unavailable",
@@ -100,12 +101,13 @@ public static partial class ControlSurfaceContract
         {
             ["failed"] = 0,
             ["waiting-for-approval"] = 1,
-            ["waiting-for-input"] = 2,
-            ["interrupted"] = 3,
-            ["unavailable"] = 4,
-            ["stale"] = 5,
-            ["working"] = 6,
-            ["idle"] = 7,
+            ["waiting-for-review"] = 2,
+            ["waiting-for-input"] = 3,
+            ["interrupted"] = 4,
+            ["unavailable"] = 5,
+            ["stale"] = 6,
+            ["working"] = 7,
+            ["idle"] = 8,
         };
 
     public static Boolean TryRead(String path, out ControlSurfaceState? state)
@@ -131,7 +133,7 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 9
+        if (wire.SchemaVersion != 10
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"

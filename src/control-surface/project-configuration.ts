@@ -16,6 +16,7 @@ export interface CodexProjectConfiguration {
   readonly coordinatorTaskId?: string;
   readonly coordinatorTaskPattern?: string;
   readonly icon?: string;
+  readonly reviewRepository?: string;
 }
 
 export function configuredProjects(
@@ -114,7 +115,7 @@ function parseProject(
     || !hasExactOptionalKeys(
       value,
       ['id', 'name', 'root'],
-      ['coordinatorTaskId', 'coordinatorTaskPattern', 'icon', 'repositories'],
+      ['coordinatorTaskId', 'coordinatorTaskPattern', 'icon', 'repositories', 'reviewRepository'],
     )
     || typeof value.id !== 'string'
     || typeof value.name !== 'string'
@@ -123,9 +124,10 @@ function parseProject(
     || (value.coordinatorTaskPattern !== undefined
       && typeof value.coordinatorTaskPattern !== 'string')
     || (value.icon !== undefined && typeof value.icon !== 'string')
-    || (value.repositories !== undefined && !Array.isArray(value.repositories))) {
+      || (value.repositories !== undefined && !Array.isArray(value.repositories))
+      || (value.reviewRepository !== undefined && typeof value.reviewRepository !== 'string')) {
     throw new Error(
-      `projects[${index}] must contain id, name, root, and optional coordinatorTaskId, coordinatorTaskPattern, icon, and repositories`,
+      `projects[${index}] must contain id, name, root, and optional coordinatorTaskId, coordinatorTaskPattern, icon, repositories, and reviewRepository`,
     );
   }
 
@@ -140,6 +142,7 @@ function parseProject(
     name: projectName(value.name),
     root,
     ...(repositories.length > 0 ? { repositories } : {}),
+    ...optionalReviewRepository(value.reviewRepository, `projects[${index}].reviewRepository`),
     ...optionalCoordinatorTaskId(
       value.coordinatorTaskId,
       `projects[${index}].coordinatorTaskId`,
@@ -154,6 +157,14 @@ function parseProject(
         : {}),
     ...optionalIcon(value.icon, `projects[${index}].icon`),
   };
+}
+
+function optionalReviewRepository(value: unknown, setting: string): { readonly reviewRepository?: string } {
+  if (value === undefined) return {};
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value.trim())) {
+    throw new Error(`${setting} must be an owner/repository identifier`);
+  }
+  return { reviewRepository: value.trim() };
 }
 
 function repositoryRoots(value: unknown, projectIndex: number): readonly string[] {

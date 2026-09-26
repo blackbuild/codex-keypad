@@ -1,6 +1,6 @@
 # Default visual system
 
-Schema version 9 carries a complete normalized visual presentation from the
+Schema version 10 carries a complete normalized visual presentation from the
 TypeScript control-surface core to the Logitech adapter. The adapter draws that
 presentation; it does not infer attention, precedence, aggregation, icons, or
 colors. These defaults apply without an agent-authored layout.
@@ -26,6 +26,7 @@ for checking the physical LCD.
 | `working` | Double chevron | Working | `>` | `#075985` | `#38BDF8` | 7.56:1 |
 | `waiting-for-input` | Speech bubble | Waiting for input | `I` | `#1E3A8A` | `#60A5FA` | 10.36:1 |
 | `waiting-for-approval` | Hourglass | Waiting for approval | `A` | `#713F12` | `#FACC15` | 8.67:1 |
+| `waiting-for-review` | Eye cue | Waiting for review | `R` | `#134E4A` | `#5EEAD4` | 9.48:1 |
 | `interrupted` | Pause | Interrupted | `X` | `#4C1D95` | `#A78BFA` | 10.95:1 |
 | `failed` | Cross | Failed | `!` | `#7F1D1D` | `#F87171` | 10.02:1 |
 | `unavailable` | Question mark | Unavailable / State unavailable | `?` | `#3F3F46` | `#D4D4D8` | 10.44:1 |
@@ -37,6 +38,27 @@ provider status text is never published. A source read failure is also
 `stale`. Current workers accompanied by stale evidence remain a lower-bound
 count and add `stale` as a concurrent condition. Implausibly future-dated data
 adds `unavailable`, including when a valid current lower-bound count is retained.
+
+Review attention is produced by a separate authenticated review-provider source.
+Only a fresh, validated result may add `waiting-for-review`; a fresh result with
+no requested reviews adds no review condition. An unauthenticated source, missing
+provider configuration, malformed response, request failure, or stale cached
+response can never confirm review. Configured provider failures appear as
+`unavailable` or `stale`, with the same diagnostic precedence used elsewhere.
+The source currently counts open, non-draft GitHub pull requests that have at
+least one requested reviewer or team, checks at most 1,000 pull requests, and
+revalidates at least every 60 seconds. Its token and raw API records stay inside
+the provider adapter; the normalized project state contains only review
+availability and a bounded count, and the published control-surface contract
+contains only attention and presentation.
+
+Review attention composes alongside task states. Failure takes precedence over
+approval, approval over review, review over input, and input over interrupted,
+unavailable, stale, working, and idle. Concurrent task conditions remain in the
+bounded summary and worker rails. Project and global-entry tiles show the review
+accent and an `R` cue when review is among their normalized indicators. Selecting
+the project tile uses its existing allowlisted `open-task-view` action; review
+does not introduce provider navigation or a URL action.
 
 The current Codex SQLite source exposes in-progress, completed, failed, and
 interrupted task states. Waiting-for-input and waiting-for-approval already have
@@ -57,12 +79,13 @@ are counted. Distinct states use this fixed precedence:
 
 1. failed
 2. waiting for approval
-3. waiting for input
-4. interrupted
-5. unavailable
-6. stale
-7. working
-8. idle
+3. waiting for review
+4. waiting for input
+5. interrupted
+6. unavailable
+7. stale
+8. working
+9. idle
 
 The first state supplies the background. Worker rails retain all available
 normalized worker groups in

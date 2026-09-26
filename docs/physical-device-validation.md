@@ -1,6 +1,6 @@
 # Physical-device validation
 
-Issue 7 requires a bounded MX Keypad demonstration after installing the packaged
+Issues 7 and 8 require bounded MX Keypad demonstrations after installing the packaged
 plugin. Automated builds and simulated state are prerequisites, not hardware
 acceptance. Record the package checksum, Options+ version, device/firmware, LCD
 brightness, and pass/fail for each check; do not record private task content.
@@ -51,8 +51,36 @@ real Codex database or claiming physical coverage from a synthetic renderer test
    beyond the two-second freshness window. Confirm the global tile changes to the
    explicit `?` image with the `Codex` native label rather than retaining healthy state.
 
-Hardware acceptance is complete only when the maintainer records all nine checks
-as passing on the physical device.
+## Issue 8 review-aware demonstration
+
+These additional checks are required for physical acceptance of review-aware
+attention. Use a test repository and a GitHub token supplied only to the running
+Options+ process. Do not record the token, pull-request titles, reviewer names, or
+raw provider responses.
+
+1. **Review appearance:** create one open, non-draft pull request with a requested
+   reviewer. Confirm its project's tile and the global Codex entry show the teal
+   review cue and `R` mark while their native labels remain the project name and
+   `Codex`.
+2. **Aggregation and precedence:** in the same project, produce concurrent task
+   input, approval, working, failure, and review conditions. Confirm failure is
+   primary, approval outranks review, review outranks input, and review remains
+   visible among the bounded indicators. Repeat across two projects and confirm
+   the same composition at the global entry.
+3. **Allowlisted navigation:** press the review-bearing project tile. Confirm it
+   opens only that project's task view. Verify no provider URL, pull-request URL,
+   reviewer identity, or command is opened or sent to the device adapter.
+4. **Live refresh:** add a review request, then remove it. Confirm the review cue
+   appears and clears after the provider refresh interval without restarting
+   Options+.
+5. **Provider safety:** repeat without a token, with an invalid token, with a
+   simulated malformed response, and after a successful result followed by a
+   failed refresh. Confirm these cases show unavailable or stale diagnostics and
+   never retain confirmed review attention. Restore authenticated access and
+   confirm a successful refresh replaces the diagnostic state.
+
+Hardware acceptance is complete only when the maintainer records the original
+nine issue 7 checks and all five issue 8 checks as passing on the physical device.
 
 ## Validation record: 0.2.18–0.2.22
 

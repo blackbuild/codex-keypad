@@ -9,6 +9,7 @@ import {
   unavailableActiveWorkerCount,
   type CodexProjectIdentity,
   type CodexProjectState,
+  type ReviewAttention,
 } from './control-surface-state.ts';
 
 const MAXIMUM_EXACT_ACTIVE_WORKERS = 99;
@@ -24,21 +25,23 @@ export type ReadIconMetadata = (path: string) => {
   readonly modifiedAt: number;
 };
 export type IsProjectDirectory = (path: string) => boolean;
+export type ReviewAttentionSource = { read(repository: string): Promise<ReviewAttention> };
 export interface ProjectStateReadOptions {
   readonly readIconMetadata?: ReadIconMetadata;
   readonly isProjectDirectory?: IsProjectDirectory;
   readonly now?: () => number;
+  readonly reviewSource?: ReviewAttentionSource;
 }
 
 export function readProjectStates(
   projects: readonly CodexProjectConfiguration[],
   createTaskSource: ProjectTaskSourceFactory,
   options: ProjectStateReadOptions = {},
-): readonly CodexProjectState[] {
+): Promise<readonly CodexProjectState[]> {
   const readIconMetadata = options.readIconMetadata ?? defaultIconMetadata;
   const isProjectDirectory = options.isProjectDirectory ?? defaultIsProjectDirectory;
   const now = options.now ?? Date.now;
-  return projects.map((configuration) => {
+  return Promise.all(projects.map(async (configuration) => {
     const project: CodexProjectIdentity = {
       id: configuration.id,
       name: configuration.name,
@@ -54,6 +57,14 @@ export function readProjectStates(
       : {};
 
     try {
+      let reviewAttention: ReviewAttention | undefined;
+      if (configuration.reviewRepository && options.reviewSource) {
+        try {
+          reviewAttention = await options.reviewSource.read(configuration.reviewRepository);
+        } catch {
+          reviewAttention = { availability: 'unavailable' };
+        }
+      }
       if (!isProjectDirectory(configuration.root)) {
         return {
           project,
@@ -61,6 +72,7 @@ export function readProjectStates(
           ...coordinatorPattern,
           activeWorkerCount: unavailableActiveWorkerCount,
           tasks: [],
+          ...(reviewAttention ? { reviewAttention } : {}),
         };
       }
       const source = createTaskSource([
@@ -86,6 +98,7 @@ export function readProjectStates(
             ? staleActiveWorkerCount
             : unavailableActiveWorkerCount,
           tasks,
+          ...(reviewAttention ? { reviewAttention } : {}),
         };
       }
       const activeWorkerCount = hasUnusableEvidence || workers.length > MAXIMUM_EXACT_ACTIVE_WORKERS
@@ -101,6 +114,7 @@ export function readProjectStates(
           ...(futureWorkers.length > 0 ? { unavailableEvidence: true as const } : {}),
         },
         tasks,
+        ...(reviewAttention ? { reviewAttention } : {}),
       };
     } catch {
       return {
@@ -109,9 +123,10 @@ export function readProjectStates(
         ...coordinatorPattern,
         activeWorkerCount: unavailableActiveWorkerCount,
         tasks: [],
+        ...(configuration.reviewRepository ? { reviewAttention: { availability: 'unavailable' as const } } : {}),
       };
     }
-  });
+  }));
 }
 
 function defaultIsProjectDirectory(path: string): boolean {

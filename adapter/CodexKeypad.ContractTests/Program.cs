@@ -28,11 +28,27 @@ try
             ]));
     });
 
+    Run("accepts review attention only with the existing project navigation action", () =>
+    {
+        var reviewJson = ProjectOverview()
+            .Replace("\"working\"", "\"waiting-for-review\"", StringComparison.Ordinal)
+            .Replace("\"tone\": \"waiting-for-review\", \"backgroundColor\": \"#075985\"", "\"tone\": \"waiting-for-review\", \"backgroundColor\": \"#134E4A\"", StringComparison.Ordinal)
+            .Replace("#38BDF8", "#5EEAD4", StringComparison.Ordinal)
+            .Replace("\"side\": \"right\"", "\"side\": \"left\"", StringComparison.Ordinal)
+            .Replace("\"badge\": \">\"", "\"badge\": \"R\"", StringComparison.Ordinal);
+        File.WriteAllText(fixturePath, reviewJson);
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.Entry.Attention.Primary == "waiting-for-review"
+            && state.View.Tiles[0].Attention!.Primary == "waiting-for-review"
+            && state.View.Tiles[0].Action is OpenTaskViewAction { ProjectId: "architecture" });
+    });
+
     Run("rejects legacy or unbounded visual contracts", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview().Replace(
+            "\"schemaVersion\": 10",
             "\"schemaVersion\": 9",
-            "\"schemaVersion\": 8",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
 
@@ -200,7 +216,7 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
@@ -235,7 +251,7 @@ static String ProjectOverview() => """
 
 static String AttentionProjectOverview() => """
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "revision": "attention-project-overview:456",
   "entry": {
     "id": "codex",
@@ -274,7 +290,7 @@ static String AttentionProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
@@ -311,7 +327,7 @@ static String UnavailableTaskView(String threadId) =>
 
 static String CoordinatorTaskView() => """
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "revision": "task-view:hive-thread:456",
   "entry": {
     "id": "codex",
@@ -370,7 +386,7 @@ static String ManyTaskView(Int32 taskCount)
     }));
     return JsonSerializer.Serialize(new
     {
-        schemaVersion = 9,
+        schemaVersion = 10,
         revision = "many-tasks:456",
         entry = new
         {

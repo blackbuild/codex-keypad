@@ -31,7 +31,13 @@ export interface CodexProjectState {
   readonly coordinatorTaskPattern?: string;
   readonly activeWorkerCount: ActiveWorkerCount;
   readonly tasks: readonly CodexTask[];
+  readonly reviewAttention?: ReviewAttention;
 }
+
+export type ReviewAttention =
+  | { readonly availability: 'available'; readonly waitingForReviewCount: number; readonly observedAt: number }
+  | { readonly availability: 'stale' }
+  | { readonly availability: 'unavailable' };
 
 export type ActiveWorkerCount =
   | {
@@ -81,7 +87,7 @@ export interface ControlSurfaceTile {
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 9;
+  readonly schemaVersion: 10;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
@@ -141,7 +147,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 9,
+    schemaVersion: 10,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -266,11 +272,20 @@ function taskTile(
 
 function projectAttentionStates(state: CodexProjectState): readonly AttentionState[] {
   const taskStates = state.tasks.map(({ status }) => taskAttentionState(status));
+  const reviewStates: AttentionState[] = state.reviewAttention
+    ? state.reviewAttention.availability === 'unavailable'
+      ? ['unavailable']
+      : state.reviewAttention.availability === 'stale'
+        ? ['stale']
+        : state.reviewAttention.waitingForReviewCount > 0
+          ? ['waiting-for-review']
+          : []
+    : [];
   switch (state.activeWorkerCount.availability) {
     case 'unavailable':
-      return [...taskStates, 'unavailable'];
+      return [...taskStates, ...reviewStates, 'unavailable'];
     case 'stale':
-      return [...taskStates, 'stale'];
+      return [...taskStates, ...reviewStates, 'stale'];
     case 'available': {
       const sourceStates: AttentionState[] = [];
       if (state.activeWorkerCount.unavailableEvidence) {
@@ -282,7 +297,7 @@ function projectAttentionStates(state: CodexProjectState): readonly AttentionSta
       if (state.activeWorkerCount.count > 0 && !taskStates.includes('working')) {
         sourceStates.push('working');
       }
-      return [...taskStates, ...sourceStates];
+      return [...taskStates, ...reviewStates, ...sourceStates];
     }
   }
 }
@@ -309,6 +324,16 @@ function projectWorkerIndicators(state: CodexProjectState): readonly AttentionIn
     : [];
   return mergeAttentionIndicators([
     ...observed,
+    ...(state.reviewAttention?.availability === 'available'
+      && state.reviewAttention.waitingForReviewCount > 0
+      ? [{ state: 'waiting-for-review' as const, count: 1 }]
+      : []),
+    ...(state.reviewAttention?.availability === 'unavailable'
+      ? [{ state: 'unavailable' as const, count: 1 }]
+      : []),
+    ...(state.reviewAttention?.availability === 'stale'
+      ? [{ state: 'stale' as const, count: 1 }]
+      : []),
     ...fallbackWorking,
     ...(state.activeWorkerCount.availability === 'unavailable'
       || state.activeWorkerCount.availability === 'available'
