@@ -47,6 +47,18 @@ mkdir -p "$HOME/Library/Application Support/Codex Keypad"
 cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
 {
   "coordinatorTaskPattern": "* Hive",
+  "workflowRules": [
+    { "marker": "(PR:CI)", "state": "waiting-for-ci" },
+    { "marker": "(PR:REVIEW)", "state": "waiting-for-review" },
+    { "marker": "(PR:CHANGES)", "state": "changes-requested" },
+    { "marker": "(INPUT)", "state": "waiting-for-input" },
+    { "marker": "(APPROVAL)", "state": "waiting-for-approval" },
+    { "marker": "(BLOCKED)", "state": "blocked" },
+    { "marker": "(HANDOFF:FAILED)", "state": "handoff-failed" },
+    { "marker": "(HANDOFF)", "state": "handoff-failed" },
+    { "marker": "(DONE)", "state": "done" }
+  ],
+  "compactLabelPatterns": ["\\b[A-Z]{2,10}-[0-9]{1,6}\\b"],
   "projects": [
     {
       "id": "codex-keypad",
@@ -58,12 +70,17 @@ cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
       "coordinatorTaskId": "codex://threads/01example-coordinator-task-id",
       "coordinatorTaskPattern": "Codex Keypad Hive*",
       "icon": "/absolute/path/to/codex-keypad.png",
-      "reviewRepository": "blackbuild/codex-keypad"
+      "workflowRules": [
+        { "marker": "(PR:CI)", "state": "waiting-for-ci" },
+        { "marker": "(HANDOFF:FAILED)", "state": "handoff-failed" }
+      ],
+      "compactLabelPatterns": ["\\b[A-Z]{2,10}-[0-9]{1,6}\\b"]
     },
     {
       "id": "another-project",
       "name": "Another Project",
-      "root": "/absolute/path/to/another-project"
+      "root": "/absolute/path/to/another-project",
+      "workflowRules": [{ "marker": "[OPS]", "state": "blocked" }]
     }
   ]
 }
@@ -88,13 +105,19 @@ coordinator. Multiple matches therefore need no conflict handling. The selected
 coordinator is pinned before Up, uses the project display name as its keypad
 label, and uses the project icon when configured; the remaining tasks retain
 deterministic recency ordering. An optional `icon` is an absolute path to a PNG
-of at most 1 MiB. The optional `reviewRepository` names the GitHub `owner/repository`
-whose open, non-draft pull requests contribute review attention. Set
-`CODEX_KEYPAD_GITHUB_TOKEN` in the Options+ process environment (or use
-`GH_TOKEN`/`GITHUB_TOKEN`) for an authenticated read. Without a configured
-repository, review attention is not observed; without authentication or when the
-provider is unavailable, the project shows unavailable/stale diagnostics and
-never confirmed review.
+of at most 1 MiB.
+
+Workflow declarations come only from task titles. Global `workflowRules` map
+literal markers to the closed workflow vocabulary; projects inherit them and
+may override a marker by repeating it with a different state or add new markers.
+The first matching rule in the resulting ordered list wins. Global
+`compactLabelPatterns` independently extract short labels with a restricted,
+bounded regular-expression subset. A project may supply its own compact-label
+patterns, replacing the inherited list. Invalid patterns, unknown states, and
+overlong titles fail closed; an unmatched workflow marker is `unspecified`, and
+an unmatched label falls back to the bounded task title. For example,
+`(PR:CI) DIST-15 Create the helm charts` shows `DIST-15` with workflow
+`waiting-for-ci`, while runtime state continues to come only from Codex.
 Project tiles follow the configuration order; the Logitech runtime uses the
 device's native page controls when they do not fit on one touch page.
 
@@ -143,23 +166,22 @@ stale worker evidence is shown separately as `Count stale`. When current workers
 are returned alongside stale or otherwise unusable worker state, the current
 workers remain visible as a lower bound such as `2+ active`.
 
-Schema v10 presents the same normalized attention contract at task, project, and
-global-entry levels. Failed, approval, review, input, interrupted, unavailable,
-stale, working, and idle conditions compose with fixed precedence. Failure,
-approval, review, and input are ordered in that sequence. Global, project,
+Schema v11 keeps Codex runtime status separate from title-declared workflow state
+and derives operator attention from both at task, project, and global-entry
+levels. Runtime failure, handoff failure, blocked, approval, changes requested,
+review, input, interrupted, unavailable, stale, working, and idle conditions
+compose with fixed precedence. Waiting-for-CI, done, and unspecified remain
+informational. Global, project,
 and coordinator tiles add split worker
 rails: attention-required states on the left and working/idle on the right.
-Groups of four or more, or groups that would not fit, collapse to large colored counts. Project
-tiles use neutral bodies with a tapered single-primary-status tab at the top; their dark side gutters sit
+Groups of four or more, or groups that would not fit, collapse to colored capsules. Project tiles use neutral bodies with a tapered single-primary-status tab at the top; their dark side gutters sit
 inside a two-pixel neutral frame. Coordinator tiles retain their colored background. The global
 entry is an unframed neutral field while its edge indicators retain their state colors. Every tile
 also carries the packaged transparent white OpenAI knot mark plus built-in terminal fallback,
 connected-workspace, runtime-state worker, Hive, and Up-arrow icons, so custom
-project PNGs are optional. Runtime worker icons are selected only from normalized
-Codex state; the separate authenticated review source contributes only normalized
-project/global attention and never a provider URL or payload. Review tiles retain
-their existing allowlisted project-navigation action. State-specific shape cues
-ensure that color is not the only signal.
+project PNGs are optional. Runtime worker icons are selected only from Codex
+state; a separate compact badge shows the declared workflow state. State-specific
+shape and text cues ensure that color is not the only signal.
 See [the default visual system](docs/default-visual-system.md) for the complete
 legend and [the device checklist](docs/physical-device-validation.md) for the
 remaining hardware acceptance checks.
@@ -211,6 +233,6 @@ or simulated checks are not treated as substitutes for it.
 The maintainer confirmed the issue #6 multi-task physical demonstration through
 schema v6: exact task opening, native pagination, live completion/removal/addition,
 inert empty slots, project/task navigation, coordinator ordering, and the absence
-of synthetic page or project-overview Up tiles. Schema v10 review-aware attention
+of synthetic page or project-overview Up tiles. The revised Issue #8 workflow model
 still requires the focused physical-device checklist linked above; automated
 validation is not reported as hardware acceptance.

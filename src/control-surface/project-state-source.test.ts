@@ -71,20 +71,21 @@ test('includes configured repository roots with the Codex project root', async (
   assert.equal(states[0]?.coordinatorTaskPattern, '* Hive');
 });
 
-test('keeps review-provider failure separate from Codex task-source availability', async () => {
+test('parses workflow and compact label without changing Codex runtime state or task identity', async () => {
+  const tasks = [{
+    id: 'stable-task-id', title: '(PR:CI) DIST-15 Create the helm charts',
+    status: 'working' as const, updatedAt: 3000,
+  }];
   const states = await readProjectStates(
-    [{ id: 'review', name: 'Review', root: '/projects/review', reviewRepository: 'owner/repo' }],
-    () => source(1),
-    {
-      isProjectDirectory: () => true,
-      now: () => 1000,
-      reviewSource: { read: async () => { throw new Error('private provider failure'); } },
-    },
+    [{ id: 'project', name: 'Project', root: '/projects/project',
+      workflowRules: [{ marker: '(PR:CI)', state: 'waiting-for-ci' }],
+      compactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'] }],
+    () => ({ listTasks: () => tasks, listActiveWorkerTasks: () => tasks }),
+    { isProjectDirectory: () => true, now: () => 3000 },
   );
-  assert.deepEqual(states[0]?.activeWorkerCount, {
-    availability: 'available', count: 1, truncated: false,
+  assert.deepEqual(states[0]?.tasks[0], {
+    ...tasks[0], workflowState: 'waiting-for-ci', compactLabel: 'DIST-15',
   });
-  assert.deepEqual(states[0]?.reviewAttention, { availability: 'unavailable' });
 });
 
 test('includes every active project task independently of the worker count', async () => {
@@ -101,7 +102,10 @@ test('includes every active project task independently of the worker count', asy
     { isProjectDirectory: () => true, now: () => 3000 },
   );
 
-  assert.deepEqual(states[0]?.tasks, tasks);
+  assert.deepEqual(states[0]?.tasks, tasks.map((task) => ({
+    ...task, workflowState: 'unspecified', compactLabel: task.title.length <= 18
+      ? task.title : task.title.slice(0, 17) + '…',
+  })));
   assert.deepEqual(states[0]?.activeWorkerCount, {
     availability: 'available',
     count: 1,

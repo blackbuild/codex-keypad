@@ -26,6 +26,7 @@ public sealed record ControlSurfaceTile(
     String Label,
     String? IconPath,
     String? Status,
+    String? WorkflowState,
     String? Role,
     AttentionSummary? Attention,
     VisualPresentation Visual,
@@ -80,6 +81,9 @@ public static partial class ControlSurfaceContract
         "waiting-for-input",
         "waiting-for-approval",
         "waiting-for-review",
+        "changes-requested",
+        "blocked",
+        "handoff-failed",
         "interrupted",
         "failed",
         "unavailable",
@@ -96,18 +100,26 @@ public static partial class ControlSurfaceContract
         "interrupted",
         "unavailable",
     ];
+    private static readonly HashSet<String> WorkflowStates =
+    [
+        "unspecified", "waiting-for-ci", "waiting-for-review", "changes-requested",
+        "waiting-for-input", "waiting-for-approval", "blocked", "handoff-failed", "done",
+    ];
     private static readonly IReadOnlyDictionary<String, Int32> AttentionPrecedence =
         new Dictionary<String, Int32>(StringComparer.Ordinal)
         {
             ["failed"] = 0,
-            ["waiting-for-approval"] = 1,
-            ["waiting-for-review"] = 2,
-            ["waiting-for-input"] = 3,
-            ["interrupted"] = 4,
-            ["unavailable"] = 5,
-            ["stale"] = 6,
-            ["working"] = 7,
-            ["idle"] = 8,
+            ["handoff-failed"] = 1,
+            ["blocked"] = 2,
+            ["waiting-for-approval"] = 3,
+            ["changes-requested"] = 4,
+            ["waiting-for-review"] = 5,
+            ["waiting-for-input"] = 6,
+            ["interrupted"] = 7,
+            ["unavailable"] = 8,
+            ["stale"] = 9,
+            ["working"] = 10,
+            ["idle"] = 11,
         };
 
     public static Boolean TryRead(String path, out ControlSurfaceState? state)
@@ -133,7 +145,7 @@ public static partial class ControlSurfaceContract
     private static Boolean TryNormalize(WireState wire, out ControlSurfaceState? state)
     {
         state = null;
-        if (wire.SchemaVersion != 10
+        if (wire.SchemaVersion != 11
             || String.IsNullOrWhiteSpace(wire.Revision)
             || wire.Revision.Length > 256
             || wire.Entry.Id != "codex"
@@ -221,6 +233,7 @@ public static partial class ControlSurfaceContract
             wire.Label,
             wire.IconPath,
             wire.Status,
+            wire.WorkflowState,
             wire.Role,
             attention,
             visual!,
@@ -239,7 +252,7 @@ public static partial class ControlSurfaceContract
         {
             return tiles.All(tile => tile switch
             {
-                { Action: OpenTaskViewAction projectAction, Status: null, Role: null }
+                { Action: OpenTaskViewAction projectAction, Status: null, WorkflowState: null, Role: null }
                     when tile.Id == $"project:{projectAction.ProjectId}"
                         && tile.Attention is not null
                         && tile.Visual.Icon == "project"
@@ -272,6 +285,7 @@ public static partial class ControlSurfaceContract
             || tiles[backIndex].Action is not OpenProjectOverviewAction
             || tiles[backIndex].Status is not null
             || tiles[backIndex].IconPath is not null
+            || tiles[backIndex].WorkflowState is not null
             || tiles[backIndex].Role is not null
             || tiles[backIndex].Attention is not null
             || tiles[backIndex].Visual is not
@@ -292,9 +306,10 @@ public static partial class ControlSurfaceContract
                 when tile.Id == $"task:{taskAction.ThreadId}"
                     && tile.Status is not null
                     && TaskStatuses.Contains(tile.Status)
-                    && IsTaskAttention(tile.Status, tile.Attention)
+                    && tile.WorkflowState is not null
+                    && WorkflowStates.Contains(tile.WorkflowState)
                     && tile.Visual.Icon == "task"
-                    && tile.Visual.Tone == tile.Attention.Primary
+                    && tile.Visual.Tone == RuntimeAttention(tile.Status)
                     && tile.Visual.BorderColors.Count == tile.Attention.Indicators.Count
                     && (tile.Role == "coordinator" || tile.Visual.WorkerIndicators.Count == 0)
                     && (tile.Role == "coordinator" || tile.IconPath is null) => true,
@@ -308,14 +323,7 @@ public static partial class ControlSurfaceContract
             && action.ProjectId is null
             && action.ThreadId is null;
 
-    private static Boolean IsTaskAttention(String status, AttentionSummary attention)
-    {
-        var expected = status == "completed" ? "idle" : status;
-        return attention.Primary == expected
-            && attention.Indicators is [{ State: var state, Count: 1 }]
-            && state == expected
-            && attention.AdditionalStates == 0;
-    }
+    private static String RuntimeAttention(String status) => status == "completed" ? "idle" : status;
 
     private static Boolean TryNormalizeAttention(
         WireAttention wire,
@@ -324,7 +332,7 @@ public static partial class ControlSurfaceContract
         attention = null;
         if (!AttentionStates.Contains(wire.Primary)
             || wire.Indicators.Count is < 1 or > 3
-            || wire.AdditionalStates is < 0 or > 5
+            || wire.AdditionalStates is < 0 or > 9
             || wire.AdditionalStates > 0 && wire.Indicators.Count < 3
             || wire.Indicators[0].State != wire.Primary
             || wire.Indicators.Any(indicator =>
@@ -491,6 +499,9 @@ public static partial class ControlSurfaceContract
 
         [JsonProperty("status")]
         public String? Status { get; init; }
+
+        [JsonProperty("workflowState")]
+        public String? WorkflowState { get; init; }
 
         [JsonProperty("role")]
         public String? Role { get; init; }

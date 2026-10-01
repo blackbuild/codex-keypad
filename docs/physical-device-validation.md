@@ -51,37 +51,41 @@ real Codex database or claiming physical coverage from a synthetic renderer test
    beyond the two-second freshness window. Confirm the global tile changes to the
    explicit `?` image with the `Codex` native label rather than retaining healthy state.
 
-## Issue 8 review-aware demonstration
+## Issue 8 workflow demonstration
 
-These additional checks are required for physical acceptance of review-aware
-attention. Use a test repository and a GitHub token supplied only to the running
-Options+ process. Do not record the token, pull-request titles, reviewer names, or
-raw provider responses.
+These checks remain required for physical acceptance of the revised workflow
+model. Use controlled task titles through normal Codex/orchestrator flows; do not
+edit the production Codex database or claim physical coverage from simulated
+state. Record the package checksum, Options+ version, device/firmware, brightness,
+and each pass/fail result without recording private prompt or transcript content.
 
-1. **Review appearance:** create one open, non-draft pull request with a requested
-   reviewer. Confirm its project's tile and the global Codex entry show the teal
-   review cue and `R` mark while their native labels remain the project name and
-   `Codex`.
-2. **Aggregation and precedence:** in the same project, produce concurrent task
-   input, approval, working, failure, and review conditions. Confirm failure is
-   primary, approval outranks review, review outranks input, and review remains
-   visible among the bounded indicators. Repeat across two projects and confirm
-   the same composition at the global entry.
-3. **Allowlisted navigation:** press the review-bearing project tile. Confirm it
-   opens only that project's task view. Verify no provider URL, pull-request URL,
-   reviewer identity, or command is opened or sent to the device adapter.
-4. **Live refresh:** add a review request, then remove it. Confirm the review cue
-   appears and clears after the provider refresh interval without restarting
-   Options+.
-5. **Provider safety:** repeat without a token, with an invalid token, with a
-   simulated malformed response, and after a successful result followed by a
-   failed refresh. Confirm these cases show unavailable or stale diagnostics and
-   never retain confirmed review attention. Restore authenticated access and
-   confirm a successful refresh replaces the diagnostic state.
+1. **Compact labels and independent runtime:** configure the `(PR:CI)` marker and
+   the `DIST-15` compact-label pattern. Confirm
+   `(PR:CI) DIST-15 Create the helm charts` shows `DIST-15`, its workflow cue is
+   `CI`, its runtime icon/background still reflects Codex, and pressing it opens
+   the exact task by stable task ID.
+2. **Unspecified and fallback:** show a task with no recognized workflow marker
+   and a task whose title has no compact-label match. Confirm workflow is marked
+   `unspecified`, the fallback label is bounded and readable, and neither task
+   is presented as done or working due to title text.
+3. **Human attention and aggregation:** produce `waiting-for-review` or
+   `waiting-for-input` alongside a working task. Confirm workflow adds the
+   attention cue while the task's runtime status remains visible; project and
+   global indicators include the human-attention condition using documented
+   precedence.
+4. **Handoff failure:** configure a handoff failure marker and produce
+   `handoff-failed`. Confirm the prominent `HF` cue and high-priority attention
+   are distinct from generic blocked state at task, project, and global levels.
+5. **Done:** have the orchestrator explicitly mark an accepted worker with the
+   `done` marker. Confirm the `DN` workflow cue while Codex runtime remains
+   independently displayed. Verify the plugin does not archive the task.
+6. **Configuration inheritance and refresh:** confirm global markers apply to
+   projects, a project can override a global marker and add another, and its
+   compact-label rules remain independent. Change configuration and task titles;
+   verify updates appear live without restarting Options+.
 
-Hardware acceptance is complete only when the maintainer records the original
-nine issue 7 checks and all five issue 8 checks as passing on the physical device.
-
+Physical acceptance is complete only when these six revised Issue #8 checks and
+the original nine Issue #7 checks have been recorded as passing on an MX Keypad.
 ## Validation record: 0.2.18–0.2.22
 
 Test started on 2026-09-25.

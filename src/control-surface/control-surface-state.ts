@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { CodexTask, CodexTaskStatus } from '../codex/codex-task-source.ts';
+import type { WorkflowState } from './project-configuration.ts';
 import {
   aggregateAttention,
   mergeAttentionIndicators,
@@ -8,6 +9,7 @@ import {
   summarizeAttentionStates,
   taskAttentionState,
   visualizeAttention,
+  visualizeTaskRuntime,
   type AttentionIndicator,
   type AttentionState,
   type AttentionSummary,
@@ -25,19 +27,18 @@ export interface CodexProjectIdentity {
   };
 }
 
+export interface ControlSurfaceTask extends CodexTask {
+  readonly workflowState?: WorkflowState;
+  readonly compactLabel?: string;
+}
+
 export interface CodexProjectState {
   readonly project: CodexProjectIdentity;
   readonly coordinatorTaskId?: string;
   readonly coordinatorTaskPattern?: string;
   readonly activeWorkerCount: ActiveWorkerCount;
-  readonly tasks: readonly CodexTask[];
-  readonly reviewAttention?: ReviewAttention;
+  readonly tasks: readonly ControlSurfaceTask[];
 }
-
-export type ReviewAttention =
-  | { readonly availability: 'available'; readonly waitingForReviewCount: number; readonly observedAt: number }
-  | { readonly availability: 'stale' }
-  | { readonly availability: 'unavailable' };
 
 export type ActiveWorkerCount =
   | {
@@ -80,6 +81,7 @@ export interface ControlSurfaceTile {
   readonly label: string;
   readonly iconPath?: string;
   readonly status?: CodexTaskStatus;
+  readonly workflowState?: WorkflowState;
   readonly role?: 'coordinator';
   readonly attention?: AttentionSummary;
   readonly visual: VisualPresentation;
@@ -87,7 +89,7 @@ export interface ControlSurfaceTile {
 }
 
 export interface CodexControlSurfaceState {
-  readonly schemaVersion: 10;
+  readonly schemaVersion: 11;
   readonly revision: string;
   readonly entry: {
     readonly id: 'codex';
@@ -121,7 +123,7 @@ export function buildProjectControlSurface(
 
   const tiles = level === 'task-view'
     ? taskTiles(
-        selected!.tasks,
+      selected!.tasks,
         selected!.project.name,
         selected!.coordinatorTaskId,
         selected!.coordinatorTaskPattern,
@@ -147,7 +149,7 @@ export function buildProjectControlSurface(
   };
 
   return {
-    schemaVersion: 10,
+    schemaVersion: 11,
     revision: createHash('sha256')
       .update(JSON.stringify({ entry, view, icons: projects.map(({ project }) => project.icon) }))
       .digest('hex')
@@ -175,7 +177,7 @@ function projectTile(state: CodexProjectState): ControlSurfaceTile {
 }
 
 function taskTiles(
-  tasks: readonly CodexTask[],
+  tasks: readonly ControlSurfaceTask[],
   projectName: string,
   coordinatorTaskId?: string,
   coordinatorTaskPattern?: string,
@@ -245,7 +247,7 @@ function wildcardMatches(value: string, pattern: string): boolean {
 }
 
 function taskTile(
-  task: CodexTask,
+  task: ControlSurfaceTask,
   override?: {
     readonly label: string;
     readonly role: 'coordinator';
@@ -253,16 +255,20 @@ function taskTile(
     readonly workerIndicators: readonly AttentionIndicator[];
   },
 ): ControlSurfaceTile {
-  const identity = compactLabel(task.title, MAXIMUM_TASK_TITLE_CUE_LENGTH);
-  const attention = aggregateAttention([taskAttentionState(task.status)]);
+  const identity = task.compactLabel ?? compactLabel(task.title, MAXIMUM_TASK_TITLE_CUE_LENGTH);
+  const workflowState = task.workflowState ?? 'unspecified';
+  const attention = aggregateAttention(taskAttentionStates(task));
+  const taskVisual = visualizeTaskRuntime(attention, task.status, override?.workerIndicators ?? []);
+  const visual = { ...taskVisual, badge: `${workflowCue(workflowState)}${taskVisual.badge}` };
   return {
     id: `task:${task.id}`,
     label: override?.label ?? identity,
     ...(override?.iconPath ? { iconPath: override.iconPath } : {}),
     ...(override ? { role: override.role } : {}),
     status: task.status,
+    workflowState,
     attention,
-    visual: visualizeAttention(attention, 'task', override?.workerIndicators),
+    visual,
     action: {
       type: 'open-codex-task',
       threadId: task.id,
@@ -271,21 +277,12 @@ function taskTile(
 }
 
 function projectAttentionStates(state: CodexProjectState): readonly AttentionState[] {
-  const taskStates = state.tasks.map(({ status }) => taskAttentionState(status));
-  const reviewStates: AttentionState[] = state.reviewAttention
-    ? state.reviewAttention.availability === 'unavailable'
-      ? ['unavailable']
-      : state.reviewAttention.availability === 'stale'
-        ? ['stale']
-        : state.reviewAttention.waitingForReviewCount > 0
-          ? ['waiting-for-review']
-          : []
-    : [];
+  const taskStates = state.tasks.flatMap(taskAttentionStates);
   switch (state.activeWorkerCount.availability) {
     case 'unavailable':
-      return [...taskStates, ...reviewStates, 'unavailable'];
+      return [...taskStates, 'unavailable'];
     case 'stale':
-      return [...taskStates, ...reviewStates, 'stale'];
+      return [...taskStates, 'stale'];
     case 'available': {
       const sourceStates: AttentionState[] = [];
       if (state.activeWorkerCount.unavailableEvidence) {
@@ -297,7 +294,7 @@ function projectAttentionStates(state: CodexProjectState): readonly AttentionSta
       if (state.activeWorkerCount.count > 0 && !taskStates.includes('working')) {
         sourceStates.push('working');
       }
-      return [...taskStates, ...reviewStates, ...sourceStates];
+      return [...taskStates, ...sourceStates];
     }
   }
 }
@@ -315,7 +312,7 @@ function projectWorkerIndicators(state: CodexProjectState): readonly AttentionIn
     ? ordered.filter((task) => task.id !== coordinator.id)
     : ordered;
   const observed = summarizeAttentionStates(
-    workerTasks.map(({ status }) => taskAttentionState(status)),
+    workerTasks.flatMap(taskAttentionStates),
   );
   const fallbackWorking = observed.length === 0
     && state.activeWorkerCount.availability === 'available'
@@ -324,16 +321,6 @@ function projectWorkerIndicators(state: CodexProjectState): readonly AttentionIn
     : [];
   return mergeAttentionIndicators([
     ...observed,
-    ...(state.reviewAttention?.availability === 'available'
-      && state.reviewAttention.waitingForReviewCount > 0
-      ? [{ state: 'waiting-for-review' as const, count: 1 }]
-      : []),
-    ...(state.reviewAttention?.availability === 'unavailable'
-      ? [{ state: 'unavailable' as const, count: 1 }]
-      : []),
-    ...(state.reviewAttention?.availability === 'stale'
-      ? [{ state: 'stale' as const, count: 1 }]
-      : []),
     ...fallbackWorking,
     ...(state.activeWorkerCount.availability === 'unavailable'
       || state.activeWorkerCount.availability === 'available'
@@ -346,6 +333,41 @@ function projectWorkerIndicators(state: CodexProjectState): readonly AttentionIn
       ? [{ state: 'stale' as const, count: 1 }]
       : []),
   ]);
+}
+
+function workflowAttentionStates(workflow: WorkflowState): AttentionState[] {
+  switch (workflow) {
+    case 'waiting-for-review': return ['waiting-for-review'];
+    case 'changes-requested': return ['changes-requested'];
+    case 'waiting-for-input': return ['waiting-for-input'];
+    case 'waiting-for-approval': return ['waiting-for-approval'];
+    case 'blocked': return ['blocked'];
+    case 'handoff-failed': return ['handoff-failed'];
+    case 'unspecified':
+    case 'waiting-for-ci':
+    case 'done': return [];
+  }
+}
+
+function taskAttentionStates(task: ControlSurfaceTask): AttentionState[] {
+  return [...new Set([
+    taskAttentionState(task.status),
+    ...workflowAttentionStates(task.workflowState ?? 'unspecified'),
+  ])];
+}
+
+function workflowCue(workflow: WorkflowState): string {
+  switch (workflow) {
+    case 'unspecified': return '?';
+    case 'waiting-for-ci': return 'CI';
+    case 'waiting-for-review': return 'RV';
+    case 'changes-requested': return 'CH';
+    case 'waiting-for-input': return 'IN';
+    case 'waiting-for-approval': return 'AP';
+    case 'blocked': return 'BL';
+    case 'handoff-failed': return 'HF';
+    case 'done': return 'DN';
+  }
 }
 
 function compareDescending(left: string, right: string): number {

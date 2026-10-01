@@ -30,12 +30,15 @@ public static class ControlSurfaceBitmapRenderer
         using var builder = new BitmapBuilder(imageSize);
         var statusBackground = ParseColor(visual.BackgroundColor);
         var isProjectTile = visual.Icon == "project" && role != "coordinator";
+        var badge = visual.Icon == "project" && visual.Badge.Length > 2
+            ? $"{visual.Badge[..1]}+"
+            : visual.Badge;
         var background = visual.Icon == "entry" || isProjectTile
             ? BitmapColor.FromRgb(NeutralAggregateBackgroundColor)
             : statusBackground;
         var foreground = ParseColor(visual.ForegroundColor);
         var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
-        var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
+        var badgeWidth = BadgeWidth(builder.Width, badge, badgeFontSize);
         var hasWorkerRailChrome = visual.Icon == "project" || role == "coordinator";
         builder.Clear(background);
 
@@ -64,17 +67,23 @@ public static class ControlSurfaceBitmapRenderer
                 : statusBackground;
             DrawProjectStatusTab(builder, tabColor);
         }
-        if ((visual.Icon is "entry" or "project")
-            && visual.WorkerIndicators.Any(indicator => indicator.State == "waiting-for-review"))
-        {
-            DrawReviewMark(builder);
-        }
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
+        if (visual.Icon is "entry" or "project" || visual.Icon == "task" && role != "coordinator")
+        {
+            DrawBadge(
+                builder,
+                badge,
+                badgeWidth,
+                badgeFontSize,
+                background,
+                foreground,
+                visual.Icon == "project" ? WorkerRailGutterWidth : 0);
+        }
         if (role == "coordinator")
         {
             DrawBadge(
                 builder,
-                visual.Badge,
+                badge,
                 badgeWidth,
                 badgeFontSize,
                 background,
@@ -195,20 +204,6 @@ public static class ControlSurfaceBitmapRenderer
                 builder.DrawText("?", color, fontSize: 40);
                 break;
         }
-    }
-
-    private static void DrawReviewMark(BitmapBuilder builder)
-    {
-        var background = BitmapColor.FromRgb(0x115E59);
-        builder.FillRectangle(builder.Width - 20, 4, 16, 16, background);
-        builder.DrawText(
-            "R",
-            builder.Width - 20,
-            4,
-            16,
-            16,
-            BitmapColor.White,
-            fontSize: Math.Max(10, builder.Width / 8));
     }
 
     private static void DrawHiveIcon(BitmapBuilder builder, BitmapColor color)

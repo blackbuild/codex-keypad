@@ -6,6 +6,9 @@ export type AttentionState =
   | 'waiting-for-input'
   | 'waiting-for-approval'
   | 'waiting-for-review'
+  | 'changes-requested'
+  | 'blocked'
+  | 'handoff-failed'
   | 'interrupted'
   | 'failed'
   | 'unavailable'
@@ -43,7 +46,10 @@ export interface VisualPresentation {
 const MAXIMUM_VISIBLE_ATTENTION_STATES = 3;
 const ATTENTION_PRECEDENCE: readonly AttentionState[] = [
   'failed',
+  'handoff-failed',
+  'blocked',
   'waiting-for-approval',
+  'changes-requested',
   'waiting-for-review',
   'waiting-for-input',
   'interrupted',
@@ -64,6 +70,9 @@ const VISUAL_TOKENS: Readonly<Record<AttentionState, {
   'waiting-for-input': { label: 'Waiting for input', backgroundColor: '#1E3A8A', borderColor: '#60A5FA', badge: 'I' },
   'waiting-for-approval': { label: 'Waiting for approval', backgroundColor: '#713F12', borderColor: '#FACC15', badge: 'A' },
   'waiting-for-review': { label: 'Waiting for review', backgroundColor: '#134E4A', borderColor: '#5EEAD4', badge: 'R' },
+  'changes-requested': { label: 'Changes requested', backgroundColor: '#6B21A8', borderColor: '#C084FC', badge: 'C' },
+  blocked: { label: 'Blocked', backgroundColor: '#7C2D12', borderColor: '#FB923C', badge: 'B' },
+  'handoff-failed': { label: 'Handoff failed', backgroundColor: '#7F1D1D', borderColor: '#F87171', badge: 'H' },
   interrupted: { label: 'Interrupted', backgroundColor: '#4C1D95', borderColor: '#A78BFA', badge: 'X' },
   failed: { label: 'Failed', backgroundColor: '#7F1D1D', borderColor: '#F87171', badge: '!' },
   unavailable: { label: 'Unavailable', backgroundColor: '#3F3F46', borderColor: '#D4D4D8', badge: '?' },
@@ -133,9 +142,8 @@ export function visualizeAttention(
   workerIndicators: readonly AttentionIndicator[] = [],
 ): VisualPresentation {
   const primary = VISUAL_TOKENS[summary.primary];
-  const badge = summary.indicators
-    .map(({ state }) => VISUAL_TOKENS[state].badge)
-    .join('');
+  const badge = `${VISUAL_TOKENS[summary.primary].badge}`
+    + `${summary.indicators.length > 1 || summary.additionalStates > 0 ? '+' : ''}`;
   return {
     icon,
     glyph: ICON_GLYPHS[icon],
@@ -143,13 +151,26 @@ export function visualizeAttention(
     backgroundColor: primary.backgroundColor,
     foregroundColor: '#FFFFFF',
     borderColors: summary.indicators.map(({ state }) => VISUAL_TOKENS[state].borderColor),
-    badge: `${badge}${summary.additionalStates > 0 ? `+${summary.additionalStates}` : ''}`,
+    badge,
     workerIndicators: workerIndicators.map(({ state, count }) => ({
       state,
       count,
       color: VISUAL_TOKENS[state].borderColor,
       side: state === 'working' || state === 'idle' ? 'right' : 'left',
     })),
+  };
+}
+
+export function visualizeTaskRuntime(
+  summary: AttentionSummary,
+  runtimeStatus: CodexTaskStatus,
+  workerIndicators: readonly AttentionIndicator[] = [],
+): VisualPresentation {
+  const runtimeState = taskAttentionState(runtimeStatus);
+  return {
+    ...visualizeAttention(summary, 'task', workerIndicators),
+    tone: runtimeState,
+    backgroundColor: VISUAL_TOKENS[runtimeState].backgroundColor,
   };
 }
 

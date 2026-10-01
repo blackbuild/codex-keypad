@@ -24,7 +24,7 @@ worker count. Task tiles show individual state and open the exact Codex task.
 | 2 | [#5 Populate the project overview](https://github.com/blackbuild/codex-keypad/issues/5) | #4 | Multiple projects show icons and active-worker counts. |
 | 3 | [#6 Populate the default task view](https://github.com/blackbuild/codex-keypad/issues/6) | #5 | A selected project shows one live button per task by default. |
 | 4 | [#7 Aggregate attention](https://github.com/blackbuild/codex-keypad/issues/7) | #5, #6 | Task, project, and global states compose deterministically. |
-| 5 | [#8 Add review-aware attention](https://github.com/blackbuild/codex-keypad/issues/8) | #7 | External review state reaches the project and global views through an adapter. |
+| 5 | [#8 Add task-title workflow metadata](https://github.com/blackbuild/codex-keypad/issues/8) | #7 | Configured title rules add workflow state and attention while preserving Codex runtime state. |
 | 6 | [#9 Apply agent-requested layouts](https://github.com/blackbuild/codex-keypad/issues/9) | #6, #7 | Validated declarative requests customize the layout without arbitrary execution. |
 
 Each slice crosses its required state-source, normalized-contract, device-rendering,
@@ -40,7 +40,7 @@ evidence proves that a preparatory refactoring must stand alone.
     ├── #6 default task view
     │   └── #9 agent-requested layouts
     └── #7 attention aggregation
-        ├── #8 review-aware attention
+        ├── #8 task-title workflow metadata
         └── #9 agent-requested layouts
 ```
 
@@ -69,5 +69,5 @@ now the sole package path and baseline for later slices.
 - Requiring users to call coordinator tasks Hives.
 - Requiring the repository/agent split-directory convention.
 - Sending arbitrary commands from an agent to a device plugin.
-- Coupling the Logitech adapter directly to Codex persistence or GitHub payloads.
+- Coupling the Logitech adapter directly to Codex persistence or task-title parsing.
 - Treating project memory or handoff data as project authority.

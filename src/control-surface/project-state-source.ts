@@ -1,6 +1,7 @@
 import { statSync } from 'node:fs';
 
 import type { CodexTaskSource } from '../codex/codex-task-source.ts';
+import { parseWorkflowTask } from './workflow-metadata.ts';
 import type { CodexProjectConfiguration } from './project-configuration.ts';
 import {
   exactActiveWorkerCount,
@@ -9,7 +10,6 @@ import {
   unavailableActiveWorkerCount,
   type CodexProjectIdentity,
   type CodexProjectState,
-  type ReviewAttention,
 } from './control-surface-state.ts';
 
 const MAXIMUM_EXACT_ACTIVE_WORKERS = 99;
@@ -25,12 +25,10 @@ export type ReadIconMetadata = (path: string) => {
   readonly modifiedAt: number;
 };
 export type IsProjectDirectory = (path: string) => boolean;
-export type ReviewAttentionSource = { read(repository: string): Promise<ReviewAttention> };
 export interface ProjectStateReadOptions {
   readonly readIconMetadata?: ReadIconMetadata;
   readonly isProjectDirectory?: IsProjectDirectory;
   readonly now?: () => number;
-  readonly reviewSource?: ReviewAttentionSource;
 }
 
 export function readProjectStates(
@@ -57,14 +55,6 @@ export function readProjectStates(
       : {};
 
     try {
-      let reviewAttention: ReviewAttention | undefined;
-      if (configuration.reviewRepository && options.reviewSource) {
-        try {
-          reviewAttention = await options.reviewSource.read(configuration.reviewRepository);
-        } catch {
-          reviewAttention = { availability: 'unavailable' };
-        }
-      }
       if (!isProjectDirectory(configuration.root)) {
         return {
           project,
@@ -72,14 +62,14 @@ export function readProjectStates(
           ...coordinatorPattern,
           activeWorkerCount: unavailableActiveWorkerCount,
           tasks: [],
-          ...(reviewAttention ? { reviewAttention } : {}),
         };
       }
       const source = createTaskSource([
         configuration.root,
         ...(configuration.repositories ?? []),
       ]);
-      const tasks = source.listTasks(MAXIMUM_INCLUDED_TASKS);
+      const tasks = source.listTasks(MAXIMUM_INCLUDED_TASKS)
+        .map((task) => parseWorkflowTask(task, configuration));
       const workers = source.listActiveWorkerTasks(MAXIMUM_EXACT_ACTIVE_WORKERS + 1);
       const observedAt = now();
       const currentWorkers = workers.filter((task) => task.updatedAt >= observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS
@@ -98,7 +88,6 @@ export function readProjectStates(
             ? staleActiveWorkerCount
             : unavailableActiveWorkerCount,
           tasks,
-          ...(reviewAttention ? { reviewAttention } : {}),
         };
       }
       const activeWorkerCount = hasUnusableEvidence || workers.length > MAXIMUM_EXACT_ACTIVE_WORKERS
@@ -114,7 +103,6 @@ export function readProjectStates(
           ...(futureWorkers.length > 0 ? { unavailableEvidence: true as const } : {}),
         },
         tasks,
-        ...(reviewAttention ? { reviewAttention } : {}),
       };
     } catch {
       return {
@@ -123,7 +111,6 @@ export function readProjectStates(
         ...coordinatorPattern,
         activeWorkerCount: unavailableActiveWorkerCount,
         tasks: [],
-        ...(configuration.reviewRepository ? { reviewAttention: { availability: 'unavailable' as const } } : {}),
       };
     }
   }));

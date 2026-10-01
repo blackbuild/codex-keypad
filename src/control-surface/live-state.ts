@@ -1,5 +1,4 @@
 import { createDefaultCodexTaskSource } from '../codex/sqlite-codex-task-source.ts';
-import { GithubReviewAttentionSource } from '../review/github-review-attention-source.ts';
 import { openCodexThread } from '../macos/open-codex-thread.ts';
 import { ControlSurfaceActionInbox } from './control-surface-action-inbox.ts';
 import { ControlSurfaceStatePublisher } from './control-surface-state-publisher.ts';
@@ -16,9 +15,6 @@ const once = arguments_.includes('--once');
 const publisher = new ControlSurfaceStatePublisher(outputPath);
 const inbox = new ControlSurfaceActionInbox(actionPath);
 const navigation = new ProjectNavigation(openCodexThread);
-const reviewSource = new GithubReviewAttentionSource(
-  process.env.CODEX_KEYPAD_GITHUB_TOKEN ?? process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
-);
 let stopped = false;
 
 process.once('SIGINT', () => {
@@ -33,7 +29,7 @@ do {
     const projects = await readProjectStates(
       configuredProjects(),
       (projectRoots) => createDefaultCodexTaskSource(process.env, projectRoots),
-      { reviewSource },
+      {},
     );
     const action = await inbox.take();
     if (action) {
