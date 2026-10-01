@@ -4,9 +4,9 @@ import test from 'node:test';
 import type { CodexTaskSource } from '../codex/codex-task-source.ts';
 import { readProjectStates } from './project-state-source.ts';
 
-test('reports all current workers exactly while preserving project order', async () => {
+test('reports all current workers exactly while preserving project order', () => {
   const requestedRoots: Array<readonly string[]> = [];
-  const states = await readProjectStates(
+  const states = readProjectStates(
     [
       { id: 'second', name: 'Second', root: '/projects/second', icon: '/icons/second.png' },
       { id: 'first', name: 'First', root: '/projects/first' },
@@ -44,9 +44,9 @@ test('reports all current workers exactly while preserving project order', async
   assert.deepEqual(states[1]?.tasks, []);
 });
 
-test('includes configured repository roots with the Codex project root', async () => {
+test('includes configured repository roots with the Codex project root', () => {
   const requestedRoots: Array<readonly string[]> = [];
-  const states = await readProjectStates(
+  const states = readProjectStates(
     [{
       id: 'hive',
       name: 'Hive',
@@ -71,12 +71,12 @@ test('includes configured repository roots with the Codex project root', async (
   assert.equal(states[0]?.coordinatorTaskPattern, '* Hive');
 });
 
-test('parses workflow and compact label without changing Codex runtime state or task identity', async () => {
+test('parses workflow and compact label without changing Codex runtime state or task identity', () => {
   const tasks = [{
     id: 'stable-task-id', title: '(PR:CI) DIST-15 Create the helm charts',
     status: 'working' as const, updatedAt: 3000,
   }];
-  const states = await readProjectStates(
+  const states = readProjectStates(
     [{ id: 'project', name: 'Project', root: '/projects/project',
       workflowRules: [{ marker: '(PR:CI)', state: 'waiting-for-ci' }],
       compactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'] }],
@@ -88,12 +88,12 @@ test('parses workflow and compact label without changing Codex runtime state or 
   });
 });
 
-test('includes every active project task independently of the worker count', async () => {
+test('includes every active project task independently of the worker count', () => {
   const tasks = [
     { id: 'coordinator', title: 'Project coordinator', status: 'working' as const, updatedAt: 3000 },
     { id: 'worker', title: 'Bounded worker', status: 'working' as const, updatedAt: 2000 },
   ];
-  const states = await readProjectStates(
+  const states = readProjectStates(
     [{ id: 'project', name: 'Project', root: '/projects/project' }],
     () => ({
       listTasks: (limit) => tasks.slice(0, limit),
@@ -113,8 +113,8 @@ test('includes every active project task independently of the worker count', asy
   });
 });
 
-test('reports an unavailable source independently and bounds large current counts', async () => {
-  const states = await readProjectStates(
+test('reports an unavailable source independently and bounds large current counts', () => {
+  const states = readProjectStates(
     [
       { id: 'missing', name: 'Missing', root: '/projects/missing' },
       { id: 'busy', name: 'Busy', root: '/projects/busy' },
@@ -136,8 +136,8 @@ test('reports an unavailable source independently and bounds large current count
   });
 });
 
-test('marks a missing or oversized custom icon unavailable without dropping the project', async () => {
-  const states = await readProjectStates(
+test('marks a missing or oversized custom icon unavailable without dropping the project', () => {
+  const states = readProjectStates(
     [{ id: 'project', name: 'Project', root: '/projects/project', icon: '/icons/project.png' }],
     () => source(0),
     {
@@ -157,8 +157,8 @@ test('marks a missing or oversized custom icon unavailable without dropping the 
   });
 });
 
-test('does not report a missing configured project root as idle', async () => {
-  const states = await readProjectStates(
+test('does not report a missing configured project root as idle', () => {
+  const states = readProjectStates(
     [{ id: 'missing', name: 'Missing', root: '/projects/missing' }],
     () => source(0),
     { isProjectDirectory: () => false },
@@ -167,8 +167,8 @@ test('does not report a missing configured project root as idle', async () => {
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'unavailable' });
 });
 
-test('reports only stale worker evidence as stale', async () => {
-  const states = await readProjectStates(
+test('reports only stale worker evidence as stale', () => {
+  const states = readProjectStates(
     [{ id: 'stale', name: 'Stale', root: '/projects/stale' }],
     () => source(1),
     { isProjectDirectory: () => true, now: () => 25 * 60 * 60 * 1000 },
@@ -177,9 +177,9 @@ test('reports only stale worker evidence as stale', async () => {
   assert.deepEqual(states[0]?.activeWorkerCount, { availability: 'stale' });
 });
 
-test('preserves current workers as a lower bound when stale workers are also returned', async () => {
+test('preserves current workers as a lower bound when stale workers are also returned', () => {
   const now = 25 * 60 * 60 * 1000;
-  const states = await readProjectStates(
+  const states = readProjectStates(
     [{ id: 'mixed', name: 'Mixed', root: '/projects/mixed' }],
     () => sourceWithUpdatedAt(now - 1000, 0),
     { isProjectDirectory: () => true, now: () => now },
@@ -194,9 +194,9 @@ test('preserves current workers as a lower bound when stale workers are also ret
   assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
 
-test('reports implausibly future-dated worker evidence as unavailable', async () => {
+test('reports implausibly future-dated worker evidence as unavailable', () => {
   const now = 1000;
-  const states = await readProjectStates(
+  const states = readProjectStates(
     [{ id: 'future', name: 'Future', root: '/projects/future' }],
     () => sourceWithUpdatedAt(now + 5 * 60 * 1000 + 1),
     { isProjectDirectory: () => true, now: () => now },
@@ -206,9 +206,9 @@ test('reports implausibly future-dated worker evidence as unavailable', async ()
   assert.equal(states[0]?.tasks[0]?.id, 'task-0');
 });
 
-test('preserves current workers while marking concurrent future evidence unavailable', async () => {
+test('preserves current workers while marking concurrent future evidence unavailable', () => {
   const now = 1000;
-  const states = await readProjectStates(
+  const states = readProjectStates(
     [{ id: 'mixed-future', name: 'Mixed Future', root: '/projects/mixed-future' }],
     () => sourceWithUpdatedAt(now, now + 5 * 60 * 1000 + 1),
     { isProjectDirectory: () => true, now: () => now },

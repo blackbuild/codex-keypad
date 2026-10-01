@@ -33,8 +33,8 @@ test('normalizes the closed workflow vocabulary from configured literal markers'
   ] as const;
   for (const [marker, state] of expected) {
     const parsed = parseWorkflowTask(task(`${marker} DIST-15 Create charts`), {
-      workflowRules: rules,
-      compactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'],
+      globalWorkflowRules: rules,
+      globalCompactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'],
     });
     assert.equal(parsed.workflowState, state);
     assert.equal(parsed.status, 'working');
@@ -45,8 +45,8 @@ test('normalizes the closed workflow vocabulary from configured literal markers'
 
 test('compact-label extraction is independent and safely falls back when unmatched', () => {
   const parsed = parseWorkflowTask(task('(PR:CI) no issue key'), {
-    workflowRules: rules,
-    compactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'],
+    globalWorkflowRules: rules,
+    globalCompactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'],
   });
   assert.equal(parsed.workflowState, 'waiting-for-ci');
   assert.equal(parsed.compactLabel, '(PR:CI) no issue …');
@@ -54,10 +54,38 @@ test('compact-label extraction is independent and safely falls back when unmatch
 
 test('overlong titles fail closed for workflow parsing and bound the fallback label', () => {
   const parsed = parseWorkflowTask(task(`(DONE) ${'x'.repeat(600)}`), {
-    workflowRules: rules,
-    compactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'],
+    globalWorkflowRules: rules,
+    globalCompactLabelPatterns: ['[A-Z]{2,10}-[0-9]{1,6}'],
   });
   assert.equal(parsed.workflowState, 'unspecified');
   assert.equal(parsed.compactLabel.length, 18);
   assert.equal(parsed.status, 'working');
+});
+
+test('matches workflow markers only at the title prefix, allowing leading whitespace', () => {
+  const configuration = { globalWorkflowRules: rules };
+  assert.equal(parseWorkflowTask(task('(PR:CI) DIST-15 Build'), configuration).workflowState, 'waiting-for-ci');
+  assert.equal(parseWorkflowTask(task('  \t(PR:CI) DIST-15 Build'), configuration).workflowState, 'waiting-for-ci');
+  assert.equal(parseWorkflowTask(task('DIST-15 Document the (PR:CI) marker'), configuration).workflowState, 'unspecified');
+  assert.equal(parseWorkflowTask(task('An ordinary title (PR:CI)'), configuration).workflowState, 'unspecified');
+});
+
+test('project workflow markers take precedence, then global rules, then unspecified', () => {
+  const configuration = {
+    workflowRules: [{ marker: '(REVIEW)', state: 'waiting-for-input' as const }],
+    globalWorkflowRules: [{ marker: '(PR:REVIEW)', state: 'waiting-for-review' as const }],
+  };
+  assert.equal(parseWorkflowTask(task('(REVIEW) Ask the project'), configuration).workflowState, 'waiting-for-input');
+  assert.equal(parseWorkflowTask(task('(PR:REVIEW) Review pull request'), configuration).workflowState, 'waiting-for-review');
+  assert.equal(parseWorkflowTask(task('No declared state'), configuration).workflowState, 'unspecified');
+});
+
+test('project compact-label patterns take precedence and global patterns remain fallback', () => {
+  const configuration = {
+    compactLabelPatterns: ['#[0-9]{1,6}'],
+    globalCompactLabelPatterns: ['\\b[A-Z]{2,10}-[0-9]{1,6}\\b'],
+  };
+  assert.equal(parseWorkflowTask(task('DIST-15 #747 Fix chart'), configuration).compactLabel, '#747');
+  assert.equal(parseWorkflowTask(task('DIST-15 Fix chart'), configuration).compactLabel, 'DIST-15');
+  assert.equal(parseWorkflowTask(task('A title without a key'), configuration).compactLabel, 'A title without a…');
 });

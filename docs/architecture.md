@@ -52,12 +52,13 @@ ordering. This avoids guessing from shared working directories while allowing a
 stable policy independent of one task ID.
 
 Each task keeps Codex-observed runtime status and title-declared workflow state
-as separate normalized fields. A bounded rule table maps configured literal
-title markers into a closed workflow vocabulary. Global rules are defaults;
-project rules add markers or replace the rule for the same literal marker.
-Independent compact-label expressions select keypad labels; project label
-patterns replace the inherited list. Neither dimension changes task identity or
-runtime status. Operator attention is derived from runtime and workflow state in
+as separate normalized fields. Bounded literal markers map title prefixes into
+a closed workflow vocabulary. Project rules are checked first and global rules
+are fallback. Leading whitespace is allowed; marker text later in the title is
+ignored. Independent compact-label expressions select keypad labels; project
+patterns are checked first, global patterns are fallback, and a bounded title
+is used if neither matches. Neither dimension changes task identity or runtime
+status. Operator attention is derived from runtime and workflow state in
 TypeScript, and the adapter renders both the runtime icon and compact workflow cue.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 Accordingly, the project overview contains no redundant product Up tile; native

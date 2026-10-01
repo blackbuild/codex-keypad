@@ -35,11 +35,11 @@ export function readProjectStates(
   projects: readonly CodexProjectConfiguration[],
   createTaskSource: ProjectTaskSourceFactory,
   options: ProjectStateReadOptions = {},
-): Promise<readonly CodexProjectState[]> {
+): readonly CodexProjectState[] {
   const readIconMetadata = options.readIconMetadata ?? defaultIconMetadata;
   const isProjectDirectory = options.isProjectDirectory ?? defaultIsProjectDirectory;
   const now = options.now ?? Date.now;
-  return Promise.all(projects.map(async (configuration) => {
+  return projects.map((configuration) => {
     const project: CodexProjectIdentity = {
       id: configuration.id,
       name: configuration.name,
@@ -113,7 +113,7 @@ export function readProjectStates(
         tasks: [],
       };
     }
-  }));
+  });
 }
 
 function defaultIsProjectDirectory(path: string): boolean {

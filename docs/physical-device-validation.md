@@ -79,9 +79,11 @@ and each pass/fail result without recording private prompt or transcript content
 5. **Done:** have the orchestrator explicitly mark an accepted worker with the
    `done` marker. Confirm the `DN` workflow cue while Codex runtime remains
    independently displayed. Verify the plugin does not archive the task.
-6. **Configuration inheritance and refresh:** confirm global markers apply to
-   projects, a project can override a global marker and add another, and its
-   compact-label rules remain independent. Change configuration and task titles;
+6. **Configuration precedence and refresh:** confirm workflow markers match
+   only at the title prefix, project markers take precedence over global
+   fallback rules, and unmatched titles stay unspecified. Confirm project
+   compact-label patterns take precedence while global patterns remain fallback.
+   Change configuration and task titles;
    verify updates appear live without restarting Options+.
 
 Physical acceptance is complete only when these six revised Issue #8 checks and

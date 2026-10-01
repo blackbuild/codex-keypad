@@ -50,7 +50,9 @@ test('reads configured project identity, root, and custom icon', async () => {
     coordinatorTaskPattern: architecture?.coordinatorTaskPattern,
     icon: architecture?.icon,
     workflowRules: architecture?.workflowRules,
+    globalWorkflowRules: architecture?.globalWorkflowRules,
     compactLabelPatterns: architecture?.compactLabelPatterns,
+    globalCompactLabelPatterns: architecture?.globalCompactLabelPatterns,
     secondId: keypad?.id,
     secondPattern: keypad?.coordinatorTaskPattern,
   }, {
@@ -61,8 +63,9 @@ test('reads configured project identity, root, and custom icon', async () => {
       coordinatorTaskId: 'thread-coordinator',
       coordinatorTaskPattern: 'Architecture Coordinator',
       icon: '/icons/architecture.png',
-      workflowRules: [
-        { marker: '(PR:CI)', state: 'done' },
+      workflowRules: [{ marker: '(PR:CI)', state: 'done' }],
+      globalWorkflowRules: [
+        { marker: '(PR:CI)', state: 'waiting-for-ci' },
         { marker: '(PR:REVIEW)', state: 'waiting-for-review' },
         { marker: '(PR:CHANGES)', state: 'changes-requested' },
         { marker: '(INPUT)', state: 'waiting-for-input' },
@@ -73,6 +76,7 @@ test('reads configured project identity, root, and custom icon', async () => {
         { marker: '(DONE)', state: 'done' },
       ],
       compactLabelPatterns: ['#[0-9]{1,6}'],
+      globalCompactLabelPatterns: ['\\b[A-Z]{2,10}-[0-9]{1,6}\\b'],
       secondId: 'codex-keypad',
       secondPattern: '* Hive',
   });
@@ -87,11 +91,11 @@ test('keeps the issue 4 single-project configuration compatible', async () => {
   );
 
   const [single] = configuredProjects({}, homeDirectory);
-  assert.deepEqual(single?.workflowRules?.map(({ state }) => state), [
+  assert.deepEqual(single?.globalWorkflowRules?.map(({ state }) => state), [
     'waiting-for-ci', 'waiting-for-review', 'changes-requested', 'waiting-for-input',
     'waiting-for-approval', 'blocked', 'handoff-failed', 'handoff-failed', 'done',
   ]);
-  assert.deepEqual(single?.compactLabelPatterns, ['\\b[A-Z]{2,10}-[0-9]{1,6}\\b']);
+  assert.deepEqual(single?.globalCompactLabelPatterns, ['\\b[A-Z]{2,10}-[0-9]{1,6}\\b']);
 });
 
 test('fails explicitly when neither process nor persistent configuration identifies a project', () => {
@@ -185,7 +189,7 @@ test('rejects duplicate project identities and relative repository or icon paths
   assert.throws(() => configuredProjects({}, homeDirectory), /effective workflow rules must contain at most 32/);
 });
 
-test('global workflow rules and project overrides/additions inherit while label rules stay independent', async () => {
+test('keeps global and project workflow and compact-label layers separate', async () => {
   const configurationDirectory = join(homeDirectory, 'Library', 'Application Support', 'Codex Keypad');
   await mkdir(configurationDirectory, { recursive: true });
   await writeFile(join(configurationDirectory, 'config.json'), JSON.stringify({
@@ -203,11 +207,14 @@ test('global workflow rules and project overrides/additions inherit while label 
     ],
   }));
   const [global, custom] = configuredProjects({}, homeDirectory);
-  assert.equal(global?.workflowRules?.find(({ marker }) => marker === '(PR:CI)')?.state, 'waiting-for-review');
-  assert.equal(custom?.workflowRules?.find(({ marker }) => marker === '(PR:CI)')?.state, 'waiting-for-ci');
-  assert.equal(custom?.workflowRules?.some(({ marker }) => marker === '[WAITING]'), true);
-  assert.equal(custom?.workflowRules?.some(({ marker }) => marker === '[OPS]'), true);
+  assert.equal(global?.globalWorkflowRules?.find(({ marker }) => marker === '(PR:CI)')?.state, 'waiting-for-review');
+  assert.deepEqual(custom?.workflowRules, [
+    { marker: '(PR:CI)', state: 'waiting-for-ci' },
+    { marker: '[OPS]', state: 'blocked' },
+  ]);
+  assert.equal(custom?.globalWorkflowRules?.some(({ marker }) => marker === '[WAITING]'), true);
   assert.deepEqual(custom?.compactLabelPatterns, ['DIST-[0-9]{1,6}']);
+  assert.deepEqual(custom?.globalCompactLabelPatterns, ['#[0-9]{1,6}']);
 });
 
 test('observes project additions without retaining a startup snapshot', async () => {

@@ -20,8 +20,12 @@ export interface CodexProjectConfiguration {
   readonly coordinatorTaskId?: string;
   readonly coordinatorTaskPattern?: string;
   readonly icon?: string;
+  /** Project-specific rules, evaluated before the global fallback rules. */
   readonly workflowRules?: readonly WorkflowRule[];
+  readonly globalWorkflowRules?: readonly WorkflowRule[];
+  /** Project-specific label patterns, evaluated before the global fallback patterns. */
   readonly compactLabelPatterns?: readonly string[];
+  readonly globalCompactLabelPatterns?: readonly string[];
 }
 
 export type WorkflowState =
@@ -68,8 +72,8 @@ export function configuredProjects(
         'CODEX_KEYPAD_COORDINATOR_TASK_PATTERN',
       ),
       ...optionalIcon(environment.CODEX_KEYPAD_PROJECT_ICON, 'CODEX_KEYPAD_PROJECT_ICON'),
-      workflowRules: DEFAULT_WORKFLOW_RULES,
-      compactLabelPatterns: DEFAULT_COMPACT_LABEL_PATTERNS,
+      globalWorkflowRules: DEFAULT_WORKFLOW_RULES,
+      globalCompactLabelPatterns: DEFAULT_COMPACT_LABEL_PATTERNS,
     }];
   }
 
@@ -110,8 +114,8 @@ export function configuredProjects(
             : undefined,
           'coordinatorTaskPattern',
         ),
-        workflowRules: DEFAULT_WORKFLOW_RULES,
-        compactLabelPatterns: DEFAULT_COMPACT_LABEL_PATTERNS,
+        globalWorkflowRules: DEFAULT_WORKFLOW_RULES,
+        globalCompactLabelPatterns: DEFAULT_COMPACT_LABEL_PATTERNS,
       }];
     }
 
@@ -191,14 +195,13 @@ function parseProject(
     name: projectName(value.name),
     root,
     ...(repositories.length > 0 ? { repositories } : {}),
-    workflowRules: mergeWorkflowRules(
-      defaultWorkflowRules,
-      optionalWorkflowRules(value.workflowRules, `projects[${index}].workflowRules`).workflowRules ?? [],
-    ),
+    workflowRules: optionalWorkflowRules(value.workflowRules, `projects[${index}].workflowRules`).workflowRules ?? [],
+    globalWorkflowRules: defaultWorkflowRules,
     compactLabelPatterns: optionalCompactLabelPatterns(
       value.compactLabelPatterns,
       `projects[${index}].compactLabelPatterns`,
-    ).compactLabelPatterns ?? defaultCompactLabelPatterns,
+    ).compactLabelPatterns ?? [],
+    globalCompactLabelPatterns: defaultCompactLabelPatterns,
     ...optionalCoordinatorTaskId(
       value.coordinatorTaskId,
       `projects[${index}].coordinatorTaskId`,

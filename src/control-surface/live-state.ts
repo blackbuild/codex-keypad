@@ -26,7 +26,7 @@ process.once('SIGTERM', () => {
 
 do {
   try {
-    const projects = await readProjectStates(
+    const projects = readProjectStates(
       configuredProjects(),
       (projectRoots) => createDefaultCodexTaskSource(process.env, projectRoots),
       {},

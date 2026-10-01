@@ -11,14 +11,23 @@ export interface WorkflowTask extends CodexTask {
 
 export function parseWorkflowTask(
   task: CodexTask,
-  configuration: Pick<CodexProjectConfiguration, 'workflowRules' | 'compactLabelPatterns'>,
+  configuration: Pick<CodexProjectConfiguration,
+    'workflowRules' | 'globalWorkflowRules' | 'compactLabelPatterns' | 'globalCompactLabelPatterns'>,
 ): WorkflowTask {
   const boundedTitle = task.title.slice(0, MAXIMUM_TITLE_LENGTH);
   const workflowState = task.title.length <= MAXIMUM_TITLE_LENGTH
-    ? configuredWorkflowState(boundedTitle, configuration.workflowRules ?? [])
+    ? configuredWorkflowState(
+      boundedTitle,
+      configuration.workflowRules ?? [],
+      configuration.globalWorkflowRules ?? [],
+    )
     : 'unspecified';
   const compactLabel = task.title.length <= MAXIMUM_TITLE_LENGTH
-    ? configuredCompactLabel(boundedTitle, configuration.compactLabelPatterns ?? [])
+    ? configuredCompactLabel(
+      boundedTitle,
+      configuration.compactLabelPatterns ?? [],
+      configuration.globalCompactLabelPatterns ?? [],
+    )
       ?? compactTitle(boundedTitle)
     : compactTitle(boundedTitle);
   return { ...task, workflowState, compactLabel };
@@ -26,19 +35,24 @@ export function parseWorkflowTask(
 
 export function configuredWorkflowState(
   title: string,
-  rules: readonly WorkflowRule[],
+  projectRules: readonly WorkflowRule[],
+  globalRules: readonly WorkflowRule[] = [],
 ): WorkflowState {
-  for (const rule of rules) {
-    if (title.includes(rule.marker)) return rule.state;
+  const prefix = title.trimStart();
+  for (const rules of [projectRules, globalRules]) {
+    for (const rule of rules) {
+      if (prefix.startsWith(rule.marker)) return rule.state;
+    }
   }
   return 'unspecified';
 }
 
 export function configuredCompactLabel(
   title: string,
-  patterns: readonly string[],
+  projectPatterns: readonly string[],
+  globalPatterns: readonly string[] = [],
 ): string | undefined {
-  for (const pattern of patterns) {
+  for (const pattern of [...projectPatterns, ...globalPatterns]) {
     try {
       const match = new RegExp(pattern).exec(title)?.[0];
       if (match) return compactTitle(match);

@@ -71,10 +71,10 @@ cat > "$HOME/Library/Application Support/Codex Keypad/config.json" <<'JSON'
       "coordinatorTaskPattern": "Codex Keypad Hive*",
       "icon": "/absolute/path/to/codex-keypad.png",
       "workflowRules": [
-        { "marker": "(PR:CI)", "state": "waiting-for-ci" },
+        { "marker": "(REVIEW)", "state": "waiting-for-review" },
         { "marker": "(HANDOFF:FAILED)", "state": "handoff-failed" }
       ],
-      "compactLabelPatterns": ["\\b[A-Z]{2,10}-[0-9]{1,6}\\b"]
+      "compactLabelPatterns": ["#[0-9]{1,6}"]
     },
     {
       "id": "another-project",
@@ -107,15 +107,15 @@ label, and uses the project icon when configured; the remaining tasks retain
 deterministic recency ordering. An optional `icon` is an absolute path to a PNG
 of at most 1 MiB.
 
-Workflow declarations come only from task titles. Global `workflowRules` map
-literal markers to the closed workflow vocabulary; projects inherit them and
-may override a marker by repeating it with a different state or add new markers.
-The first matching rule in the resulting ordered list wins. Global
-`compactLabelPatterns` independently extract short labels with a restricted,
-bounded regular-expression subset. A project may supply its own compact-label
-patterns, replacing the inherited list. Invalid patterns, unknown states, and
-overlong titles fail closed; an unmatched workflow marker is `unspecified`, and
-an unmatched label falls back to the bounded task title. For example,
+Workflow declarations come only from task-title prefixes. Literal markers match
+only at the beginning of the title, allowing leading whitespace; marker text
+later in the title is ignored. Project `workflowRules` are checked first, then
+global `workflowRules`; the first prefix match wins, and no match is
+`unspecified`. There is no switch to disable global fallback. Compact labels
+are parsed independently: project `compactLabelPatterns` are checked first,
+then global patterns, each using a restricted bounded regular-expression
+subset. If neither layer matches, the bounded task title is used. Invalid
+patterns, unknown states, and overlong titles fail closed. For example,
 `(PR:CI) DIST-15 Create the helm charts` shows `DIST-15` with workflow
 `waiting-for-ci`, while runtime state continues to come only from Codex.
 Project tiles follow the configuration order; the Logitech runtime uses the
