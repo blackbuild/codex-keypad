@@ -19,7 +19,7 @@ try
                 Tone: "failed",
                 BackgroundColor: "#7F1D1D",
                 ForegroundColor: "#FFFFFF",
-                Badge: "!A~+1",
+                Badge: "!+",
             }
             && state.Entry.Visual.BorderColors.SequenceEqual([
                 "#F87171",
@@ -28,11 +28,27 @@ try
             ]));
     });
 
+    Run("accepts normalized human-review workflow attention with project navigation", () =>
+    {
+        var reviewJson = ProjectOverview()
+            .Replace("\"working\"", "\"waiting-for-review\"", StringComparison.Ordinal)
+            .Replace("\"tone\": \"waiting-for-review\", \"backgroundColor\": \"#075985\"", "\"tone\": \"waiting-for-review\", \"backgroundColor\": \"#134E4A\"", StringComparison.Ordinal)
+            .Replace("#38BDF8", "#5EEAD4", StringComparison.Ordinal)
+            .Replace("\"side\": \"right\"", "\"side\": \"left\"", StringComparison.Ordinal)
+            .Replace("\"badge\": \">\"", "\"badge\": \"R\"", StringComparison.Ordinal);
+        File.WriteAllText(fixturePath, reviewJson);
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.Entry.Attention.Primary == "waiting-for-review"
+            && state.View.Tiles[0].Attention!.Primary == "waiting-for-review"
+            && state.View.Tiles[0].Action is OpenTaskViewAction { ProjectId: "architecture" });
+    });
+
     Run("rejects legacy or unbounded visual contracts", () =>
     {
         File.WriteAllText(fixturePath, ProjectOverview().Replace(
-            "\"schemaVersion\": 9",
-            "\"schemaVersion\": 8",
+            "\"schemaVersion\": 11",
+            "\"schemaVersion\": 10",
             StringComparison.Ordinal));
         Expect(!ControlSurfaceContract.TryRead(fixturePath, out _));
 
@@ -90,6 +106,26 @@ try
         var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
         Expect(accepted
             && state!.View.Tiles[1].Action is OpenCodexTaskAction { ThreadId: "thread-123" });
+    });
+
+    Run("keeps observed runtime and handoff-failure workflow separate while preserving task ID", () =>
+    {
+        var workflowJson = TaskView("open-codex-task", "thread-123")
+            .Replace("\"workflowState\": \"unspecified\"", "\"workflowState\": \"handoff-failed\"", StringComparison.Ordinal)
+            .Replace("\"workflowState\": \"handoff-failed\",\n        \"attention\": { \"primary\": \"working\", \"indicators\": [{ \"state\": \"working\", \"count\": 1 }], \"additionalStates\": 0 },",
+                "\"workflowState\": \"handoff-failed\",\n        \"attention\": { \"primary\": \"handoff-failed\", \"indicators\": [{ \"state\": \"handoff-failed\", \"count\": 1 }, { \"state\": \"working\", \"count\": 1 }], \"additionalStates\": 0 },",
+                StringComparison.Ordinal)
+            .Replace("\"borderColors\": [\"#38BDF8\"], \"badge\": \">\", \"workerIndicators\": []",
+                "\"borderColors\": [\"#F87171\", \"#38BDF8\"], \"badge\": \"HFH+\", \"workerIndicators\": []",
+                StringComparison.Ordinal);
+        File.WriteAllText(fixturePath, workflowJson);
+        var accepted = ControlSurfaceContract.TryRead(fixturePath, out var state);
+        Expect(accepted
+            && state!.View.Tiles[1].Status == "working"
+            && state.View.Tiles[1].WorkflowState == "handoff-failed"
+            && state.View.Tiles[1].Visual.Tone == "working"
+            && state.View.Tiles[1].Attention!.Primary == "handoff-failed"
+            && state.View.Tiles[1].Action is OpenCodexTaskAction { ThreadId: "thread-123" });
     });
 
     Run("accepts only the normalized unavailable fallback for an unknown task state", () =>
@@ -200,7 +236,7 @@ static void Expect(Boolean condition)
 
 static String ProjectOverview() => """
 {
-  "schemaVersion": 9,
+  "schemaVersion": 11,
   "revision": "project-overview:projects:456",
   "entry": {
     "id": "codex",
@@ -235,7 +271,7 @@ static String ProjectOverview() => """
 
 static String AttentionProjectOverview() => """
 {
-  "schemaVersion": 9,
+  "schemaVersion": 11,
   "revision": "attention-project-overview:456",
   "entry": {
     "id": "codex",
@@ -256,7 +292,7 @@ static String AttentionProjectOverview() => """
       "backgroundColor": "#7F1D1D",
       "foregroundColor": "#FFFFFF",
       "borderColors": ["#F87171", "#FACC15", "#FDBA74"],
-      "badge": "!A~+1",
+      "badge": "!+",
       "workerIndicators": [
         { "state": "failed", "count": 2, "color": "#F87171", "side": "left" },
         { "state": "working", "count": 4, "color": "#38BDF8", "side": "right" }
@@ -274,7 +310,7 @@ static String AttentionProjectOverview() => """
 
 static String TaskView(String taskActionType, String threadId) => $$"""
 {
-  "schemaVersion": 9,
+  "schemaVersion": 11,
   "revision": "task-view:thread-123:456",
   "entry": {
     "id": "codex",
@@ -292,6 +328,7 @@ static String TaskView(String taskActionType, String threadId) => $$"""
         "id": "task:{{threadId}}",
         "label": "Exact task",
         "status": "working",
+        "workflowState": "unspecified",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
         "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [] },
         "action": { "type": "{{taskActionType}}", "threadId": "{{threadId}}" }
@@ -311,7 +348,7 @@ static String UnavailableTaskView(String threadId) =>
 
 static String CoordinatorTaskView() => """
 {
-  "schemaVersion": 9,
+  "schemaVersion": 11,
   "revision": "task-view:hive-thread:456",
   "entry": {
     "id": "codex",
@@ -330,6 +367,7 @@ static String CoordinatorTaskView() => """
         "iconPath": "/icons/codex-keypad.png",
         "role": "coordinator",
         "status": "working",
+        "workflowState": "unspecified",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
         "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [{ "state": "working", "count": 1, "color": "#38BDF8", "side": "right" }] },
         "action": { "type": "open-codex-task", "threadId": "hive-thread" }
@@ -339,6 +377,7 @@ static String CoordinatorTaskView() => """
         "id": "task:worker-thread",
         "label": "Worker",
         "status": "working",
+        "workflowState": "unspecified",
         "attention": { "primary": "working", "indicators": [{ "state": "working", "count": 1 }], "additionalStates": 0 },
         "visual": { "icon": "task", "glyph": "T", "tone": "working", "backgroundColor": "#075985", "foregroundColor": "#FFFFFF", "borderColors": ["#38BDF8"], "badge": ">", "workerIndicators": [] },
         "action": { "type": "open-codex-task", "threadId": "worker-thread" }
@@ -364,13 +403,14 @@ static String ManyTaskView(Int32 taskCount)
         id = $"task:thread-{index}",
         label = $"Task {index}",
         status = "working",
+        workflowState = "unspecified",
         attention = WorkingAttention(),
         visual = WorkingVisual("task", "T"),
         action = new { type = "open-codex-task", threadId = $"thread-{index}" },
     }));
     return JsonSerializer.Serialize(new
     {
-        schemaVersion = 9,
+        schemaVersion = 11,
         revision = "many-tasks:456",
         entry = new
         {

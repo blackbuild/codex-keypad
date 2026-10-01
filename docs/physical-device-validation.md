@@ -1,6 +1,6 @@
 # Physical-device validation
 
-Issue 7 requires a bounded MX Keypad demonstration after installing the packaged
+Issues 7 and 8 require bounded MX Keypad demonstrations after installing the packaged
 plugin. Automated builds and simulated state are prerequisites, not hardware
 acceptance. Record the package checksum, Options+ version, device/firmware, LCD
 brightness, and pass/fail for each check; do not record private task content.
@@ -51,9 +51,43 @@ real Codex database or claiming physical coverage from a synthetic renderer test
    beyond the two-second freshness window. Confirm the global tile changes to the
    explicit `?` image with the `Codex` native label rather than retaining healthy state.
 
-Hardware acceptance is complete only when the maintainer records all nine checks
-as passing on the physical device.
+## Issue 8 workflow demonstration
 
+These checks remain required for physical acceptance of the revised workflow
+model. Use controlled task titles through normal Codex/orchestrator flows; do not
+edit the production Codex database or claim physical coverage from simulated
+state. Record the package checksum, Options+ version, device/firmware, brightness,
+and each pass/fail result without recording private prompt or transcript content.
+
+1. **Compact labels and independent runtime:** configure the `(PR:CI)` marker and
+   the `DIST-15` compact-label pattern. Confirm
+   `(PR:CI) DIST-15 Create the helm charts` shows `DIST-15`, its workflow cue is
+   `CI`, its runtime icon/background still reflects Codex, and pressing it opens
+   the exact task by stable task ID.
+2. **Unspecified and fallback:** show a task with no recognized workflow marker
+   and a task whose title has no compact-label match. Confirm workflow is marked
+   `unspecified`, the fallback label is bounded and readable, and neither task
+   is presented as done or working due to title text.
+3. **Human attention and aggregation:** produce `waiting-for-review` or
+   `waiting-for-input` alongside a working task. Confirm workflow adds the
+   attention cue while the task's runtime status remains visible; project and
+   global indicators include the human-attention condition using documented
+   precedence.
+4. **Handoff failure:** configure a handoff failure marker and produce
+   `handoff-failed`. Confirm the prominent `HF` cue and high-priority attention
+   are distinct from generic blocked state at task, project, and global levels.
+5. **Done:** have the orchestrator explicitly mark an accepted worker with the
+   `done` marker. Confirm the `DN` workflow cue while Codex runtime remains
+   independently displayed. Verify the plugin does not archive the task.
+6. **Configuration precedence and refresh:** confirm workflow markers match
+   only at the title prefix, project markers take precedence over global
+   fallback rules, and unmatched titles stay unspecified. Confirm project
+   compact-label patterns take precedence while global patterns remain fallback.
+   Change configuration and task titles;
+   verify updates appear live without restarting Options+.
+
+Physical acceptance is complete only when these six revised Issue #8 checks and
+the original nine Issue #7 checks have been recorded as passing on an MX Keypad.
 ## Validation record: 0.2.18–0.2.22
 
 Test started on 2026-09-25.

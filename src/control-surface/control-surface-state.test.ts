@@ -32,7 +32,7 @@ test('normalizes configured projects in stable order with icons and active-worke
     project('idle', 'Idle Project', 0),
   ]);
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 11);
   assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, action }) => ({
     id,
     label,
@@ -128,7 +128,7 @@ test('aggregates task attention across project and entry tiles with bounded comp
     },
   ]);
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 11);
   assert.deepEqual(state.entry.attention, {
     primary: 'failed',
     indicators: [
@@ -145,7 +145,7 @@ test('aggregates task attention across project and entry tiles with bounded comp
     backgroundColor: '#7F1D1D',
     foregroundColor: '#FFFFFF',
     borderColors: ['#F87171', '#FACC15', '#FDBA74'],
-    badge: '!A~+1',
+    badge: '!+',
     workerIndicators: [
       { state: 'failed', count: 1, color: '#F87171', side: 'left' },
       { state: 'waiting-for-approval', count: 1, color: '#FACC15', side: 'left' },
@@ -190,7 +190,7 @@ test('shows a valid lower-bound worker count with unavailable concurrent evidenc
   }]);
 
   assert.equal(state.view.tiles[0]?.label, 'Mixed');
-  assert.equal(state.view.tiles[0]?.visual.badge, '?>');
+  assert.equal(state.view.tiles[0]?.visual.badge, '?+');
   assert.deepEqual(state.view.tiles[0]?.visual.workerIndicators, [
     { state: 'unavailable', count: 1, color: '#D4D4D8', side: 'left' },
     { state: 'working', count: 1, color: '#38BDF8', side: 'right' },
@@ -198,6 +198,51 @@ test('shows a valid lower-bound worker count with unavailable concurrent evidenc
   assert.deepEqual(state.view.tiles[0]?.attention?.indicators, [
     { state: 'unavailable', count: 1 },
     { state: 'working', count: 1 },
+  ]);
+});
+
+test('workflow metadata augments attention while runtime icon and exact task identity stay independent', () => {
+  const state = buildProjectControlSurface([{
+    ...project('workflow', 'Workflow', 1),
+    tasks: [{ ...task, workflowState: 'handoff-failed', compactLabel: 'DIST-15' }],
+  }], { level: 'task-view', selectedProjectId: 'workflow' });
+  const tile = state.view.tiles[1]!;
+  assert.equal(tile.label, 'DIST-15');
+  assert.equal(tile.status, 'working');
+  assert.equal(tile.workflowState, 'handoff-failed');
+  assert.equal(tile.visual.tone, 'working');
+  assert.equal(tile.visual.badge, 'HFH+');
+  assert.deepEqual(tile.attention?.indicators, [
+    { state: 'handoff-failed', count: 1 }, { state: 'working', count: 1 },
+  ]);
+  assert.deepEqual(tile.action, { type: 'open-codex-task', threadId: 'thread-123' });
+});
+
+test('waiting-for-CI and done are informational while human attention states aggregate', () => {
+  const make = (workflowState: import('./project-configuration.ts').WorkflowState) => buildProjectControlSurface([{
+    ...project('workflow', 'Workflow', 0),
+    tasks: [{ ...task, status: 'completed', workflowState }],
+  }]);
+  assert.equal(make('waiting-for-ci').entry.attention.primary, 'idle');
+  assert.equal(make('done').entry.attention.primary, 'idle');
+  assert.equal(make('waiting-for-review').entry.attention.primary, 'waiting-for-review');
+  assert.equal(make('changes-requested').entry.attention.primary, 'changes-requested');
+  assert.equal(make('waiting-for-input').entry.attention.primary, 'waiting-for-input');
+  assert.equal(make('waiting-for-approval').entry.attention.primary, 'waiting-for-approval');
+  assert.equal(make('blocked').entry.attention.primary, 'blocked');
+});
+
+test('handoff failure outranks blocked and other operator attention', () => {
+  const state = buildProjectControlSurface([{
+    ...project('workflow', 'Workflow', 0),
+    tasks: [
+      { ...task, id: 'blocked', status: 'completed', workflowState: 'blocked' },
+      { ...task, id: 'handoff', status: 'completed', workflowState: 'handoff-failed' },
+    ],
+  }]);
+  assert.equal(state.entry.attention.primary, 'handoff-failed');
+  assert.deepEqual(state.entry.attention.indicators.map(({ state: value }) => value), [
+    'handoff-failed', 'blocked',
   ]);
 });
 
@@ -211,7 +256,7 @@ test('normalizes every selected-project task in deterministic recency order', ()
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 11);
   assert.deepEqual(state.view.tiles.slice(1).map(({ id, label, status, action }) => ({
     id,
     label,
@@ -232,8 +277,8 @@ test('normalizes every selected-project task in deterministic recency order', ()
     },
   ]);
   assert.equal(state.view.tiles[1]?.visual.glyph, 'T');
-  assert.equal(state.view.tiles[1]?.visual.badge, '>');
-  assert.equal(state.view.tiles[2]?.visual.badge, 'OK');
+  assert.equal(state.view.tiles[1]?.visual.badge, '?>');
+  assert.equal(state.view.tiles[2]?.visual.badge, '?OK');
 });
 
 test('labels the configured coordinator with its project name', () => {
@@ -248,7 +293,7 @@ test('labels the configured coordinator with its project name', () => {
     selectedProjectId: 'codex-keypad',
   });
 
-  assert.equal(state.schemaVersion, 9);
+  assert.equal(state.schemaVersion, 11);
   assert.deepEqual(state.view.tiles.map(({ id, label, iconPath, role, status, action }) => ({
     id,
     label,

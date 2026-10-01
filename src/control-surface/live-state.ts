@@ -29,6 +29,7 @@ do {
     const projects = readProjectStates(
       configuredProjects(),
       (projectRoots) => createDefaultCodexTaskSource(process.env, projectRoots),
+      {},
     );
     const action = await inbox.take();
     if (action) {

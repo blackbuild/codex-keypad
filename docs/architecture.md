@@ -50,6 +50,16 @@ uses the project display name as its native label, and receives the configured
 project icon or Hive fallback; all remaining tasks retain recency/identity
 ordering. This avoids guessing from shared working directories while allowing a
 stable policy independent of one task ID.
+
+Each task keeps Codex-observed runtime status and title-declared workflow state
+as separate normalized fields. Bounded literal markers map title prefixes into
+a closed workflow vocabulary. Project rules are checked first and global rules
+are fallback. Leading whitespace is allowed; marker text later in the title is
+ignored. Independent compact-label expressions select keypad labels; project
+patterns are checked first, global patterns are fallback, and a bounded title
+is used if neither matches. Neither dimension changes task identity or runtime
+status. Operator attention is derived from runtime and workflow state in
+TypeScript, and the adapter renders both the runtime icon and compact workflow cue.
 The device Home behavior and the close effect are owned by the Logitech runtime.
 Accordingly, the project overview contains no redundant product Up tile; native
 Back/Home exits to the surrounding Logitech profile. The selected-project task
@@ -72,7 +82,7 @@ product action. Tasks are opened by the existing
 shell-free, validated Codex deep-link adapter. Unknown action types and unknown
 JSON members are rejected. Task labels use normalized task names or an opaque
 identifier fallback, never raw prompt or transcript content. Attention
-aggregation uses the schema-v8 defaults below; agent-customized layouts remain a
+aggregation uses the schema-v11 defaults below; agent-customized layouts remain a
 later roadmap slice.
 
 ## Target navigation model
@@ -98,8 +108,9 @@ Hive, but the product does not require that vocabulary.
 ## Runtime direction
 
 The normalized project, task, attention, layout, and semantic-action contracts
-remain in TypeScript. Codex and external-system adapters produce those contracts;
-handoff transports carry them without becoming sources of authority.
+remain in TypeScript. Codex supplies runtime state; task-title rules supply
+workflow declarations; the control-surface core derives attention. Handoff
+transports carry normalized state without becoming sources of authority.
 
 The live Logitech adapter is a thin C# dynamic-folder plugin. Logitech's Node SDK
 does not expose the dynamic-folder layout and image invalidation needed for live
@@ -115,7 +126,7 @@ References:
 ## State and action flow
 
 ```text
-Codex / review providers / validated handoff
+Codex runtime state + task-title workflow declarations
                   │
                   ▼
        normalized TypeScript state
@@ -133,7 +144,7 @@ Codex / review providers / validated handoff
 Task state aggregates to project state, and project state aggregates to the global
 entry tile. Concurrent attention must use deterministic visual composition rather
 than silently discarding conditions. Unknown or stale state must not be rendered as
-confirmed healthy state. The schema-v8 default tokens, precedence, bounded
+confirmed healthy state. The schema-v11 default tokens, precedence, bounded
 composition, fallback icons, and contrast behavior are specified in
 [default-visual-system.md](default-visual-system.md).
 

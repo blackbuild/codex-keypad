@@ -30,12 +30,15 @@ public static class ControlSurfaceBitmapRenderer
         using var builder = new BitmapBuilder(imageSize);
         var statusBackground = ParseColor(visual.BackgroundColor);
         var isProjectTile = visual.Icon == "project" && role != "coordinator";
+        var badge = visual.Icon == "project" && visual.Badge.Length > 2
+            ? $"{visual.Badge[..1]}+"
+            : visual.Badge;
         var background = visual.Icon == "entry" || isProjectTile
             ? BitmapColor.FromRgb(NeutralAggregateBackgroundColor)
             : statusBackground;
         var foreground = ParseColor(visual.ForegroundColor);
         var badgeFontSize = Math.Clamp(builder.Width / 4, 16, 20);
-        var badgeWidth = BadgeWidth(builder.Width, visual.Badge, badgeFontSize);
+        var badgeWidth = BadgeWidth(builder.Width, badge, badgeFontSize);
         var hasWorkerRailChrome = visual.Icon == "project" || role == "coordinator";
         builder.Clear(background);
 
@@ -65,11 +68,22 @@ public static class ControlSurfaceBitmapRenderer
             DrawProjectStatusTab(builder, tabColor);
         }
         DrawWorkerIndicatorRails(builder, visual.WorkerIndicators, role == "coordinator");
+        if (visual.Icon is "entry" or "project" || visual.Icon == "task" && role != "coordinator")
+        {
+            DrawBadge(
+                builder,
+                badge,
+                badgeWidth,
+                badgeFontSize,
+                background,
+                foreground,
+                visual.Icon == "project" ? WorkerRailGutterWidth : 0);
+        }
         if (role == "coordinator")
         {
             DrawBadge(
                 builder,
-                visual.Badge,
+                badge,
                 badgeWidth,
                 badgeFontSize,
                 background,
@@ -169,6 +183,17 @@ public static class ControlSurfaceBitmapRenderer
                 Line(builder, 23, 70, 67, 70, color, Stroke(builder, 3));
                 Line(builder, 23, 22, 67, 70, color, Stroke(builder, 3));
                 Line(builder, 67, 22, 23, 70, color, Stroke(builder, 3));
+                break;
+            case "waiting-for-review":
+                Line(builder, 18, 45, 31, 32, color, Stroke(builder, 4));
+                Line(builder, 31, 32, 45, 27, color, Stroke(builder, 4));
+                Line(builder, 45, 27, 59, 32, color, Stroke(builder, 4));
+                Line(builder, 59, 32, 72, 45, color, Stroke(builder, 4));
+                Line(builder, 72, 45, 59, 58, color, Stroke(builder, 4));
+                Line(builder, 59, 58, 45, 63, color, Stroke(builder, 4));
+                Line(builder, 45, 63, 31, 58, color, Stroke(builder, 4));
+                Line(builder, 31, 58, 18, 45, color, Stroke(builder, 4));
+                builder.FillCircle(X(builder, 45), Y(builder, 45), Scale(builder, 7), color);
                 break;
             case "stale":
                 DrawHexagon(builder, 45, 46, 25, color, Stroke(builder, 3));

@@ -1,6 +1,7 @@
 import { statSync } from 'node:fs';
 
 import type { CodexTaskSource } from '../codex/codex-task-source.ts';
+import { parseWorkflowTask } from './workflow-metadata.ts';
 import type { CodexProjectConfiguration } from './project-configuration.ts';
 import {
   exactActiveWorkerCount,
@@ -67,7 +68,8 @@ export function readProjectStates(
         configuration.root,
         ...(configuration.repositories ?? []),
       ]);
-      const tasks = source.listTasks(MAXIMUM_INCLUDED_TASKS);
+      const tasks = source.listTasks(MAXIMUM_INCLUDED_TASKS)
+        .map((task) => parseWorkflowTask(task, configuration));
       const workers = source.listActiveWorkerTasks(MAXIMUM_EXACT_ACTIVE_WORKERS + 1);
       const observedAt = now();
       const currentWorkers = workers.filter((task) => task.updatedAt >= observedAt - MAXIMUM_ACTIVE_STATE_AGE_MS

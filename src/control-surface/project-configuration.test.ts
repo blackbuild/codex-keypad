@@ -32,14 +32,30 @@ test('reads configured project identity, root, and custom icon', async () => {
           coordinatorTaskId: 'codex://threads/thread-coordinator',
           coordinatorTaskPattern: 'Architecture Coordinator',
           icon: '/icons/architecture.png',
+          workflowRules: [{ marker: '(PR:CI)', state: 'done' }],
+          compactLabelPatterns: ['#[0-9]{1,6}'],
         },
         { id: 'codex-keypad', name: 'Codex Keypad', root: '/projects/codex-keypad' },
       ],
     }),
   );
 
-  assert.deepEqual(configuredProjects({}, homeDirectory), [
-    {
+  const [architecture, keypad] = configuredProjects({}, homeDirectory);
+  assert.deepEqual({
+    id: architecture?.id,
+    name: architecture?.name,
+    root: architecture?.root,
+    repositories: architecture?.repositories,
+    coordinatorTaskId: architecture?.coordinatorTaskId,
+    coordinatorTaskPattern: architecture?.coordinatorTaskPattern,
+    icon: architecture?.icon,
+    workflowRules: architecture?.workflowRules,
+    globalWorkflowRules: architecture?.globalWorkflowRules,
+    compactLabelPatterns: architecture?.compactLabelPatterns,
+    globalCompactLabelPatterns: architecture?.globalCompactLabelPatterns,
+    secondId: keypad?.id,
+    secondPattern: keypad?.coordinatorTaskPattern,
+  }, {
       id: 'architecture',
       name: 'Architecture',
       root: '/projects/architecture',
@@ -47,14 +63,23 @@ test('reads configured project identity, root, and custom icon', async () => {
       coordinatorTaskId: 'thread-coordinator',
       coordinatorTaskPattern: 'Architecture Coordinator',
       icon: '/icons/architecture.png',
-    },
-    {
-      id: 'codex-keypad',
-      name: 'Codex Keypad',
-      root: '/projects/codex-keypad',
-      coordinatorTaskPattern: '* Hive',
-    },
-  ]);
+      workflowRules: [{ marker: '(PR:CI)', state: 'done' }],
+      globalWorkflowRules: [
+        { marker: '(PR:CI)', state: 'waiting-for-ci' },
+        { marker: '(PR:REVIEW)', state: 'waiting-for-review' },
+        { marker: '(PR:CHANGES)', state: 'changes-requested' },
+        { marker: '(INPUT)', state: 'waiting-for-input' },
+        { marker: '(APPROVAL)', state: 'waiting-for-approval' },
+        { marker: '(BLOCKED)', state: 'blocked' },
+        { marker: '(HANDOFF:FAILED)', state: 'handoff-failed' },
+        { marker: '(HANDOFF)', state: 'handoff-failed' },
+        { marker: '(DONE)', state: 'done' },
+      ],
+      compactLabelPatterns: ['#[0-9]{1,6}'],
+      globalCompactLabelPatterns: ['\\b[A-Z]{2,10}-[0-9]{1,6}\\b'],
+      secondId: 'codex-keypad',
+      secondPattern: '* Hive',
+  });
 });
 
 test('keeps the issue 4 single-project configuration compatible', async () => {
@@ -65,11 +90,12 @@ test('keeps the issue 4 single-project configuration compatible', async () => {
     JSON.stringify({ projectRoot: '/projects/codex-keypad' }),
   );
 
-  assert.deepEqual(configuredProjects({}, homeDirectory), [{
-    id: 'codex-keypad',
-    name: 'Codex Keypad',
-    root: '/projects/codex-keypad',
-  }]);
+  const [single] = configuredProjects({}, homeDirectory);
+  assert.deepEqual(single?.globalWorkflowRules?.map(({ state }) => state), [
+    'waiting-for-ci', 'waiting-for-review', 'changes-requested', 'waiting-for-input',
+    'waiting-for-approval', 'blocked', 'handoff-failed', 'handoff-failed', 'done',
+  ]);
+  assert.deepEqual(single?.globalCompactLabelPatterns, ['\\b[A-Z]{2,10}-[0-9]{1,6}\\b']);
 });
 
 test('fails explicitly when neither process nor persistent configuration identifies a project', () => {
@@ -135,6 +161,60 @@ test('rejects duplicate project identities and relative repository or icon paths
     projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe' }],
   }));
   assert.throws(() => configuredProjects({}, homeDirectory), /coordinatorTaskPattern must contain/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe', workflowRules: [
+      { marker: '(BAD)', state: 'invented' },
+    ] }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /supported workflow state/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe', compactLabelPatterns: ['(a+)+'] }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /bounded compact-label pattern/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe',
+      compactLabelPatterns: Array.from({ length: 9 }, (_, index) => `ID${index}{1,3}`) }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /at most 8 patterns/);
+
+  await writeFile(configurationPath, JSON.stringify({
+    workflowRules: Array.from({ length: 24 }, (_, index) => ({
+      marker: `[CUSTOM-${index}]`, state: 'blocked',
+    })),
+    projects: [{ id: 'safe', name: 'Safe', root: '/projects/safe' }],
+  }));
+  assert.throws(() => configuredProjects({}, homeDirectory), /effective workflow rules must contain at most 32/);
+});
+
+test('keeps global and project workflow and compact-label layers separate', async () => {
+  const configurationDirectory = join(homeDirectory, 'Library', 'Application Support', 'Codex Keypad');
+  await mkdir(configurationDirectory, { recursive: true });
+  await writeFile(join(configurationDirectory, 'config.json'), JSON.stringify({
+    workflowRules: [
+      { marker: '(PR:CI)', state: 'waiting-for-review' },
+      { marker: '[WAITING]', state: 'waiting-for-input' },
+    ],
+    compactLabelPatterns: ['#[0-9]{1,6}'],
+    projects: [
+      { id: 'global', name: 'Global', root: '/projects/global' },
+      { id: 'custom', name: 'Custom', root: '/projects/custom', workflowRules: [
+        { marker: '(PR:CI)', state: 'waiting-for-ci' },
+        { marker: '[OPS]', state: 'blocked' },
+      ], compactLabelPatterns: ['DIST-[0-9]{1,6}'] },
+    ],
+  }));
+  const [global, custom] = configuredProjects({}, homeDirectory);
+  assert.equal(global?.globalWorkflowRules?.find(({ marker }) => marker === '(PR:CI)')?.state, 'waiting-for-review');
+  assert.deepEqual(custom?.workflowRules, [
+    { marker: '(PR:CI)', state: 'waiting-for-ci' },
+    { marker: '[OPS]', state: 'blocked' },
+  ]);
+  assert.equal(custom?.globalWorkflowRules?.some(({ marker }) => marker === '[WAITING]'), true);
+  assert.deepEqual(custom?.compactLabelPatterns, ['DIST-[0-9]{1,6}']);
+  assert.deepEqual(custom?.globalCompactLabelPatterns, ['#[0-9]{1,6}']);
 });
 
 test('observes project additions without retaining a startup snapshot', async () => {

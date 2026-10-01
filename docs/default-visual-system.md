@@ -1,126 +1,93 @@
 # Default visual system
 
-Schema version 9 carries a complete normalized visual presentation from the
-TypeScript control-surface core to the Logitech adapter. The adapter draws that
-presentation; it does not infer attention, precedence, aggregation, icons, or
-colors. These defaults apply without an agent-authored layout.
+Schema version 11 carries the normalized presentation from TypeScript to the
+Logitech adapter. TypeScript owns parsing, runtime/workflow separation, attention
+precedence, and aggregation. The adapter renders the supplied icon, cues, rails,
+and semantic actions without deriving policy.
 
-## Attention legend
+## Runtime, workflow, and attention
 
-Every attention-bearing tile has a native Logitech display label below its
-bitmap and a primary background. The bitmap does not repeat the display label.
-Global, project, and coordinator
-tiles additionally place status-sorted worker indicators down their sides:
-attention-required and diagnostic states on the left, working and idle states
-on the right. Working groups anchor toward the top of the right rail while idle
-groups anchor toward its bottom, so the common states remain spatially distinct
-when brightness makes their colors harder to separate. Only the coordinator
-retains its compact upper-right status badge.
-The contrast ratios below use the WCAG
-relative-luminance formula; they are design-time sRGB figures, not a substitute
-for checking the physical LCD.
+Each task retains Codex's observed runtime status and a separately parsed
+workflow state. Runtime remains the large task icon and background. The configured
+workflow declaration appears as a compact text badge alongside the runtime badge.
+The stable task ID continues to identify and open the task; compact labels never
+participate in navigation.
 
-| Normalized state | Worker icon | Label cue | Coordinator badge | Background | Indicator | White-text contrast |
-|---|---|---|---:|---:|---:|---:|
-| `idle` (including completed tasks) | Check | Idle / Completed | `OK` | `#1F2937` | `#C2C7D0` | 14.68:1 |
-| `working` | Double chevron | Working | `>` | `#075985` | `#38BDF8` | 7.56:1 |
-| `waiting-for-input` | Speech bubble | Waiting for input | `I` | `#1E3A8A` | `#60A5FA` | 10.36:1 |
-| `waiting-for-approval` | Hourglass | Waiting for approval | `A` | `#713F12` | `#FACC15` | 8.67:1 |
-| `interrupted` | Pause | Interrupted | `X` | `#4C1D95` | `#A78BFA` | 10.95:1 |
-| `failed` | Cross | Failed | `!` | `#7F1D1D` | `#F87171` | 10.02:1 |
-| `unavailable` | Question mark | Unavailable / State unavailable | `?` | `#3F3F46` | `#D4D4D8` | 10.44:1 |
-| `stale` | Clock | Stale / Count stale | `~` | `#57534E` | `#FDBA74` | 7.63:1 |
+The closed workflow vocabulary is:
 
-An unrecognized persisted task status is normalized to `unavailable`; raw
-provider status text is never published. A source read failure is also
-`unavailable`. Worker evidence older than 24 hours, with no current evidence, is
-`stale`. Current workers accompanied by stale evidence remain a lower-bound
-count and add `stale` as a concurrent condition. Implausibly future-dated data
-adds `unavailable`, including when a valid current lower-bound count is retained.
+- `unspecified`
+- `waiting-for-ci`
+- `waiting-for-review`
+- `changes-requested`
+- `waiting-for-input`
+- `waiting-for-approval`
+- `blocked`
+- `handoff-failed`
+- `done`
 
-The current Codex SQLite source exposes in-progress, completed, failed, and
-interrupted task states. Waiting-for-input and waiting-for-approval already have
-stable normalized and rendered tokens, but they appear only when a state source
-can supply those conditions; the SQLite adapter does not infer them from prompts,
-transcripts, or provider-private details.
+`waiting-for-ci`, `done`, and `unspecified` are informational and do not add
+operator attention. `waiting-for-review`, `changes-requested`,
+`waiting-for-input`, `waiting-for-approval`, `blocked`, and `handoff-failed` do.
+`done` means orchestration declared the work accepted and the worker may be
+archived later; the plugin does not archive workers.
 
-These are runtime/availability states, not workflow states. PR ready, merge
-ready, review requested, changes requested, and domain-specific question labels
-must come from a separate provider or validated configuration. They do not
-replace the worker's runtime-state icon.
+## Attention precedence
 
-## Composition and precedence
+Concurrent attention is counted and ordered with this fixed precedence:
 
-Task state reduces to project attention from normalized task and project data;
-all configured projects reduce again to the global Codex entry. Repeated states
-are counted. Distinct states use this fixed precedence:
+1. failed runtime
+2. handoff-failed workflow
+3. blocked workflow
+4. waiting-for-approval
+5. changes-requested
+6. waiting-for-review
+7. waiting-for-input
+8. interrupted runtime
+9. unavailable
+10. stale
+11. working runtime
+12. idle/completed runtime
 
-1. failed
-2. waiting for approval
-3. waiting for input
-4. interrupted
-5. unavailable
-6. stale
-7. working
-8. idle
+Only the first three distinct conditions appear in the bounded attention summary;
+additional conditions are counted. Idle is omitted whenever a non-idle condition
+exists. Workflow information never replaces the runtime field or runtime icon.
+Project and global tiles aggregate both dimensions. Worker rails retain concurrent
+conditions with attention and diagnostics on the left, and working/idle on the
+right. The badge letters and distinct shapes provide cues alongside color.
 
-The first state supplies the background. Worker rails retain all available
-normalized worker groups in
-precedence order. A configured coordinator is represented by the Hive itself and
-is not repeated as a rail indicator. Counts of one through three are individual eight-pixel blobs;
-groups of four or more use a solid vertical capsule in the state's color. The capsule
-deliberately communicates "many" instead of an exact count, because numeric glyphs
-are not reliably legible at this display size. When several groups would exceed a
-rail's height, the largest remaining blob groups collapse to the same bounded capsule
-treatment until the layout fits. Confirmed idle is used only when no non-idle or
-diagnostic condition is present.
-
-## Icon vocabulary and fallbacks
-
-| Level | Built-in icon | Semantic action |
+| State | Icon/tone cue | Badge |
 |---|---|---|
-| Global Codex entry | Packaged transparent white OpenAI knot mark; terminal/code-window fallback | Enter the native folder at its retained internal level |
-| Project | Three-cell Hive | Open that project's task view |
-| Task | Normalized runtime-state symbol | Open that exact current task |
-| Coordinator task | Project PNG or three-cell Hive; project-name label | Open that exact coordinator task |
-| Up | Large upward arrow | Return to the project overview |
+| `idle` / completed | Check | `OK` |
+| `working` | Double chevron | `>` |
+| `waiting-for-input` | Speech bubble | `I` |
+| `waiting-for-approval` | Hourglass | `A` |
+| `waiting-for-review` | Eye cue | `R` |
+| `changes-requested` | Change cue | `C` |
+| `blocked` | Block cue | `B` |
+| `handoff-failed` | Cross | `H` |
+| `interrupted` | Pause | `X` |
+| `failed` | Cross | `!` |
+| `unavailable` | Question mark | `?` |
+| `stale` | Clock | `~` |
 
-A packaged transparent white OpenAI knot mark identifies the global entry. It is
-lowered slightly to clear the native Options+ folder handle and sits on a neutral
-dark background; root-level state remains visible in the worker indicators. If that package asset is
-missing or unreadable, the entry falls back to the built-in terminal icon. A
-configured project PNG may replace the baseline imagery on its project and
-coordinator tiles. If the path is absent, unreadable, oversized, or not a
-decodable PNG, the matching built-in icon is still rendered. The native
-display label below the bitmap, one-pixel frame, and worker rails remain visible
-with either image path.
+Project tiles retain neutral bodies, tapered status tabs, configured/default
+icons, and bounded worker rails. The global entry retains its packaged OpenAI
+mark or built-in terminal fallback. Coordinator tiles retain the configured
+project icon or Hive fallback. The native label below the bitmap is separate
+from the bitmap; attention and workflow badges are drawn only once inside it.
 
-Up uses the navigation background `#111827` with a white arrow (17.74:1). It has
-no attention summary or worker indicators. No visual field carries a command; the
-only accepted actions are the closed semantic navigation actions shown above.
-If no fresh validated contract exists at all, the device adapter cannot receive a
-core-owned presentation; its sole local safety fallback is a `?` image on the
-unavailable background while the native label remains `Codex`. It never presents
-the last healthy image as fresh.
+## Safe title rules
 
-## Device constraints
+Workflow rules match literal title markers and map only to the closed vocabulary.
+If multiple rules match, the first rule in the effective configuration wins. The
+compact-label expressions use a validated bounded subset: no groups, alternation,
+backreferences, or unbounded wildcard operators; task titles are bounded before
+matching. An invalid configuration fails closed, an unmatched title becomes
+`unspecified`, and an unmatched compact label uses a bounded title fallback.
+Prompt and transcript content are never consulted.
 
-The Logitech adapter receives compact bitmap dimensions from the SDK. The global
-entry uses an unframed neutral field with worker indicators directly on its edges.
-Project tiles use neutral bodies with the same three-cell Hive symbol as their
-coordinator tile and a centered, top-wide tab that tapers inward toward the body
-in their single primary status color. The idle tab uses the brighter idle indicator
-accent instead of the darker completed-task background. Coordinator tiles retain their colored backgrounds. Both draw a
-two-pixel frame around their dark side gutters. Worker blobs and compressed solid
-capsules sit in those gutters and remain inside the bitmap edges. This gives the colored/icon
-field a narrower framed-panel appearance while separating indicators from busy
-custom artwork. A coordinator's right lane begins below its retained badge.
-The device adapter draws the normalized icon role with simple vector primitives,
-so the defaults do not depend on optional font symbols or external assets. The
-SDK renders the display label separately below the bitmap. Task labels contain
-only an 18-character compact task-title cue; runtime state is carried by the
-large state-specific icon and background. Project labels
-contain only their configured display name; the global label is simply `Codex`.
-Worker counts and diagnostic cues are carried by the side rails. Actual cropping, native-label
-legibility, color separation, and brightness behavior still require the physical
-checks in [physical-device-validation.md](physical-device-validation.md).
+## Device acceptance
+
+Automated tests verify normalized presentation and rendering. They do not count
+as physical-device acceptance. The exact MX Keypad acceptance checklist is in
+[physical-device-validation.md](physical-device-validation.md).
